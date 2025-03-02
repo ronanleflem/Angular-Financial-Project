@@ -8,6 +8,8 @@ import 'chartjs-adapter-date-fns'; // ✅ Pour gérer les dates correctement
 import zoomPlugin from 'chartjs-plugin-zoom';
 import {CandlestickController, CandlestickElement, OhlcController} from 'chartjs-chart-financial';
 import {FormsModule} from '@angular/forms';
+//import annotationPlugin from 'chartjs-plugin-annotation';
+import { AnnotationOptions, LineAnnotationOptions, LabelPosition } from 'chartjs-plugin-annotation';
 
 @Component({
   selector: 'app-historical-data',
@@ -19,6 +21,26 @@ import {FormsModule} from '@angular/forms';
 export class HistoricalDataComponent implements AfterViewInit {
   chart: any;
   candles: any[] = [];
+  trades = [
+    {
+      entryDate: new Date('2023-05-06T10:00:00'), // Date d'entrée
+      entryPrice: 1, // Prix d'entrée
+      stopLoss: 0.9, // Stop Loss
+      takeProfit: 1.2, // Take Profit
+      exitDate: new Date('2025-09-25T10:30:00'), // Date de sortie
+      result: 'win', // "win" ou "loss"
+      exitPrice: 1.2
+    },
+    {
+      entryDate: new Date('2024-09-08T12:15:00'),
+      entryPrice: 1.0870,
+      stopLoss: 1.0845,
+      takeProfit: 1.0895,
+      exitDate: new Date('2024-09-08T12:45:00'),
+      result: 'loss',
+      exitPrice: 1.0845
+    }
+  ];
 
   // Liste des symboles et timeframes disponibles
   symbols = ['EURUSD', 'GBPUSD', 'USDJPY', 'NASDAQ', 'SP500'];
@@ -48,6 +70,31 @@ export class HistoricalDataComponent implements AfterViewInit {
       setTimeout(() => this.createChart(), 0); // ✅ Attendre que le DOM soit prêt
     });
   }
+  getAnnotations(): Record<string, LineAnnotationOptions> {
+    return this.trades
+      .flatMap((trade, index) => [
+        {
+          type: 'box',
+          xMin: trade.entryDate.getTime(), // Convert Date en timestamp
+          xMax: trade.exitDate.getTime(),  // Convert Date en timestamp
+          yMin: trade.entryPrice,
+          yMax: trade.exitPrice,
+          borderColor: 'red',
+          borderWidth: 2,
+          label: {
+            content: `Trade ${index + 1}`,
+            enabled: true,
+            position: 'end' as const, // Correction ici
+            color: '#000',
+            backgroundColor: 'red'
+          }
+        }
+      ])
+      .reduce((acc, annotation, idx) => {
+        acc[`annotation_${idx}`] = annotation;
+        return acc;
+      }, {} as Record<string, LineAnnotationOptions>);
+  }
 
   createChart() {
     const canvas = document.getElementById('candlestickChart') as HTMLCanvasElement;
@@ -61,10 +108,11 @@ export class HistoricalDataComponent implements AfterViewInit {
       return;
     }
 
-    if (this.chart) this.chart.destroy(); // ✅ Évite les doublons
+    if (this.chart) this.chart.destroy();
+
     console.log("Creation du graphique...");
     this.chart = new Chart(ctx, {
-      type: 'candlestick', // ✅ Utilise le type chandeliers
+      type: 'candlestick',
       data: {
         datasets: [
           {
@@ -78,7 +126,7 @@ export class HistoricalDataComponent implements AfterViewInit {
             })),
             borderColor: 'black',
             backgroundColor: 'rgba(0, 128, 0, 0.5)',
-            barThickness: 1, // Ajuste la largeur de la bougie
+            barThickness: 1,
           }
         ]
       },
@@ -88,10 +136,10 @@ export class HistoricalDataComponent implements AfterViewInit {
           x: {
             type: 'time',
             time: {
-              unit: 'minute', // Chaque unité sur l'axe des X est une minute
+              unit: 'minute',
             },
             ticks: {
-              maxRotation: 0, // Limite la rotation des ticks sur l'axe X
+              maxRotation: 0,
               minRotation: 0,
             }
           },
@@ -102,22 +150,25 @@ export class HistoricalDataComponent implements AfterViewInit {
         plugins: {
           zoom: {
             limits: {
-              x: { min: 'original', max: 'original' }, // Empêche de sortir des limites de base
-              y: { min: 'original', max: 'original' }
+              x: {min: 'original', max: 'original'},
+              y: {min: 'original', max: 'original'}
             },
             pan: {
-              enabled: true, // Activation du déplacement
-              mode: 'x', // Déplacement uniquement horizontal
+              enabled: true,
+              mode: 'x',
             },
             zoom: {
               wheel: {
-                enabled: true, // Zoom avec la molette de la souris
+                enabled: true,
               },
               pinch: {
-                enabled: true // Zoom avec les doigts sur mobile
+                enabled: true
               },
-              mode: 'x', // Zoom horizontal uniquement
+              mode: 'x',
             }
+          },
+          annotation: {
+            annotations: this.getAnnotations()
           }
         }
       }
