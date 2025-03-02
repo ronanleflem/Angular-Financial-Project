@@ -7,17 +7,26 @@ import 'chartjs-chart-financial'; // ✅ Importe le plugin pour les chandeliers
 import 'chartjs-adapter-date-fns'; // ✅ Pour gérer les dates correctement
 import zoomPlugin from 'chartjs-plugin-zoom';
 import {CandlestickController, CandlestickElement, OhlcController} from 'chartjs-chart-financial';
+import {FormsModule} from '@angular/forms';
 
 @Component({
   selector: 'app-historical-data',
   standalone: true,
-  imports: [CommonModule, NgChartsModule],
+  imports: [CommonModule, NgChartsModule, FormsModule],
   templateUrl: './historical-data.component.html',
   styleUrl: './historical-data.component.css'
 })
 export class HistoricalDataComponent implements AfterViewInit {
   chart: any;
   candles: any[] = [];
+
+  // Liste des symboles et timeframes disponibles
+  symbols = ['EURUSD', 'GBPUSD', 'USDJPY', 'NASDAQ', 'SP500'];
+  timeframes = ['1min', '5min', '15min', '1h', '4h', '1d'];
+
+  // Symbol et timeframe sélectionnés
+  selectedSymbol = 'EURUSD';
+  selectedTimeframe = '15min';
 
   constructor(private tradingService: TradingDataService) {
     Chart.register(...registerables, CandlestickElement, OhlcController, CandlestickController, zoomPlugin);
@@ -28,6 +37,13 @@ export class HistoricalDataComponent implements AfterViewInit {
       console.log('Données reçues :', data); // ✅ Vérifie que les données arrivent bien
       console.log(Chart.getChart('candlestickChart')); // ✅ Devrait afficher `undefined` (normal)
       console.log(Chart.registry.controllers);
+      this.candles = data;
+      setTimeout(() => this.createChart(), 0); // ✅ Attendre que le DOM soit prêt
+    });
+  }
+
+  loadData() {
+    this.tradingService.getHistoricalCandles(this.selectedSymbol, this.selectedTimeframe).subscribe(data => {
       this.candles = data;
       setTimeout(() => this.createChart(), 0); // ✅ Attendre que le DOM soit prêt
     });
