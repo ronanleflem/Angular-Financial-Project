@@ -1,5 +1,7 @@
 <div *ngIf="candles.length > 0; else loading">
-  <table>
+  <h2>Graphique des Bougies - EUR/USD (15min)</h2>
+  <canvas id="candlestickChart"></canvas>
+  <!--<table>
     <tr>
       <th>Time</th>
       <th>Open</th>
@@ -14,7 +16,7 @@
       <td>{{ candle.low }}</td>
       <td>{{ candle.close }} </td>
     </tr>
-  </table>
+  </table>-->
 </div>
 <ng-template #loading>
   <p>Loading data...</p>
