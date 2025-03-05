@@ -8,7 +8,7 @@ import 'chartjs-adapter-date-fns'; // ✅ Pour gérer les dates correctement
 import zoomPlugin from 'chartjs-plugin-zoom';
 import {CandlestickController, CandlestickElement, OhlcController} from 'chartjs-chart-financial';
 import {FormsModule} from '@angular/forms';
-//import annotationPlugin from 'chartjs-plugin-annotation';
+import annotationPlugin from 'chartjs-plugin-annotation';
 import { AnnotationOptions, LineAnnotationOptions, LabelPosition } from 'chartjs-plugin-annotation';
 
 @Component({
@@ -23,20 +23,20 @@ export class HistoricalDataComponent implements AfterViewInit {
   candles: any[] = [];
   trades = [
     {
-      entryDate: new Date('2023-05-06T10:00:00'), // Date d'entrée
-      entryPrice: 1, // Prix d'entrée
-      stopLoss: 0.9, // Stop Loss
-      takeProfit: 1.2, // Take Profit
-      exitDate: new Date('2025-09-25T10:30:00'), // Date de sortie
+      entryDate: new Date('2023-02-08T14:15:00'),
+      entryPrice: 1.0850,
+      stopLoss: 1.0800,
+      takeProfit: 1.0895,
+      exitDate: new Date('2023-02-08T15:45:00'),
       result: 'win', // "win" ou "loss"
-      exitPrice: 1.2
+      exitPrice: 1.0895,
     },
     {
-      entryDate: new Date('2024-09-08T12:15:00'),
+      entryDate: new Date('2023-02-08T12:15:00'),
       entryPrice: 1.0870,
       stopLoss: 1.0845,
       takeProfit: 1.0895,
-      exitDate: new Date('2024-09-08T12:45:00'),
+      exitDate: new Date('2023-02-08T12:45:00'),
       result: 'loss',
       exitPrice: 1.0845
     }
@@ -51,7 +51,7 @@ export class HistoricalDataComponent implements AfterViewInit {
   selectedTimeframe = '15min';
 
   constructor(private tradingService: TradingDataService) {
-    Chart.register(...registerables, CandlestickElement, OhlcController, CandlestickController, zoomPlugin);
+    Chart.register(...registerables, CandlestickElement, OhlcController, CandlestickController, zoomPlugin, annotationPlugin);
   }
 
   ngAfterViewInit() {
@@ -61,6 +61,8 @@ export class HistoricalDataComponent implements AfterViewInit {
       console.log(Chart.registry.controllers);
       this.candles = data;
       setTimeout(() => this.createChart(), 0); // ✅ Attendre que le DOM soit prêt
+      const annotations = this.getAnnotations();
+      console.log("Annotations générées :", annotations);
     });
   }
 
@@ -79,16 +81,34 @@ export class HistoricalDataComponent implements AfterViewInit {
           xMax: trade.exitDate.getTime(),  // Convert Date en timestamp
           yMin: trade.entryPrice,
           yMax: trade.exitPrice,
-          borderColor: 'red',
+          backgroundColor: 'rgba(255, 0, 0, 0.2)',
+          borderColor: trade.result === 'win' ? 'green' : 'red',
           borderWidth: 2,
           label: {
             content: `Trade ${index + 1}`,
             enabled: true,
             position: 'end' as const, // Correction ici
-            color: '#000',
-            backgroundColor: 'red'
+            color: '#FFF',
+            backgroundColor: trade.result === 'win' ? 'green' : 'red'
           }
-        }
+        },
+        {
+          type: 'line', // ✅ Ajoute un TRAIT NOIR pour l'entrée du trade
+          mode: 'horizontals',
+          scaleID: 'y',
+          value: trade.entryPrice, // Positionner à la date d'entrée
+          borderColor: 'black',
+          borderWidth: 2,
+          xMin: trade.entryDate.getTime(), // ✅ Début du trade
+          xMax: trade.exitDate.getTime(), // ✅ Fin du trade
+          label: {
+            content: `Entry ${index + 1}`,
+            enabled: true,
+            position: 'end' as const,
+            color: '#000',
+            backgroundColor: 'black'
+          }
+          }
       ])
       .reduce((acc, annotation, idx) => {
         acc[`annotation_${idx}`] = annotation;
@@ -136,7 +156,13 @@ export class HistoricalDataComponent implements AfterViewInit {
           x: {
             type: 'time',
             time: {
-              unit: 'minute',
+              unit: 'hour',
+              parser: (value: unknown) => {
+                if (typeof value === 'string' || typeof value === 'number') {
+                  return new Date(value).getTime();
+                }
+                return NaN; // Retourner une valeur invalide si le type est inconnu
+              },
             },
             ticks: {
               maxRotation: 0,
