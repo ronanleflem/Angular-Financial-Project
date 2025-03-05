@@ -79,9 +79,9 @@ export class HistoricalDataComponent implements AfterViewInit {
           type: 'box',
           xMin: trade.entryDate.getTime(), // Convert Date en timestamp
           xMax: trade.exitDate.getTime(),  // Convert Date en timestamp
-          yMin: trade.entryPrice,
-          yMax: trade.exitPrice,
-          backgroundColor: 'rgba(255, 0, 0, 0.2)',
+          yMin: trade.stopLoss,
+          yMax: trade.takeProfit,
+          backgroundColor: trade.result === 'win' ? 'rgba(0, 255, 0, 0.2)' : 'rgba(255, 0, 0, 0.2)',
           borderColor: trade.result === 'win' ? 'green' : 'red',
           borderWidth: 2,
           label: {
@@ -92,23 +92,17 @@ export class HistoricalDataComponent implements AfterViewInit {
             backgroundColor: trade.result === 'win' ? 'green' : 'red'
           }
         },
+        // 📌 Ligne noire horizontale pour l'entrée du trade
         {
-          type: 'line', // ✅ Ajoute un TRAIT NOIR pour l'entrée du trade
-          mode: 'horizontals',
-          scaleID: 'y',
-          value: trade.entryPrice, // Positionner à la date d'entrée
-          borderColor: 'black',
-          borderWidth: 2,
-          xMin: trade.entryDate.getTime(), // ✅ Début du trade
-          xMax: trade.exitDate.getTime(), // ✅ Fin du trade
-          label: {
-            content: `Entry ${index + 1}`,
-            enabled: true,
-            position: 'end' as const,
-            color: '#000',
-            backgroundColor: 'black'
-          }
-          }
+          type: 'box', // Utilisation d'une box très fine pour simuler une ligne
+          xMin: trade.entryDate.getTime(),
+          xMax: trade.exitDate.getTime(),
+          yMin: trade.entryPrice, // Très petite hauteur pour simuler une ligne
+          yMax: trade.entryPrice, // Garde un trait visible
+          borderColor: trade.result === 'win' ? 'green' : 'red',
+          borderWidth: 1,
+          backgroundColor: trade.result === 'win' ? 'green' : 'red' // Simule une ligne noire
+        }
       ])
       .reduce((acc, annotation, idx) => {
         acc[`annotation_${idx}`] = annotation;
