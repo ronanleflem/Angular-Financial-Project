@@ -10,6 +10,7 @@ import {CandlestickController, CandlestickElement, OhlcController} from 'chartjs
 import {FormsModule} from '@angular/forms';
 import annotationPlugin from 'chartjs-plugin-annotation';
 import { AnnotationOptions, LineAnnotationOptions, LabelPosition } from 'chartjs-plugin-annotation';
+import { format } from 'date-fns';
 
 @Component({
   selector: 'app-historical-data',
@@ -23,32 +24,35 @@ export class HistoricalDataComponent implements AfterViewInit {
   candles: any[] = [];
   trades = [
     {
-      entryDate: new Date('2023-02-08T14:15:00'),
+      entryDate: new Date('2024-02-08T14:15:00'),
       entryPrice: 1.0850,
       stopLoss: 1.0800,
       takeProfit: 1.0895,
-      exitDate: new Date('2023-02-08T15:45:00'),
+      exitDate: new Date('2024-02-08T15:45:00'),
       result: 'win', // "win" ou "loss"
       exitPrice: 1.0895,
     },
     {
-      entryDate: new Date('2023-02-08T12:15:00'),
+      entryDate: new Date('2024-02-08T12:15:00'),
       entryPrice: 1.0870,
       stopLoss: 1.0845,
       takeProfit: 1.0895,
-      exitDate: new Date('2023-02-08T12:45:00'),
+      exitDate: new Date('2024-02-08T12:45:00'),
       result: 'loss',
       exitPrice: 1.0845
     }
   ];
 
+
   // Liste des symboles et timeframes disponibles
   symbols = ['EURUSD', 'GBPUSD', 'USDJPY', 'NASDAQ', 'SP500'];
-  timeframes = ['1min', '5min', '15min', '1h', '4h', '1d'];
+  timeframes = ['1min', '5min', '15min','30min', '1h', '4h', 'daily'];
 
   // Symbol et timeframe sélectionnés
   selectedSymbol = 'EURUSD';
   selectedTimeframe = '15min';
+
+  isForex = true;
 
   constructor(private tradingService: TradingDataService) {
     Chart.register(...registerables, CandlestickElement, OhlcController, CandlestickController, zoomPlugin, annotationPlugin);
@@ -60,15 +64,29 @@ export class HistoricalDataComponent implements AfterViewInit {
       console.log(Chart.getChart('candlestickChart')); // ✅ Devrait afficher `undefined` (normal)
       console.log(Chart.registry.controllers);
       this.candles = data;
+      console.log("Données utilisées :", this.candles.map(c => new Date(c.date).toISOString()));
       setTimeout(() => this.createChart(), 0); // ✅ Attendre que le DOM soit prêt
       const annotations = this.getAnnotations();
       console.log("Annotations générées :", annotations);
+
+      this.chart.update();
     });
   }
 
   loadData() {
     this.tradingService.getHistoricalCandles(this.selectedSymbol, this.selectedTimeframe).subscribe(data => {
+      console.log('Données reçues loadData :', data);
       this.candles = data;
+      //console.log("Données utilisées :", this.candles.map(c => new Date(c.date).toUTCString()));
+      //console.log("Données utilisées :", this.candles.map(c => new Date(c.date).toISOString()));
+
+      /*
+      this.candles = this.candles.filter(c => {
+        const date = new Date(c.date);
+        const day = date.getUTCDay();
+        return day !== 0 && day !== 6; // ✅ Exclut samedi et dimanche
+      });*/
+      console.log('Données filtrées loadData :', this.candles);
       setTimeout(() => this.createChart(), 0); // ✅ Attendre que le DOM soit prêt
     });
   }
@@ -132,7 +150,7 @@ export class HistoricalDataComponent implements AfterViewInit {
           {
             label: 'EUR/USD - 15min',
             data: this.candles.map(c => ({
-              x: new Date(c.date),
+              x: new Date(c.date).getTime(),
               o: c.open,
               h: c.high,
               l: c.low,
@@ -150,21 +168,42 @@ export class HistoricalDataComponent implements AfterViewInit {
           x: {
             type: 'time',
             time: {
-              unit: 'hour',
+              unit: 'day',
               parser: (value: unknown) => {
                 if (typeof value === 'string' || typeof value === 'number') {
                   return new Date(value).getTime();
                 }
+                console.log("Valeur invalide :", value);
                 return NaN; // Retourner une valeur invalide si le type est inconnu
               },
+            },
+            afterBuildTicks: (scale) => {
+              console.log("Ticks générés :", scale.ticks);
             },
             ticks: {
               maxRotation: 0,
               minRotation: 0,
+              source: 'data',
+              callback: (value: number | string, index: number, values: any[]) => {
+                console.log("Tick callback exécuté pour:", value);
+                const date = new Date(value);
+                /*
+                const day = date.getUTCDay();
+                if (this.isForex && (day === 0 || day === 6)) {
+                  console.log("Tick callback weekend ", value);
+                  return ''; // Cache les week-ends si Forex
+                }*/
+                return format(date, 'yyyy-MM-dd HH:mm'); // Utilisation de date-fns
+              }
             }
           },
           y: {
-            beginAtZero: false
+            beginAtZero: false,
+            ticks: {
+              callback: (value: any) => {
+                return value.toFixed(2); // Formater les valeurs de l'axe Y
+              }
+            }
           }
         },
         plugins: {
@@ -188,7 +227,7 @@ export class HistoricalDataComponent implements AfterViewInit {
             }
           },
           annotation: {
-            annotations: this.getAnnotations()
+            //annotations: this.getAnnotations()
           }
         }
       }
