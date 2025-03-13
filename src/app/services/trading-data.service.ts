@@ -13,6 +13,10 @@ export class TradingDataService {
   getHistoricalCandles(symbol: string, timeframe: string): Observable<any> {
     return this.http.get(`${this.apiUrl}/api/finance/charts/candles?symbol=${symbol}&timeframe=${timeframe}`);
   }
+  // http://localhost:8092/rollover-volume/unified-candles?startDate=2010-06-10T00:00:00&endDate=2010-06-15T00:00:00
+  getHistoricalCandlesCME(symbol: string, timeframe: string): Observable<any> {
+    return this.http.get(`http://localhost:8094/rollover-volume/unified-candles?startDate=2025-02-01T00:00:00&endDate=2025-02-20T00:00:00`);
+  }
 
   getBacktestResults(strategy: string): Observable<any> {
     return this.http.get(`${this.apiUrl}/backtest?strategy=${strategy}`);

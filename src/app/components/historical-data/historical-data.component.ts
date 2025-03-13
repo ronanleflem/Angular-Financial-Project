@@ -59,7 +59,7 @@ export class HistoricalDataComponent implements AfterViewInit {
   }
 
   ngAfterViewInit() {
-    this.tradingService.getHistoricalCandles('EURUSD', '5min').subscribe(data => {
+    this.tradingService.getHistoricalCandlesCME('EURUSD', '5min').subscribe(data => {
       console.log('Données reçues :', data); // ✅ Vérifie que les données arrivent bien
       console.log(Chart.getChart('candlestickChart')); // ✅ Devrait afficher `undefined` (normal)
       console.log(Chart.registry.controllers);
@@ -74,7 +74,7 @@ export class HistoricalDataComponent implements AfterViewInit {
   }
 
   loadData() {
-    this.tradingService.getHistoricalCandles(this.selectedSymbol, this.selectedTimeframe).subscribe(data => {
+    this.tradingService.getHistoricalCandlesCME(this.selectedSymbol, this.selectedTimeframe).subscribe(data => {
       console.log('Données reçues loadData :', data);
       this.candles = data;
       //console.log("Données utilisées :", this.candles.map(c => new Date(c.date).toUTCString()));
