@@ -8,15 +8,21 @@
   <select id="timeframe" [(ngModel)]="selectedTimeframe">
     <option *ngFor="let tf of timeframes" [value]="tf">{{ tf }}</option>
   </select>
+  <br>
+  <label for="startDate">Date de début :</label>
+  <input type="datetime-local" id="startDate" [(ngModel)]="startDate" />
 
+  <label for="endDate">Date de fin :</label>
+  <input type="datetime-local" id="endDate" [(ngModel)]="endDate" />
+  <br>
   <button (click)="loadData()">Charger</button>
 </div>
 
 <div *ngIf="candles.length > 0; else loading">
-
-  <h2>Graphique des Bougies </h2>
+  <h2>Graphique des Bougies</h2>
   <canvas id="candlestickChart"></canvas>
 </div>
+
 <ng-template #loading>
   <p>Loading data...</p>
 </ng-template>
