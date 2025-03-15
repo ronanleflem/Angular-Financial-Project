@@ -1,0 +1,47 @@
+<h2>Screen des Stratégies Calculées</h2>
+
+<div class="form-container">
+  <label for="symbol">Sélectionnez un symbole :</label>
+  <select id="symbol" [(ngModel)]="selectedSymbol" (change)="loadStrategies()">
+    <option *ngFor="let symbol of symbols" [value]="symbol">{{ symbol }}</option>
+  </select>
+</div>
+
+<div *ngIf="isLoading">Chargement des stratégies...</div>
+
+<table *ngIf="strategies.length > 0" class="strategy-table">
+  <thead>
+  <tr>
+    <th>Nom</th>
+    <th>Symbole</th>
+    <th>Début</th>
+    <th>Fin</th>
+    <th>Trades Gagnants</th>
+    <th>Trades Perdants</th>
+    <th>% Winrate</th>
+    <th>RR Moyen</th>
+    <th>Nb Trades</th>
+    <th>Action</th>
+  </tr>
+  </thead>
+  <tbody>
+  <tr *ngFor="let strategy of strategies">
+    <td>{{ strategy.name }}</td>
+    <td>{{ strategy.symbol }}</td>
+    <td>{{ strategy.startDate | date:'short' }}</td>
+    <td>{{ strategy.endDate | date:'short' }}</td>
+    <td>{{ strategy.winningTrades }}</td>
+    <td>{{ strategy.losingTrades }}</td>
+    <td>{{ strategy.winRate }}%</td>
+    <td>{{ strategy.averageRR }}</td>
+    <td>{{ strategy.tradeCount }}</td>
+    <td>
+      <button (click)="goToDetails(strategy)">GO</button>
+    </td>
+  </tr>
+  </tbody>
+</table>
+
+<div *ngIf="strategies.length === 0 && !isLoading">
+  <p>Aucune stratégie trouvée pour ce symbole.</p>
+</div>

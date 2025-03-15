@@ -1,0 +1,27 @@
+<h2>Calcul de Stratégies</h2>
+
+<div class="form-container">
+  <label for="strategy">Stratégie :</label>
+  <select id="strategy" [(ngModel)]="selectedStrategy">
+    <option *ngFor="let strategy of strategies" [value]="strategy">{{ strategy }}</option>
+  </select>
+
+  <label for="symbol">Symbole :</label>
+  <select id="symbol" [(ngModel)]="selectedSymbol">
+    <option *ngFor="let symbol of symbols" [value]="symbol">{{ symbol }}</option>
+  </select>
+
+  <label for="startDate">Date de début :</label>
+  <input type="datetime-local" id="startDate" [(ngModel)]="startDate" />
+
+  <label for="endDate">Date de fin :</label>
+  <input type="datetime-local" id="endDate" [(ngModel)]="endDate" />
+
+  <button (click)="calculateStrategy()">Lancer le calcul</button>
+</div>
+
+<div *ngIf="result" class="result">
+  <h3>Résultat du calcul</h3>
+  <pre>{{ result | json }}</pre>
+</div>
+

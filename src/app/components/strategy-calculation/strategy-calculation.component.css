@@ -1,5 +1,5 @@
-/* Conteneur principal */
-div {
+/* Conteneur global */
+.form-container {
   padding: 20px;
   background-color: #f9f9f9;
   border-radius: 12px;
@@ -9,8 +9,15 @@ div {
   font-family: Arial, sans-serif;
 }
 
-/* Les labels + inputs alignés proprement */
-div > label {
+/* Titre principal */
+h2 {
+  text-align: center;
+  color: #333;
+  margin-bottom: 20px;
+}
+
+/* Labels */
+.form-container label {
   display: block;
   margin-top: 15px;
   margin-bottom: 5px;
@@ -18,9 +25,9 @@ div > label {
   color: #333;
 }
 
-/* Les select et inputs de date */
-select,
-input[type="datetime-local"] {
+/* Selects et inputs */
+.form-container select,
+.form-container input[type="datetime-local"] {
   width: 100%;
   padding: 10px;
   margin-bottom: 10px;
@@ -31,26 +38,14 @@ input[type="datetime-local"] {
   transition: border-color 0.3s;
 }
 
-select:focus,
-input[type="datetime-local"]:focus {
+.form-container select:focus,
+.form-container input[type="datetime-local"]:focus {
   border-color: #4a90e2;
   outline: none;
 }
 
-/* Organisation horizontale de Symbol + Timeframe */
-.flex-row {
-  display: flex;
-  gap: 20px;
-  flex-wrap: wrap;
-}
-
-.flex-row > div {
-  flex: 1;
-  min-width: 200px;
-}
-
-/* Bouton charger */
-button {
+/* Bouton */
+.form-container button {
   background-color: #4a90e2;
   color: white;
   padding: 12px 24px;
@@ -58,40 +53,45 @@ button {
   border-radius: 8px;
   cursor: pointer;
   font-size: 16px;
-  margin-top: 10px;
+  margin-top: 20px;
   transition: background-color 0.3s, transform 0.2s;
+  display: block;
+  width: 100%;
 }
 
-button:hover {
+.form-container button:hover {
   background-color: #357ABD;
   transform: translateY(-2px);
 }
 
-button:active {
+.form-container button:active {
   transform: translateY(0);
 }
 
-/* Le titre du graphique */
-h2 {
-  text-align: center;
-  margin-top: 40px;
+/* Affichage du résultat */
+div.result {
+  margin-top: 30px;
+  background-color: #fff;
+  padding: 15px;
+  border-radius: 8px;
+  border: 1px solid #eee;
+  font-family: monospace;
   color: #333;
 }
 
-/* Style du message de chargement */
-p {
+h3 {
+  margin-top: 40px;
+  color: #333;
   text-align: center;
-  font-style: italic;
-  color: #888;
 }
 
 /* Responsive */
 @media (max-width: 600px) {
-  .flex-row {
-    flex-direction: column;
+  .form-container {
+    padding: 15px;
   }
 
-  button {
+  .form-container button {
     width: 100%;
   }
 }

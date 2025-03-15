@@ -7,9 +7,12 @@
   </select>
 
   <label>Timeframes:</label>
-  <div *ngFor="let tf of timeframes">
-    <input type="checkbox" [value]="tf" (change)="selectedTimeframes.includes(tf) ? selectedTimeframes.splice(selectedTimeframes.indexOf(tf), 1) : selectedTimeframes.push(tf)">
-    {{ tf }}
+  <div class="timeframes-container">
+    <label *ngFor="let tf of timeframes">
+      <input type="checkbox" [value]="tf"
+             (change)="selectedTimeframes.includes(tf) ? selectedTimeframes.splice(selectedTimeframes.indexOf(tf), 1) : selectedTimeframes.push(tf)">
+      {{ tf }}
+    </label>
   </div>
 
   <button (click)="loadStatistics()">Charger</button>

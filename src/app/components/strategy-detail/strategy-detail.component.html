@@ -1,0 +1,44 @@
+<h2>Détail de la Stratégie : {{ strategy?.name }}</h2>
+
+<!-- Section Graphique du Trade Actuel -->
+<div class="graph-container">
+  <h3>Trade #{{ currentTradeIndex + 1 }} / {{ trades.length }}</h3>
+
+  <!-- Ici un futur vrai graphique -->
+  <div class="fake-chart">
+    <p>Graphique du trade : {{ currentTrade?.id }}</p>
+    <!-- Tu brancheras ton chart lib ici, ex: Chart.js / ngx-charts / Highcharts -->
+  </div>
+
+  <button (click)="nextTrade()" [disabled]="currentTradeIndex >= trades.length - 1">Next Trade</button>
+</div>
+
+<!-- Détails Globaux de la Stratégie -->
+<div class="strategy-summary">
+  <h3>Résumé de la Stratégie</h3>
+  <table>
+    <tr><td>Nom :</td><td>{{ strategy?.name }}</td></tr>
+    <tr><td>Symbole :</td><td>{{ strategy?.symbol }}</td></tr>
+    <tr><td>Début :</td><td>{{ strategy?.startDate | date:'short' }}</td></tr>
+    <tr><td>Fin :</td><td>{{ strategy?.endDate | date:'short' }}</td></tr>
+    <tr><td>Winrate :</td><td>{{ strategy?.winRate }}%</td></tr>
+    <tr><td>RR Moyen :</td><td>{{ strategy?.averageRR }}</td></tr>
+    <tr><td>Nombre de trades :</td><td>{{ strategy?.tradeCount }}</td></tr>
+  </table>
+</div>
+
+<!-- Détails du Trade Actuel -->
+<div class="trade-detail">
+  <h3>Détail du Trade Actuel</h3>
+  <table *ngIf="currentTrade">
+    <tr><td>ID :</td><td>{{ currentTrade.id }}</td></tr>
+    <tr><td>Type :</td><td>{{ currentTrade.type }}</td></tr>
+    <tr><td>Date d'entrée :</td><td>{{ currentTrade.entryDate | date:'short' }}</td></tr>
+    <tr><td>Prix d'entrée :</td><td>{{ currentTrade.entryPrice }}</td></tr>
+    <tr><td>Prix de sortie :</td><td>{{ currentTrade.exitPrice }}</td></tr>
+    <tr><td>Résultat :</td><td>{{ currentTrade.result }}</td></tr>
+    <tr><td>RR :</td><td>{{ currentTrade.rr }}</td></tr>
+    <tr><td>Durée :</td><td>{{ currentTrade.duration }} min</td></tr>
+    <tr><td>Commentaire :</td><td>{{ currentTrade.comment }}</td></tr>
+  </table>
+</div>

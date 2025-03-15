@@ -1,0 +1,145 @@
+/* Conteneur global */
+div {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+  background-color: #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  border-radius: 12px;
+  font-family: 'Arial', sans-serif;
+}
+
+/* Titre principal */
+h2 {
+  text-align: center;
+  color: #333;
+  margin-bottom: 2rem;
+}
+
+/* Labels */
+label {
+  display: block;
+  margin-top: 1.2rem;
+  margin-bottom: 0.5rem;
+  font-weight: bold;
+  color: #555;
+}
+
+/* Selecteur symbol */
+select {
+  width: 100%;
+  padding: 0.5rem;
+  font-size: 1rem;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  transition: border-color 0.3s ease;
+}
+
+select:focus {
+  border-color: #4f46e5;
+  outline: none;
+}
+
+/* Checkbox container */
+div > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+input[type="checkbox"] {
+  margin-right: 0.5rem;
+  cursor: pointer;
+}
+
+/* Bouton charger */
+button {
+  display: block;
+  margin: 1.5rem auto;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  color: #fff;
+  background-color: #4f46e5;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+button:hover {
+  background-color: #4338ca;
+}
+
+/* Chargement */
+div > div[ng-reflect-ng-if="true"] {
+  text-align: center;
+  color: #4f46e5;
+  font-style: italic;
+  margin-top: 1rem;
+}
+
+/* Tableau */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 2rem;
+}
+
+thead {
+  background-color: #4f46e5;
+  color: white;
+}
+
+th, td {
+  padding: 1rem;
+  text-align: center;
+  border: 1px solid #eee;
+}
+
+tbody tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+tbody tr:hover {
+  background-color: #f1f1f1;
+}
+
+/* Container pour les timeframes en ligne */
+.timeframes-container {
+  display: flex;
+  flex-wrap: nowrap; /* Pas de retour à la ligne */
+  overflow-x: auto; /* Ajoute un scroll horizontal si ça déborde */
+  gap: 1rem;
+  padding-bottom: 0.5rem;
+}
+
+/* Empêche les items de rétrécir trop */
+.timeframes-container label {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+/* Style des checkbox */
+input[type="checkbox"] {
+  margin-right: 0.5rem;
+  cursor: pointer;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  div {
+    padding: 1rem;
+  }
+
+  button {
+    width: 100%;
+  }
+
+  select {
+    font-size: 0.9rem;
+  }
+}
+
