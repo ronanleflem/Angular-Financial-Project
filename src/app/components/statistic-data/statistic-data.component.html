@@ -1,18 +1,37 @@
 <div>
   <h2>Statistiques Bullish/Bearish</h2>
 
-  <label for="symbol">Symbol:</label>
+  <!-- Sélection du type de statistique -->
+  <div class="mode-toggle">
+    <label>
+      <input type="radio" [(ngModel)]="isLiveMode" [value]="true"> Live
+    </label>
+    <label>
+      <input type="radio" [(ngModel)]="isLiveMode" [value]="false"> Historique
+    </label>
+  </div>
+
+  <label for="symbol">Symbole :</label>
   <select id="symbol" [(ngModel)]="selectedSymbol">
     <option *ngFor="let symbol of symbols" [value]="symbol">{{ symbol }}</option>
   </select>
 
-  <label>Timeframes:</label>
+  <label>Timeframes :</label>
   <div class="timeframes-container">
     <label *ngFor="let tf of timeframes">
       <input type="checkbox" [value]="tf"
              (change)="selectedTimeframes.includes(tf) ? selectedTimeframes.splice(selectedTimeframes.indexOf(tf), 1) : selectedTimeframes.push(tf)">
       {{ tf }}
     </label>
+  </div>
+
+  <!-- Date pickers si mode historique -->
+  <div *ngIf="!isLiveMode" class="date-range">
+    <label for="start">Date de début :</label>
+    <input type="date" id="start" [(ngModel)]="startDate">
+
+    <label for="end">Date de fin :</label>
+    <input type="date" id="end" [(ngModel)]="endDate">
   </div>
 
   <button (click)="loadStatistics()">Charger</button>
@@ -30,7 +49,6 @@
     <tr *ngFor="let key of statisticsKeys">
       <td><strong>{{ key }}</strong></td>
       <td>{{ statistics[key] }}</td>
-
     </tr>
     </tbody>
   </table>

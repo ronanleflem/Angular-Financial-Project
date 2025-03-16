@@ -1,40 +1,10 @@
-/* Structure principale */
-.main {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 2rem;
-  font-family: 'Arial', sans-serif;
-  background-color: #f5f7fa;
-  min-height: 100vh;
-}
-
-/* Contenu principal */
-.content {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  max-width: 1200px;
-}
-
-/* Ligne de séparation (si besoin) */
-.divider {
-  height: 1px;
-  background-color: #ddd;
-  margin: 1rem 0;
-}
-
-/* Conteneur de la partie droite (menu) */
-.right-side {
-  display: flex;
-  justify-content: center;
-  padding: 1rem 0;
-}
-
 /* Navigation principale */
 nav {
   display: flex;
+  flex-wrap: wrap; /* Pour que ça passe à la ligne */
   gap: 2rem;
+  justify-content: center; /* Centrer les éléments */
+  text-align: center;
 }
 
 /* Liens du menu */
@@ -48,6 +18,11 @@ nav a {
   transition: all 0.3s ease;
   background-color: #ffffff;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+
+  /* Nouveau : gérer le nombre d'éléments par ligne */
+  flex: 1 1 calc(33.333% - 2rem); /* 3 par ligne, gap compris */
+  max-width: calc(33.333% - 2rem);
+  box-sizing: border-box;
 }
 
 /* Effet hover */
@@ -57,17 +32,20 @@ nav a:hover {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-/* Lien actif (optionnel, si tu veux) */
+/* Lien actif */
 nav a.active {
   background-color: #4f46e5;
   color: #ffffff;
 }
 
-/* Responsive (mobile friendly) */
+/* Responsive : sur mobile ça devient une colonne */
 @media (max-width: 768px) {
+  nav a {
+    flex: 1 1 100%;
+    max-width: 100%;
+  }
+
   nav {
-    flex-direction: column;
-    align-items: center;
-    gap: 1rem;
+    gap: 1rem; /* Moins d'espace entre les liens en mobile */
   }
 }

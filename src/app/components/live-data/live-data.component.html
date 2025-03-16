@@ -1,0 +1,33 @@
+<div class="live-data-container">
+
+  <h1>Données en Direct</h1>
+
+  <div class="form-group">
+    <label for="symbol">Symbole :</label>
+    <select id="symbol" [(ngModel)]="selectedSymbol">
+      <option *ngFor="let symbol of symbols" [value]="symbol">{{ symbol }}</option>
+    </select>
+  </div>
+
+  <div class="form-group">
+    <label for="timeframe">Timeframe :</label>
+    <select id="timeframe" [(ngModel)]="selectedTimeframe">
+      <option *ngFor="let tf of timeframes" [value]="tf">{{ tf }}</option>
+    </select>
+  </div>
+
+  <div class="button-group">
+    <button (click)="startLive()" [disabled]="isStreaming">Démarrer le stream</button>
+    <button (click)="stopLive()" [disabled]="!isStreaming">Stopper le stream</button>
+  </div>
+
+  <div *ngIf="candles.length > 0; else waiting" class="chart-section">
+    <h2>Graphique Live des Bougies</h2>
+    <canvas id="liveCandlestickChart"></canvas>
+  </div>
+
+  <ng-template #waiting>
+    <p>En attente de données live...</p>
+  </ng-template>
+
+</div>

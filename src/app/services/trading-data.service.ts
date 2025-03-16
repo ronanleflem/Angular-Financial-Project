@@ -6,7 +6,7 @@ import { Observable } from 'rxjs';
   providedIn: 'root'
 })
 export class TradingDataService {
-  private apiUrl = 'http://localhost:8090'; // Adapte l'URL selon ton API
+  private apiUrl = 'http://localhost:8094'; // Adapte l'URL selon ton API
 
   constructor(private http: HttpClient) {}
 
@@ -18,10 +18,17 @@ export class TradingDataService {
     const encodedStartDate = encodeURIComponent(startDate);
     const encodedEndDate = encodeURIComponent(endDate);
 
-    const url = `http://localhost:8094/rollover-volume/unified-candles?symbol=${symbol}&timeframe=${timeframe}&startDate=${encodedStartDate}&endDate=${encodedEndDate}`;
+    const url = `${this.apiUrl}/rollover-volume/unified-candles?symbol=${symbol}&timeframe=${timeframe}&startDate=${encodedStartDate}&endDate=${encodedEndDate}`;
 
     return this.http.get(url);
   }
+
+  getLiveCandle(symbol: string, timeframe: string) {
+    // Remplace par ton vrai endpoint en live si t'en as un !
+    const url = `${this.apiUrl}/api/live-candle?symbol=${symbol}&timeframe=${timeframe}`;
+    return this.http.get<any>(url);
+  }
+
 
   getBacktestResults(strategy: string): Observable<any> {
     return this.http.get(`${this.apiUrl}/backtest?strategy=${strategy}`);
@@ -32,6 +39,17 @@ export class TradingDataService {
       params: {
         symbol: symbol,
         timeframe: timeframes.join(',') // Envoie les timeframes sous forme de string séparée par ","
+      }
+    });
+  }
+
+  getHistoricalStatistics(symbol: string, timeframes: string[], startDate: string, endDate: string) {
+    return this.http.get(`/api/statistics/historical`, {
+      params: {
+        symbol,
+        timeframes: timeframes.join(','),
+        startDate,
+        endDate
       }
     });
   }

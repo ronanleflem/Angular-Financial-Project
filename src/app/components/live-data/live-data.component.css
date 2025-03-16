@@ -1,0 +1,100 @@
+/* Container principal */
+.live-data-container {
+  max-width: 600px;
+  margin: 40px auto;
+  padding: 20px;
+  background-color: #f7f7f7;
+  border-radius: 12px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Titre principal */
+.live-data-container h1 {
+  text-align: center;
+  color: #333;
+  margin-bottom: 30px;
+}
+
+/* Sous-titre graphique */
+.live-data-container h2 {
+  text-align: center;
+  margin-top: 40px;
+  color: #333;
+}
+
+/* Groupes de formulaires */
+.form-group {
+  margin-bottom: 20px;
+}
+
+/* Label */
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  color: #555;
+  font-weight: 600;
+}
+
+/* Select */
+.form-group select {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background-color: #fff;
+  font-size: 16px;
+  box-sizing: border-box;
+}
+
+/* Boutons */
+.button-group {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.button-group button {
+  flex: 1;
+  background-color: #4a90e2;
+  color: white;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background-color 0.3s, transform 0.2s;
+}
+
+.button-group button:hover {
+  background-color: #357ABD;
+  transform: translateY(-2px);
+}
+
+.button-group button:disabled {
+  background-color: #aaa;
+  cursor: not-allowed;
+}
+
+/* Message d'attente */
+.live-data-container p {
+  text-align: center;
+  font-style: italic;
+  color: #888;
+}
+
+/* Chart section */
+.chart-section {
+  margin-top: 40px;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .button-group {
+    flex-direction: column;
+  }
+
+  .button-group button {
+    width: 100%;
+  }
+}

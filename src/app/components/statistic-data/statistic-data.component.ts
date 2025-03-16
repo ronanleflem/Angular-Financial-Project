@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { TradingDataService } from '../../services/trading-data.service';
-import {FormsModule} from '@angular/forms';
-import {NgForOf, NgIf} from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { NgForOf, NgIf } from '@angular/common';
 
 @Component({
   selector: 'app-statistic-data',
@@ -19,9 +19,17 @@ export class StatisticDataComponent {
 
   selectedSymbol = 'EURUSD';
   selectedTimeframes: string[] = [];
+
+  // Mode : live ou historique
+  isLiveMode = true;
+
+  // Plage de dates pour l'historique
+  startDate: string = '';
+  endDate: string = '';
+
   statistics: any = null;
-  isLoading = false;
   statisticsKeys: string[] = [];
+  isLoading = false;
 
   constructor(private tradingService: TradingDataService) {}
 
@@ -31,18 +39,42 @@ export class StatisticDataComponent {
       return;
     }
 
-    this.isLoading = true;
-    this.tradingService.getStatistics(this.selectedSymbol, this.selectedTimeframes).subscribe(
-      data => {
-        this.statistics = data;
-        this.statisticsKeys = Object.keys(data); // Liste des clés triées
-        this.isLoading = false;
-      },
-      error => {
-        console.error('Erreur lors de la récupération des stats', error);
-        this.isLoading = false;
-      }
-    );
-  }
+    if (!this.isLiveMode && (!this.startDate || !this.endDate)) {
+      alert('Sélectionne une plage de dates valide !');
+      return;
+    }
 
+    this.isLoading = true;
+    this.statistics = null;
+
+    if (this.isLiveMode) {
+      // Appel Live Stats
+      this.tradingService.getStatistics(this.selectedSymbol, this.selectedTimeframes)
+        .subscribe(
+          data => {
+            this.statistics = data;
+            this.statisticsKeys = Object.keys(data);
+            this.isLoading = false;
+          },
+          error => {
+            console.error('Erreur lors de la récupération des stats live', error);
+            this.isLoading = false;
+          }
+        );
+    } else {
+      // Appel Stats Historiques
+      this.tradingService.getHistoricalStatistics(this.selectedSymbol, this.selectedTimeframes, this.startDate, this.endDate)
+        .subscribe(
+          data => {
+            this.statistics = data;
+            this.statisticsKeys = Object.keys(data);
+            this.isLoading = false;
+          },
+          error => {
+            console.error('Erreur lors de la récupération des stats historiques', error);
+            this.isLoading = false;
+          }
+        );
+    }
+  }
 }
