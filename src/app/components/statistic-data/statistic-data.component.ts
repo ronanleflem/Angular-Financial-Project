@@ -15,7 +15,7 @@ import { NgForOf, NgIf } from '@angular/common';
 })
 export class StatisticDataComponent {
   symbols = ['EURUSD', 'GBPUSD', 'USDJPY', 'NASDAQ', 'SP500'];
-  timeframes = ['1min', '5min', '15min', '1h', '4h', '1d'];
+  timeframes = ['1min', '5min', '15min', '30min','1h', '4h', 'daily'];
 
   selectedSymbol = 'EURUSD';
   selectedTimeframes: string[] = [];
