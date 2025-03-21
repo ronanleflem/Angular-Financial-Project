@@ -20,6 +20,8 @@ export class StatisticDataComponent {
   selectedSymbol = 'EURUSD';
   selectedTimeframes: string[] = [];
 
+  statisticFields: string[] = [];
+
   // Mode : live ou historique
   isLiveMode = true;
 
@@ -49,18 +51,21 @@ export class StatisticDataComponent {
 
     if (this.isLiveMode) {
       // Appel Live Stats
-      this.tradingService.getStatistics(this.selectedSymbol, this.selectedTimeframes)
-        .subscribe(
-          data => {
-            this.statistics = data;
-            this.statisticsKeys = Object.keys(data);
-            this.isLoading = false;
-          },
-          error => {
-            console.error('Erreur lors de la récupération des stats live', error);
-            this.isLoading = false;
-          }
-        );
+      this.tradingService.getStatistics(this.selectedSymbol, this.selectedTimeframes).subscribe(
+        data => {
+          this.statistics = data;
+          // Extraire toutes les clés de stats à partir du premier timeframe dispo
+          const firstTf = this.selectedTimeframes.find(tf => data[tf]);
+          this.statisticFields = firstTf ? Object.keys(data[firstTf]) : [];
+
+          console.log('Statistiques chargées:', this.statistics);
+          this.isLoading = false;
+        },
+        error => {
+          console.error('Erreur de chargement:', error);
+          this.isLoading = false;
+        }
+      );
     } else {
       // Appel Stats Historiques
       this.tradingService.getHistoricalStatistics(this.selectedSymbol, this.selectedTimeframes, this.startDate, this.endDate)

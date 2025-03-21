@@ -6,7 +6,7 @@ import { Observable } from 'rxjs';
   providedIn: 'root'
 })
 export class TradingDataService {
-  private apiUrl = 'http://localhost:8094'; // Adapte l'URL selon ton API
+  private apiUrl = 'http://localhost:8090'; // Adapte l'URL selon ton API
 
   constructor(private http: HttpClient) {}
 
@@ -35,10 +35,10 @@ export class TradingDataService {
   }
 
   getStatistics(symbol: string, timeframes: string[]): Observable<any> {
-    return this.http.get(`${this.apiUrl}/filter/bullish-bearish-stats`, {
+    return this.http.get(`${this.apiUrl}/filter/bullish-bearish-stats/multi-timeframes`, {
       params: {
         symbol: symbol,
-        timeframe: timeframes.join(',') // Envoie les timeframes sous forme de string séparée par ","
+        timeframes: timeframes.join(',') // Envoie les timeframes sous forme de string séparée par ","
       }
     });
   }

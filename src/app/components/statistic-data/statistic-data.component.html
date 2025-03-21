@@ -36,20 +36,23 @@
 
   <button (click)="loadStatistics()">Charger</button>
 
-  <div *ngIf="isLoading">Chargement...</div>
+  <div *ngIf="isLoading" class="loader">Chargement...</div>
 
   <table *ngIf="statistics">
     <thead>
     <tr>
-      <th>Valeur</th>
-      <th>Statistique {{selectedTimeframes}}</th>
+      <th>Statistique</th>
+      <th *ngFor="let tf of selectedTimeframes">{{ tf }}</th>
     </tr>
     </thead>
     <tbody>
-    <tr *ngFor="let key of statisticsKeys">
-      <td><strong>{{ key }}</strong></td>
-      <td>{{ statistics[key] }}</td>
+    <tr *ngFor="let statKey of statisticFields">
+      <td><strong>{{ statKey }}</strong></td>
+      <td *ngFor="let tf of selectedTimeframes">
+        {{ statistics[tf]?.[statKey] !== undefined ? statistics[tf][statKey] : '-' }}
+      </td>
     </tr>
     </tbody>
   </table>
+
 </div>
