@@ -1,31 +1,37 @@
 <div>
   <h2>Statistiques Bullish/Bearish</h2>
 
-  <!-- Sélection du type de statistique -->
+  <!-- Mode Live ou Historique -->
   <div class="mode-toggle">
-    <label>
-      <input type="radio" [(ngModel)]="isLiveMode" [value]="true"> Live
-    </label>
-    <label>
-      <input type="radio" [(ngModel)]="isLiveMode" [value]="false"> Historique
-    </label>
+    <label><input type="radio" [(ngModel)]="isLiveMode" [value]="true"> Live</label>
+    <label><input type="radio" [(ngModel)]="isLiveMode" [value]="false"> Historique</label>
   </div>
 
+  <!-- Sélection du type d'analyse -->
+  <label for="analysis">Type d'analyse :</label>
+  <select id="analysis" [(ngModel)]="selectedAnalysis">
+    <option *ngFor="let analysis of analyses" [value]="analysis.value">
+      {{ analysis.label }}
+    </option>
+  </select>
+
+  <!-- Sélection du symbole -->
   <label for="symbol">Symbole :</label>
   <select id="symbol" [(ngModel)]="selectedSymbol">
     <option *ngFor="let symbol of symbols" [value]="symbol">{{ symbol }}</option>
   </select>
 
+  <!-- Sélection Timeframes si requis -->
   <label>Timeframes :</label>
   <div class="timeframes-container">
     <label *ngFor="let tf of timeframes">
       <input type="checkbox" [value]="tf"
-             (change)="selectedTimeframes.includes(tf) ? selectedTimeframes.splice(selectedTimeframes.indexOf(tf), 1) : selectedTimeframes.push(tf)">
+             (change)="toggleTimeframe(tf)">
       {{ tf }}
     </label>
   </div>
 
-  <!-- Date pickers si mode historique -->
+  <!-- Date Range si Historique -->
   <div *ngIf="!isLiveMode" class="date-range">
     <label for="start">Date de début :</label>
     <input type="date" id="start" [(ngModel)]="startDate">
@@ -34,10 +40,19 @@
     <input type="date" id="end" [(ngModel)]="endDate">
   </div>
 
+  <!-- Nombre de bougies si l'analyse le demande -->
+  <div *ngIf="requiresMaxCandles(selectedAnalysis)">
+    <label for="maxCandles">Nombre de dernières bougies :</label>
+    <input type="number" id="maxCandles" [(ngModel)]="maxCandles">
+  </div>
+
+  <!-- Bouton de chargement -->
   <button (click)="loadStatistics()">Charger</button>
 
+  <!-- Loader -->
   <div *ngIf="isLoading" class="loader">Chargement...</div>
 
+  <!-- Affichage des résultats -->
   <table *ngIf="statistics">
     <thead>
     <tr>
@@ -54,5 +69,8 @@
     </tr>
     </tbody>
   </table>
+
+  <!-- Autres résultats JSON bruts (optionnel) -->
+  <pre *ngIf="rawResponse">{{ rawResponse | json }}</pre>
 
 </div>
