@@ -23,6 +23,15 @@ export class TradingDataService {
     return this.http.get(url);
   }
 
+  getHistoricalCandlesTimeframeCME(symbol: string, timeframe: string, startDate: string, endDate: string): Observable<any> {
+    const encodedStartDate = encodeURIComponent(startDate);
+    const encodedEndDate = encodeURIComponent(endDate);
+
+    const url = `${this.apiUrl}/api/finance/charts/candles/date-time?symbol=${symbol}&timeframe=${timeframe}&startDate=${encodedStartDate}&endDate=${encodedEndDate}`;
+
+    return this.http.get(url);
+  }
+
   getLiveCandle(symbol: string, timeframe: string) {
     // Remplace par ton vrai endpoint en live si t'en as un !
     const url = `${this.apiUrl}/api/live-candle?symbol=${symbol}&timeframe=${timeframe}`;
