@@ -12,13 +12,16 @@ import {JsonPipe, NgForOf, NgIf} from '@angular/common';
     NgForOf,
     NgIf
   ],
+  standalone: true,
   styleUrls: ['./strategy-calculation.component.css']
 })
 export class StrategyCalculationComponent {
-  strategies: string[] = ['Stratégie 1', 'Stratégie 2', 'Stratégie 3']; // Tu peux les charger dynamiquement si besoin
-  symbols: string[] = ['ES', 'NQ', 'YM']; // Exemples de symboles
+  strategies: string[] = ['Stratégie 1', 'Stratégie 2', 'Stratégie 3', 'Trend Following']; // Tu peux les charger dynamiquement si besoin
+  symbols: string[] = ['ES', 'NQ', 'YM', 'EURUSD']; // Exemples de symboles
+  timeframes: string[] = ['1min', '5min', '15min', '1h'];
   selectedStrategy: string = '';
   selectedSymbol: string = '';
+  selectedTimeframe: string = '';
   startDate: string = '';
   endDate: string = '';
 
@@ -27,7 +30,7 @@ export class StrategyCalculationComponent {
   constructor(private http: HttpClient) {}
 
   calculateStrategy() {
-    if (!this.selectedStrategy || !this.selectedSymbol || !this.startDate || !this.endDate) {
+    if (!this.selectedStrategy || !this.selectedSymbol || !this.selectedTimeframe || !this.startDate || !this.endDate) {
       alert('Tous les champs sont requis pour lancer le calcul !');
       return;
     }
@@ -35,7 +38,8 @@ export class StrategyCalculationComponent {
     const encodedStartDate = encodeURIComponent(this.startDate);
     const encodedEndDate = encodeURIComponent(this.endDate);
 
-    const url = `http://localhost:8094/strategies/calculate?strategy=${this.selectedStrategy}&symbol=${this.selectedSymbol}&startDate=${encodedStartDate}&endDate=${encodedEndDate}`;
+    //const url = `http://localhost:8094/strategies/calculate?strategy=${this.selectedStrategy}&symbol=${this.selectedSymbol}&startDate=${encodedStartDate}&endDate=${encodedEndDate}`;
+    const url = `http://localhost:8090/trend-following?timeframe=${this.selectedTimeframe}&symbol=${this.selectedSymbol}&startDate=${encodedStartDate}&endDate=${encodedEndDate}`;
 
     this.http.get(url).subscribe({
       next: (response) => {

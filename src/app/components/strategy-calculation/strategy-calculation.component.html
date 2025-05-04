@@ -11,6 +11,11 @@
     <option *ngFor="let symbol of symbols" [value]="symbol">{{ symbol }}</option>
   </select>
 
+  <label for="timeframe">Timeframe :</label>
+  <select id="timeframe" [(ngModel)]="selectedTimeframe">
+    <option *ngFor="let timeframe of timeframes" [value]="timeframe">{{ timeframe }}</option>
+  </select>
+
   <label for="startDate">Date de début :</label>
   <input type="datetime-local" id="startDate" [(ngModel)]="startDate" />
 
