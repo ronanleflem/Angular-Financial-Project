@@ -2,6 +2,8 @@ import { Component, OnInit } from '@angular/core';
 import {FormsModule} from '@angular/forms';
 import {DatePipe, NgForOf, NgIf} from '@angular/common';
 import {Router} from '@angular/router';
+import {TradingDataService} from '../../services/trading-data.service';
+import {Chart} from 'chart.js';
 
 @Component({
   selector: 'app-screen-strategies',
@@ -21,7 +23,7 @@ export class ScreenStrategiesComponent implements OnInit {
   strategies: any[] = [];
   isLoading: boolean = false;
 
-  constructor(private router: Router
+  constructor(private router: Router, private tradingService: TradingDataService
     // private strategyService: StrategyService (à injecter pour le backend)
   ) { }
 
@@ -44,8 +46,9 @@ export class ScreenStrategiesComponent implements OnInit {
 
     this.isLoading = true;
 
-    // Appelle le backend ici
-    // Ex: this.strategyService.getStrategiesBySymbol(this.selectedSymbol).subscribe(...)
+    this.tradingService.getAllStrategies().subscribe(data => {
+      console.log('Données reçues :', data);
+    });
     setTimeout(() => { // Simule un backend
       this.strategies = [
         {

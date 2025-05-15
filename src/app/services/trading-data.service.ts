@@ -31,7 +31,10 @@ export class TradingDataService {
 
     return this.http.get(url);
   }
-
+  getAllStrategies(){
+    const url = `${this.apiUrl}/all-strategies`;
+    return this.http.get<any>(url);
+  }
   getLiveCandle(symbol: string, timeframe: string) {
     // Remplace par ton vrai endpoint en live si t'en as un !
     const url = `${this.apiUrl}/api/live-candle?symbol=${symbol}&timeframe=${timeframe}`;
