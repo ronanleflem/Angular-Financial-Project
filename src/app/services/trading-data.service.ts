@@ -31,7 +31,7 @@ export class TradingDataService {
 
     return this.http.get(url);
   }
-  getAllStrategies(){
+  getAllCalculatedStrategies(){
     const url = `${this.apiUrl}/all-strategies`;
     return this.http.get<any>(url);
   }
@@ -40,7 +40,15 @@ export class TradingDataService {
     const url = `${this.apiUrl}/api/live-candle?symbol=${symbol}&timeframe=${timeframe}`;
     return this.http.get<any>(url);
   }
+  getCalculationStrategy(selectedStrategy: string, selectedSymbol: string, selectedTimeframe: string, startDate: string, endDate: string){
+    const encodedStartDate = encodeURIComponent(startDate);
+    const encodedEndDate = encodeURIComponent(endDate);
 
+    //const url = `http://localhost:8094/strategies/calculate?strategy=${this.selectedStrategy}&symbol=${this.selectedSymbol}&startDate=${encodedStartDate}&endDate=${encodedEndDate}`;
+    const url = `http://localhost:8090/trend-following?timeframe=${selectedTimeframe}&symbol=${selectedSymbol}&startDate=${encodedStartDate}&endDate=${encodedEndDate}`;
+
+    return this.http.get(url);
+  }
 
   getBacktestResults(strategy: string): Observable<any> {
     return this.http.get(`${this.apiUrl}/backtest?strategy=${strategy}`);
