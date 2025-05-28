@@ -61,11 +61,8 @@ export class StrategyDetailComponent implements OnInit {
           comment: `Trade auto chargé de ${t.strategyName}`
         })) : [];
 
-        // On combine les mock et ceux du backend
-        this.trades = [
-          ...this.getMockTrades(),
-          ...formattedTrades
-        ];
+        this.trades = formattedTrades ? formattedTrades : this.getMockTrades();
+
         console.log(this.trades);
       },
       error: (error: unknown) => {

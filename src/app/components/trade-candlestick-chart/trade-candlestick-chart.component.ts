@@ -4,6 +4,10 @@ import 'chartjs-chart-financial';
 import annotationPlugin from 'chartjs-plugin-annotation';
 import zoomPlugin from 'chartjs-plugin-zoom';
 import { TradingDataService } from '../../services/trading-data.service';
+import {
+  CandlestickController,
+  CandlestickElement
+} from 'chartjs-chart-financial';
 
 @Component({
   selector: 'app-trade-candlestick-chart',
@@ -20,6 +24,7 @@ export class TradeCandlestickChartComponent implements OnChanges {
 
   constructor(private tradingService: TradingDataService) {
     Chart.register(...registerables, zoomPlugin, annotationPlugin);
+    Chart.register(CandlestickController, CandlestickElement);
   }
 
   ngOnChanges(): void {
@@ -32,28 +37,59 @@ export class TradeCandlestickChartComponent implements OnChanges {
     this.tradingService.getCandlesForTrade(this.tradeId, this.timeframe).subscribe(response => {
       const { candles, trade } = response;
 
-      const data = candles.map((c: any) => ({
-        x: new Date(c.date).getTime(),
-        o: c.open,
-        h: c.high,
-        l: c.low,
-        c: c.close
-      }));
-      console.log(candles);
-      console.log(trade);
+      // 🛡️ Validation des données
+      const data = candles
+        .filter((c: any) => !isNaN(new Date(c.date).getTime()))
+        .map((c: any) => ({
+          x: new Date(c.date).getTime(),
+          o: c.open,
+          h: c.high,
+          l: c.low,
+          c: c.close
+        }));
+
+      console.log('[Candles]', candles);
+      console.log('[Trade]', trade);
+
+      // 🛡️ Vérifie que trade.entryDate et exitDate sont valides
+      const entryTime = new Date(trade.entryTimestamp).getTime();
+      const exitTime = new Date(trade.exitTimestamp).getTime();
+      console.log(trade.entryTimestamp);
+      console.log(trade.exitTimestamp);
+      console.log(new Date(trade.entryTimestamp).getTime());
+      console.log(new Date(trade.exitTimestamp).getTime());
+
+      if (isNaN(entryTime) || isNaN(exitTime)) {
+        console.error('Dates du trade invalides :', trade);
+        return;
+      }
+
       setTimeout(() => this.renderChart(data, trade), 0);
     });
   }
 
   renderChart(data: any[], trade: any): void {
     const canvas = document.getElementById('tradeCandlestickChart') as HTMLCanvasElement;
-    const ctx = canvas.getContext('2d');
-
+    const ctx = canvas?.getContext('2d');
+    if (!data?.length || !trade || !canvas || !ctx) {
+      console.warn('Graphique non généré : données manquantes ou invalides');
+      return;
+    }
     if (this.chart) {
       this.chart.destroy();
     }
 
-    this.chart = new Chart(ctx!, {
+    const entryTime = new Date(trade.entryTimestamp).getTime();
+    const exitTime = new Date(trade.exitTimestamp).getTime();
+
+    console.log(new Date(trade.entryTimestamp).getTime())
+    console.log(new Date(trade.exitTimestamp).getTime())
+
+    const durationMs = new Date(trade.exitDate).getTime() - new Date(trade.entryDate).getTime();
+    const oneDay = 24 * 60 * 60 * 1000;
+    const timeUnit = durationMs < oneDay ? 'minute' : durationMs < oneDay * 7 ? 'hour' : 'day';
+
+    this.chart = new Chart(ctx, {
       type: 'candlestick',
       data: {
         datasets: [{
@@ -63,10 +99,23 @@ export class TradeCandlestickChartComponent implements OnChanges {
       },
       options: {
         responsive: true,
+        parsing: false, // Important pour les chartjs-financial
         scales: {
           x: {
             type: 'time',
-            time: { unit: 'minute' }
+            time: {
+              unit: timeUnit,
+              //tooltipFormat: 'yyyy-MM-dd HH:mm',
+              //displayFormats: {
+              //minute: 'HH:mm',
+              //hour: 'HH:mm',
+              //day: 'MMM dd'
+              //}
+            },
+            ticks: {
+              autoSkip: true,
+              maxTicksLimit: 20
+            }
           },
           y: {
             beginAtZero: false
@@ -77,8 +126,8 @@ export class TradeCandlestickChartComponent implements OnChanges {
             annotations: {
               tradeBox: {
                 type: 'box',
-                xMin: new Date(trade.entryDate).getTime(),
-                xMax: new Date(trade.exitDate).getTime(),
+                xMin: entryTime,
+                xMax: exitTime,
                 yMin: trade.stopLoss,
                 yMax: trade.takeProfit,
                 backgroundColor: trade.result === 'win' ? 'rgba(0,255,0,0.2)' : 'rgba(255,0,0,0.2)',

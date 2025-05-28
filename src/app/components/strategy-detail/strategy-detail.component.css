@@ -21,6 +21,14 @@ h2, h3 {
   font-size: 16px;
 }
 
+.chart-wrapper canvas {
+  width: 100% !important;
+  max-width: 700px;
+  height: 300px !important;
+  margin: auto;
+  display: block;
+}
+
 button {
   background-color: #4a90e2;
   color: #fff;

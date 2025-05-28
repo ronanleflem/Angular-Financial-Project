@@ -1,17 +1,18 @@
 <h2>Détail de la Stratégie : {{ strategy?.name }}</h2>
 
-<!-- Section Graphique du Trade Actuel -->
-<div class="graph-container" *ngIf="trades.length > 0">
+<div class="graph-container small-chart">
   <h3>Trade #{{ currentTradeIndex + 1 }} / {{ trades.length }}</h3>
 
-  <!-- Ici un graphique -->
-  <app-trade-candlestick-chart
-    [tradeId]="currentTrade?.id"
-    [timeframe]="'5min'">
-  </app-trade-candlestick-chart>
+  <div class="chart-wrapper">
+    <app-trade-candlestick-chart
+      [tradeId]="currentTrade?.id"
+      [timeframe]="'5min'">
+    </app-trade-candlestick-chart>
+  </div>
 
   <button (click)="nextTrade()" [disabled]="currentTradeIndex >= trades.length - 1">Trade Suivant</button>
 </div>
+
 
 <!-- Message si aucun trade -->
 <div *ngIf="trades.length === 0">
