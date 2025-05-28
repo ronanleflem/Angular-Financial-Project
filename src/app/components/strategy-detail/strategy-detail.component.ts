@@ -1,14 +1,20 @@
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import {DatePipe, NgIf} from '@angular/common';
+import { CommonModule } from '@angular/common';
+import { TradingDataService } from '../../services/trading-data.service';
+import {TradeCandlestickChartComponent} from '../trade-candlestick-chart/trade-candlestick-chart.component';
 
 @Component({
   selector: 'app-strategy-detail',
   templateUrl: './strategy-detail.component.html',
   imports: [
     DatePipe,
-    NgIf
+    NgIf,
+    CommonModule,
+    TradeCandlestickChartComponent
   ],
+  standalone: true,
   styleUrls: ['./strategy-detail.component.css']
 })
 export class StrategyDetailComponent implements OnInit {
@@ -17,19 +23,20 @@ export class StrategyDetailComponent implements OnInit {
   trades: any[] = [];
   currentTradeIndex: number = 0;
 
-  constructor(private route: ActivatedRoute) {}
+  constructor(private route: ActivatedRoute, private tradingDataService: TradingDataService) {}
 
   ngOnInit(): void {
     this.loadStrategy();
   }
 
+
+
   loadStrategy() {
-    const strategyId = this.route.snapshot.paramMap.get('id');
+    const strategyName = this.route.snapshot.paramMap.get('name');
 
     // Ici, tu charges via le service backend. Pour l'instant, mock data :
     this.strategy = {
-      id: strategyId,
-      name: 'Breakout 1',
+      name: strategyName,
       symbol: 'EUR/USD',
       startDate: new Date('2024-01-01'),
       endDate: new Date('2024-03-01'),
@@ -37,9 +44,39 @@ export class StrategyDetailComponent implements OnInit {
       averageRR: 2.5,
       tradeCount: 3
     };
+    this.tradingDataService.getTradesByStrategyName(strategyName!).subscribe({
+      next: (trades: any[] | null | undefined) => {
+        console.log("Avant le map",trades);
+        const formattedTrades = Array.isArray(trades) ? trades.map(t => ({
+          id: t.id,
+          type: t.tradeType, // ou t.type si c’est ta convention
+          entryDate: new Date(t.entryTimestamp),
+          entryPrice: t.entryPrice,
+          exitPrice: t.exitPrice,
+          result: `${(t.exitPrice - t.entryPrice >= 0 ? '+' : '')}${((t.exitPrice - t.entryPrice) * 10000).toFixed(0)} pips`,
+          rr: t.takeProfit && t.stopLoss
+            ? (Math.abs(t.takeProfit - t.entryPrice) / Math.abs(t.entryPrice - t.stopLoss)).toFixed(2)
+            : null,
+          duration: this.getDurationInMinutes(t.entryTimestamp, t.exitTimestamp),
+          comment: `Trade auto chargé de ${t.strategyName}`
+        })) : [];
 
-    // Trades mock
-    this.trades = [
+        // On combine les mock et ceux du backend
+        this.trades = [
+          ...this.getMockTrades(),
+          ...formattedTrades
+        ];
+        console.log(this.trades);
+      },
+      error: (error: unknown) => {
+        console.error('Erreur lors du chargement des trades :', error);
+        this.trades = this.getMockTrades(); // fallback : mock uniquement
+      }
+    });
+
+  }
+  getMockTrades(): any[] {
+    return [
       {
         id: 1,
         type: 'Long',
@@ -75,7 +112,12 @@ export class StrategyDetailComponent implements OnInit {
       }
     ];
   }
-
+  getDurationInMinutes(start: string, end: string): number {
+    const startDate = new Date(start);
+    const endDate = new Date(end);
+    const diffMs = Math.abs(endDate.getTime() - startDate.getTime());
+    return Math.floor(diffMs / (1000 * 60));
+  }
   get currentTrade() {
     return this.trades[this.currentTradeIndex];
   }

@@ -10,6 +10,13 @@ export class TradingDataService {
 
   constructor(private http: HttpClient) {}
 
+  getCandlesForTrade(tradeId: number, timeframe: string) {
+    return this.http.get<{ candles: any[], trade: any }>(`${this.apiUrl}/api/finance/charts/from-trade?tradeId=${tradeId}&timeframe=${timeframe}`);
+  }
+  getTradesByStrategyName(strategyName: string): Observable<any[]> {
+    const url = `${this.apiUrl}/get-trades-strategy?strategyName=${encodeURIComponent(strategyName)}`;
+    return this.http.get<any[]>(url);
+  }
   getHistoricalCandles(symbol: string, timeframe: string): Observable<any> {
     return this.http.get(`${this.apiUrl}/api/finance/charts/candles?symbol=${symbol}&timeframe=${timeframe}`);
   }

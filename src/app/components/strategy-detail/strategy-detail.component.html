@@ -1,19 +1,24 @@
 <h2>Détail de la Stratégie : {{ strategy?.name }}</h2>
 
 <!-- Section Graphique du Trade Actuel -->
-<div class="graph-container">
+<div class="graph-container" *ngIf="trades.length > 0">
   <h3>Trade #{{ currentTradeIndex + 1 }} / {{ trades.length }}</h3>
 
-  <!-- Ici un futur vrai graphique -->
-  <div class="fake-chart">
-    <p>Graphique du trade : {{ currentTrade?.id }}</p>
-    <!-- Tu brancheras ton chart lib ici, ex: Chart.js / ngx-charts / Highcharts -->
-  </div>
+  <!-- Ici un graphique -->
+  <app-trade-candlestick-chart
+    [tradeId]="currentTrade?.id"
+    [timeframe]="'5min'">
+  </app-trade-candlestick-chart>
 
-  <button (click)="nextTrade()" [disabled]="currentTradeIndex >= trades.length - 1">Next Trade</button>
+  <button (click)="nextTrade()" [disabled]="currentTradeIndex >= trades.length - 1">Trade Suivant</button>
 </div>
 
-<!-- Détails Globaux de la Stratégie -->
+<!-- Message si aucun trade -->
+<div *ngIf="trades.length === 0">
+  <p>Aucun trade disponible pour cette stratégie.</p>
+</div>
+
+<!-- Résumé de la stratégie -->
 <div class="strategy-summary">
   <h3>Résumé de la Stratégie</h3>
   <table>
@@ -23,22 +28,27 @@
     <tr><td>Fin :</td><td>{{ strategy?.endDate | date:'short' }}</td></tr>
     <tr><td>Winrate :</td><td>{{ strategy?.winRate }}%</td></tr>
     <tr><td>RR Moyen :</td><td>{{ strategy?.averageRR }}</td></tr>
-    <tr><td>Nombre de trades :</td><td>{{ strategy?.tradeCount }}</td></tr>
+    <tr><td>Nombre de trades :</td><td>{{ trades.length }}</td></tr>
   </table>
 </div>
 
-<!-- Détails du Trade Actuel -->
-<div class="trade-detail">
+<!-- Détail du trade actif -->
+<div class="trade-detail" *ngIf="currentTrade">
   <h3>Détail du Trade Actuel</h3>
-  <table *ngIf="currentTrade">
+  <table>
     <tr><td>ID :</td><td>{{ currentTrade.id }}</td></tr>
-    <tr><td>Type :</td><td>{{ currentTrade.type }}</td></tr>
-    <tr><td>Date d'entrée :</td><td>{{ currentTrade.entryDate | date:'short' }}</td></tr>
+    <tr><td>Type :</td><td>{{ currentTrade.tradeType || currentTrade.type }}</td></tr>
+    <tr><td>Date d'entrée :</td><td>{{ currentTrade.entryTimestamp || currentTrade.entryDate | date:'short' }}</td></tr>
     <tr><td>Prix d'entrée :</td><td>{{ currentTrade.entryPrice }}</td></tr>
     <tr><td>Prix de sortie :</td><td>{{ currentTrade.exitPrice }}</td></tr>
-    <tr><td>Résultat :</td><td>{{ currentTrade.result }}</td></tr>
-    <tr><td>RR :</td><td>{{ currentTrade.rr }}</td></tr>
-    <tr><td>Durée :</td><td>{{ currentTrade.duration }} min</td></tr>
-    <tr><td>Commentaire :</td><td>{{ currentTrade.comment }}</td></tr>
+    <tr><td>Stop Loss :</td><td>{{ currentTrade.stopLoss || 'N/A' }}</td></tr>
+    <tr><td>Take Profit :</td><td>{{ currentTrade.takeProfit || 'N/A' }}</td></tr>
+    <tr><td>Résultat :</td><td>
+      {{ currentTrade.result || (currentTrade.profitOrLoss * 10000 | number:'1.0-0') + ' pips' }}
+    </td></tr>
+    <tr><td>RR :</td><td>{{ currentTrade.rr || 'Calculé plus tard' }}</td></tr>
+    <tr><td>Durée :</td><td>{{ currentTrade.duration || 'Calculé plus tard' }}</td></tr>
+    <tr><td>Commentaire :</td><td>{{ currentTrade.comment || '-' }}</td></tr>
   </table>
 </div>
+
