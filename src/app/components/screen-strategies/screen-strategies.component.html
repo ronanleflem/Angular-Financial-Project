@@ -21,10 +21,11 @@
     <th>% Winrate</th>
     <th>RR Moyen</th>
     <th>Nb Trades</th>
-    <th>Loss Rate</th>
     <th>Total Return</th>
     <th>Max Drawdown</th>
     <th>Average Trade</th>
+    <th>Average TP</th>
+    <th>Average SL</th>
     <th>Action</th>
   </tr>
   </thead>
@@ -39,10 +40,11 @@
     <td>{{ strategy.winRate !== undefined ? (strategy.winRate + '%') : '-' }}</td>
     <td>{{ strategy.averageRR !== undefined ? strategy.averageRR : '-' }}</td>
     <td>{{ strategy.tradeCount !== undefined ? strategy.tradeCount : '-' }}</td>
-    <td>{{ strategy.lossRate !== undefined ? (strategy.lossRate + '%') : '-' }}</td>
     <td>{{ strategy.totalReturn !== undefined ? (strategy.totalReturn | number:'1.2-2') : '-' }}</td>
     <td>{{ strategy.maxDrawdown !== undefined ? (strategy.maxDrawdown | percent:'1.2-2') : '-' }}</td>
     <td>{{ strategy.averageTrade !== undefined ? (strategy.averageTrade | number:'1.2-2') : '-' }}</td>
+    <td>{{ strategy.averageSL !== undefined ? (strategy.averageSL | number:'1.2-2')  : '-' }}</td>
+    <td>{{ strategy.averageTP !== undefined ? (strategy.averageTP | number:'1.2-2')  : '-' }}</td>
     <td>
       <button (click)="goToDetails(strategy)">GO</button>
     </td>

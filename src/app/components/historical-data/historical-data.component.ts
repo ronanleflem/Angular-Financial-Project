@@ -152,7 +152,7 @@ export class HistoricalDataComponent implements AfterViewInit {
       data: {
         datasets: [
           {
-            label: 'EUR/USD - 15min',
+            label: 'EUR/USD - '+this.selectedTimeframe,
             data: this.candles.map(c => ({
               x: new Date(c.date).getTime(),
               o: c.open,

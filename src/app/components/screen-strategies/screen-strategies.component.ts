@@ -36,6 +36,8 @@ export class ScreenStrategiesComponent implements OnInit {
     averageRR?: number,
     averageTrade?: number,
     tradeCount?: number
+    averageTP?: number,
+    averageSL?: number,
   }[] = [];
   isLoading: boolean = false;
 
@@ -90,18 +92,24 @@ export class ScreenStrategiesComponent implements OnInit {
     this.tradingService.getAllCalculatedStrategies().subscribe({
       next: (backendData: any[]) => {
         const formattedBackends = Array.isArray(backendData) ? backendData : [backendData];
-
+        console.log(formattedBackends);
         const mapped = formattedBackends.map(s => ({
           name: s.name,
-          winRate: s.winRate,
-          lossRate: s.lossRate,
+          winRate: (s.winRate * s.lossRate / 100) * 100,
+          winningTrades: s.winRate,
+          losingTrades: s.lossRate,
           totalReturn: s.totalReturn,
           maxDrawdown: s.maxDrawdown,
-          averageTrade: s.averageTrade
+          averageTrade: s.averageTrade,
+          averageSL: s.averageSL,
+          averageTP: s.averageTP,
+          tradeCount: s.lossRate + s.winRate,
+          symbol: this.selectedSymbol
         }));
 
         this.strategies = [...mockData, ...mapped];
         this.isLoading = false;
+        console.log(this.strategies);
       },
       error: (err) => {
         console.error('Erreur stratégie', err);
