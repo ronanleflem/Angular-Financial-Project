@@ -33,6 +33,13 @@
     <tr><td>Winrate :</td><td>{{ strategy?.winRate }}%</td></tr>
     <tr><td>RR Moyen :</td><td>{{ strategy?.averageRR | number:'1.2-2' }}</td></tr>
     <tr><td>Nombre de trades :</td><td>{{ strategy?.tradeCount ?? trades.length }}</td></tr>
+    <tr><td>Trades gagnants :</td><td>{{ strategy?.winningTrades }}</td></tr>
+    <tr><td>Trades perdants :</td><td>{{ strategy?.losingTrades }}</td></tr>
+    <tr><td>Total Return :</td><td>{{ strategy?.totalReturn | number:'1.2-2' }}</td></tr>
+    <tr><td>Max Drawdown :</td><td>{{ strategy?.maxDrawdown | percent:'1.2-2' }}</td></tr>
+    <tr><td>Average Trade :</td><td>{{ strategy?.averageTrade | number:'1.2-2' }}</td></tr>
+    <tr><td>Average TP :</td><td>{{ strategy?.averageTP | number:'1.2-2' }}</td></tr>
+    <tr><td>Average SL :</td><td>{{ strategy?.averageSL | number:'1.2-2' }}</td></tr>
   </table>
 </div>
 

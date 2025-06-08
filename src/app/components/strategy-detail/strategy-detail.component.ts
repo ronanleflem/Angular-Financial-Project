@@ -42,19 +42,45 @@ export class StrategyDetailComponent implements OnInit {
     this.symbol = this.route.snapshot.paramMap.get('symbol') || '';
     this.comparedSymbol = this.route.snapshot.paramMap.get('comparedSymbol') || '';
 
-    const stateStrategy = this.router.getCurrentNavigation()?.extras.state?.['strategy'];
+    const navState = this.router.getCurrentNavigation()?.extras.state || history.state;
+    const stateStrategy = navState?.['strategy'];
 
-    // Les infos de stratégie peuvent provenir de l'écran de liste
-    this.strategy = stateStrategy || {
-      name: strategyName,
-      symbol: this.symbol,
-      comparedSymbol: this.comparedSymbol,
-      startDate: new Date('2024-01-01'),
-      endDate: new Date('2024-03-01'),
-      winRate: 75,
-      averageRR: 0,
-      tradeCount: 0
-    };
+    if (stateStrategy) {
+      this.strategy = stateStrategy;
+    } else if (strategyName) {
+      this.tradingDataService.getAllCalculatedStrategies().subscribe({
+        next: (backendData: any) => {
+          const formattedBackends = Array.isArray(backendData) ? backendData : [backendData];
+          const match = formattedBackends.find(s => s.name === strategyName);
+          if (match) {
+            this.strategy = {
+              name: match.name,
+              winRate: (match.winRate * match.lossRate / 100) * 100,
+              winningTrades: match.winRate,
+              losingTrades: match.lossRate,
+              totalReturn: match.totalReturn,
+              maxDrawdown: match.maxDrawdown,
+              averageTrade: match.averageTrade,
+              averageSL: match.averageSL,
+              averageTP: match.averageTP,
+              tradeCount: match.lossRate + match.winRate,
+              symbol: match.symbol,
+              comparedSymbol: match.comparedSymbol,
+              startDate: match.StartStrategie ? new Date(match.StartStrategie) : undefined,
+              endDate: match.EndStrategie ? new Date(match.EndStrategie) : undefined,
+              averageRR: match.RRmoyen
+            };
+          } else {
+            this.strategy = { name: strategyName, symbol: this.symbol, comparedSymbol: this.comparedSymbol };
+          }
+        },
+        error: () => {
+          this.strategy = { name: strategyName, symbol: this.symbol, comparedSymbol: this.comparedSymbol };
+        }
+      });
+    } else {
+      this.strategy = { name: strategyName, symbol: this.symbol, comparedSymbol: this.comparedSymbol };
+    }
     this.tradingDataService.getTradesByStrategyName(strategyName!).subscribe({
       next: (trades: any[] | null | undefined) => {
         console.log("Avant le map",trades);
