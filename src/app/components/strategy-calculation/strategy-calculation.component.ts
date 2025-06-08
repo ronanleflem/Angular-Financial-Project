@@ -19,9 +19,11 @@ import {TradingDataService} from '../../services/trading-data.service';
 export class StrategyCalculationComponent {
   strategies: string[] = ['Stratégie 1', 'Stratégie 2', 'Stratégie 3', 'Trend Following']; // Tu peux les charger dynamiquement si besoin
   symbols: string[] = ['ES', 'NQ', 'YM', 'EURUSD']; // Exemples de symboles
+  comparedSymbol: string[] = ['ES', 'NQ', 'YM', 'EURUSD']; // Exemples de symboles
   timeframes: string[] = ['1min', '5min', '15min', '1h'];
   selectedStrategy: string = '';
   selectedSymbol: string = '';
+  selectedComparedSymbol: string = '';
   selectedTimeframe: string = '';
   startDate: string = '';
   endDate: string = '';
@@ -31,11 +33,11 @@ export class StrategyCalculationComponent {
   constructor(private http: HttpClient, private tradingService: TradingDataService) {}
 
   calculateStrategy() {
-    if (!this.selectedStrategy || !this.selectedSymbol || !this.selectedTimeframe || !this.startDate || !this.endDate) {
+    if (!this.selectedStrategy || !this.selectedSymbol || !this.selectedTimeframe || !this.startDate || !this.endDate || !this.selectedComparedSymbol) {
       alert('Tous les champs sont requis pour lancer le calcul !');
       return;
     }
-    this.result = this.tradingService.getCalculationStrategy(this.selectedStrategy,this.selectedSymbol,this.selectedTimeframe,this.startDate,this.endDate).subscribe({
+    this.result = this.tradingService.getCalculationStrategy(this.selectedStrategy,this.selectedSymbol, this.selectedComparedSymbol, this.selectedTimeframe,this.startDate,this.endDate).subscribe({
       next: (response) => {
         console.log('Résultat de la stratégie', response);
         this.result = response;

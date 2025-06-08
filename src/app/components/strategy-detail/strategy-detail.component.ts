@@ -22,6 +22,8 @@ export class StrategyDetailComponent implements OnInit {
   strategy: any;
   trades: any[] = [];
   currentTradeIndex: number = 0;
+  comparedSymbol: string = '';
+  symbol: string = '';
 
   constructor(private route: ActivatedRoute, private tradingDataService: TradingDataService) {}
 
@@ -33,11 +35,14 @@ export class StrategyDetailComponent implements OnInit {
 
   loadStrategy() {
     const strategyName = this.route.snapshot.paramMap.get('name');
+    this.symbol = this.route.snapshot.paramMap.get('symbol') || '';
+    this.comparedSymbol = this.route.snapshot.paramMap.get('comparedSymbol') || '';
 
-    // Ici, tu charges via le service backend. Pour l'instant, mock data :
+    // Les infos de stratégie proviennent du tableau (backend)
     this.strategy = {
       name: strategyName,
-      symbol: 'EUR/USD',
+      symbol: this.symbol,
+      comparedSymbol: this.comparedSymbol,
       startDate: new Date('2024-01-01'),
       endDate: new Date('2024-03-01'),
       winRate: 75,

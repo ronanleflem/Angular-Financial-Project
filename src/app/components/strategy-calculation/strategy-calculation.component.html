@@ -11,6 +11,11 @@
     <option *ngFor="let symbol of symbols" [value]="symbol">{{ symbol }}</option>
   </select>
 
+  <label for="comparedSymbol">Compared symbol :</label>
+  <select id="comparedSymbol" [(ngModel)]="selectedComparedSymbol">
+    <option *ngFor="let comparedSymbol of comparedSymbol" [value]="comparedSymbol">{{ comparedSymbol }}</option>
+  </select>
+
   <label for="timeframe">Timeframe :</label>
   <select id="timeframe" [(ngModel)]="selectedTimeframe">
     <option *ngFor="let timeframe of timeframes" [value]="timeframe">{{ timeframe }}</option>

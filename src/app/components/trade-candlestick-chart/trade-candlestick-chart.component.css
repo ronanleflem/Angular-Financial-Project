@@ -1,6 +1,12 @@
-canvas {
+.chart-side-by-side {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+}
+
+.chart-side-by-side canvas {
   width: 100% !important;
-  max-width: 700px;
+  max-width: 450px;
   height: 300px !important;
   margin: 0 auto;
   display: block;

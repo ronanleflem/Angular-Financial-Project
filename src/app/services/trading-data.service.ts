@@ -10,8 +10,8 @@ export class TradingDataService {
 
   constructor(private http: HttpClient) {}
 
-  getCandlesForTrade(tradeId: number, timeframe: string) {
-    return this.http.get<{ candles: any[], trade: any }>(`${this.apiUrl}/api/finance/charts/from-trade?tradeId=${tradeId}&timeframe=${timeframe}`);
+  getCandlesForTrade(tradeId: number, timeframe: string, symbol: string, comparedSymbol: string) {
+    return this.http.get<{ candles: any[], comparedCandles: any[], trade: any }>(`${this.apiUrl}/api/finance/charts/from-trade?tradeId=${tradeId}&timeframe=${timeframe}&symbol=${symbol}&comparedSymbol=${comparedSymbol}`);
   }
   getTradesByStrategyName(strategyName: string): Observable<any[]> {
     const url = `${this.apiUrl}/get-trades-strategy?strategyName=${encodeURIComponent(strategyName)}`;
@@ -47,12 +47,12 @@ export class TradingDataService {
     const url = `${this.apiUrl}/api/live-candle?symbol=${symbol}&timeframe=${timeframe}`;
     return this.http.get<any>(url);
   }
-  getCalculationStrategy(selectedStrategy: string, selectedSymbol: string, selectedTimeframe: string, startDate: string, endDate: string){
+  getCalculationStrategy(selectedStrategy: string, selectedSymbol: string, selectedComparedSymbol: string, selectedTimeframe: string, startDate: string, endDate: string){
     const encodedStartDate = encodeURIComponent(startDate);
     const encodedEndDate = encodeURIComponent(endDate);
 
     //const url = `http://localhost:8094/strategies/calculate?strategy=${this.selectedStrategy}&symbol=${this.selectedSymbol}&startDate=${encodedStartDate}&endDate=${encodedEndDate}`;
-    const url = `http://localhost:8090/trend-following?timeframe=${selectedTimeframe}&symbol=${selectedSymbol}&startDate=${encodedStartDate}&endDate=${encodedEndDate}`;
+    const url = `http://localhost:8090/trend-following?timeframe=${selectedTimeframe}&symbol=${selectedSymbol}&startDate=${encodedStartDate}&endDate=${encodedEndDate}&comparedSymbol=${selectedComparedSymbol}`;
 
     return this.http.get(url);
   }

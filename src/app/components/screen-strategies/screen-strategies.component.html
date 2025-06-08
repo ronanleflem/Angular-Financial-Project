@@ -14,6 +14,7 @@
   <tr>
     <th>Nom</th>
     <th>Symbole</th>
+    <th>Compare</th>
     <th>Début</th>
     <th>Fin</th>
     <th>Trades Gagnants</th>
@@ -33,6 +34,7 @@
   <tr *ngFor="let strategy of strategies">
     <td>{{ strategy.name }}</td>
     <td>{{ strategy.symbol || '-' }}</td>
+    <td>{{ strategy.comparedSymbol || '-' }}</td>
     <td>{{ strategy.startDate ? (strategy.startDate | date:'short') : '-' }}</td>
     <td>{{ strategy.endDate ? (strategy.endDate | date:'short') : '-' }}</td>
     <td>{{ strategy.winningTrades !== undefined ? strategy.winningTrades : '-' }}</td>
