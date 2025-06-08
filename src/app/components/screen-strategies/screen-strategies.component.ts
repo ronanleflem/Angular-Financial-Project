@@ -48,7 +48,10 @@ export class ScreenStrategiesComponent implements OnInit {
 
   goToDetails(strategy: any) {
     console.log('GO vers', strategy);
-    this.router.navigate(['/strategy-detail', strategy.name, strategy.symbol, strategy.comparedSymbol]);
+    this.router.navigate(
+      ['/strategy-detail', strategy.name, strategy.symbol, strategy.comparedSymbol],
+      { state: { strategy } }
+    );
   }
 
   ngOnInit(): void {
@@ -106,7 +109,10 @@ export class ScreenStrategiesComponent implements OnInit {
           averageTP: s.averageTP,
           tradeCount: s.lossRate + s.winRate,
           symbol: s.symbol,
-          comparedSymbol: s.comparedSymbol
+          comparedSymbol: s.comparedSymbol,
+          startDate: s.StartStrategie ? new Date(s.StartStrategie) : undefined,
+          endDate: s.EndStrategie ? new Date(s.EndStrategie) : undefined,
+          averageRR: s.RRmoyen
         }));
 
         this.strategies = [...mockData, ...mapped];

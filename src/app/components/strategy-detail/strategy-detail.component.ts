@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import {DatePipe, NgIf} from '@angular/common';
 import { CommonModule } from '@angular/common';
 import { TradingDataService } from '../../services/trading-data.service';
@@ -25,7 +25,11 @@ export class StrategyDetailComponent implements OnInit {
   comparedSymbol: string = '';
   symbol: string = '';
 
-  constructor(private route: ActivatedRoute, private tradingDataService: TradingDataService) {}
+  constructor(
+    private route: ActivatedRoute,
+    private router: Router,
+    private tradingDataService: TradingDataService
+  ) {}
 
   ngOnInit(): void {
     this.loadStrategy();
@@ -38,16 +42,18 @@ export class StrategyDetailComponent implements OnInit {
     this.symbol = this.route.snapshot.paramMap.get('symbol') || '';
     this.comparedSymbol = this.route.snapshot.paramMap.get('comparedSymbol') || '';
 
-    // Les infos de stratégie proviennent du tableau (backend)
-    this.strategy = {
+    const stateStrategy = this.router.getCurrentNavigation()?.extras.state?.['strategy'];
+
+    // Les infos de stratégie peuvent provenir de l'écran de liste
+    this.strategy = stateStrategy || {
       name: strategyName,
       symbol: this.symbol,
       comparedSymbol: this.comparedSymbol,
       startDate: new Date('2024-01-01'),
       endDate: new Date('2024-03-01'),
       winRate: 75,
-      averageRR: 2.5,
-      tradeCount: 3
+      averageRR: 0,
+      tradeCount: 0
     };
     this.tradingDataService.getTradesByStrategyName(strategyName!).subscribe({
       next: (trades: any[] | null | undefined) => {

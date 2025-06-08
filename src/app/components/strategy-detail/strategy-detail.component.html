@@ -31,8 +31,8 @@
     <tr><td>Début :</td><td>{{ strategy?.startDate | date:'short' }}</td></tr>
     <tr><td>Fin :</td><td>{{ strategy?.endDate | date:'short' }}</td></tr>
     <tr><td>Winrate :</td><td>{{ strategy?.winRate }}%</td></tr>
-    <tr><td>RR Moyen :</td><td>{{ strategy?.averageRR }}</td></tr>
-    <tr><td>Nombre de trades :</td><td>{{ trades.length }}</td></tr>
+    <tr><td>RR Moyen :</td><td>{{ strategy?.averageRR | number:'1.2-2' }}</td></tr>
+    <tr><td>Nombre de trades :</td><td>{{ strategy?.tradeCount ?? trades.length }}</td></tr>
   </table>
 </div>
 
