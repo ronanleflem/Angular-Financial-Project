@@ -12,6 +12,7 @@
 <<table *ngIf="strategies.length > 0" class="strategy-table">
   <thead>
   <tr>
+    <th>Run ID</th>
     <th>Nom</th>
     <th>Symbole</th>
     <th>Compare</th>
@@ -32,6 +33,7 @@
   </thead>
   <tbody>
   <tr *ngFor="let strategy of strategies">
+    <td>{{ strategy.runId || '-' }}</td>
     <td>{{ strategy.name }}</td>
     <td>{{ strategy.symbol || '-' }}</td>
     <td>{{ strategy.comparedSymbol || '-' }}</td>

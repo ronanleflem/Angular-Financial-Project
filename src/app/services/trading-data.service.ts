@@ -13,8 +13,10 @@ export class TradingDataService {
   getCandlesForTrade(tradeId: number, timeframe: string, symbol: string, comparedSymbol: string) {
     return this.http.get<{ candles: any[], comparedCandles: any[], trade: any }>(`${this.apiUrl}/api/finance/charts/from-trade?tradeId=${tradeId}&timeframe=${timeframe}&symbol=${symbol}&comparedSymbol=${comparedSymbol}`);
   }
-  getTradesByStrategyName(strategyName: string): Observable<any[]> {
-    const url = `${this.apiUrl}/get-trades-strategy?strategyName=${encodeURIComponent(strategyName)}`;
+  getTradesByStrategyName(strategyName: string, runId: string): Observable<any[]> {
+    console.log("runId "+runId);
+    console.log("Strategy Name "+strategyName);
+    const url = `${this.apiUrl}/get-trades-strategy?strategyName=${strategyName}&runId=${runId}`;
     return this.http.get<any[]>(url);
   }
   getHistoricalCandles(symbol: string, timeframe: string): Observable<any> {

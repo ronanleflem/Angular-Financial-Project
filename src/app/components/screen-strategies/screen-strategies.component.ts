@@ -23,6 +23,7 @@ export class ScreenStrategiesComponent implements OnInit {
   symbols: string[] = []; // À remplir via une API si besoin
   selectedSymbol: string = '';
   strategies: {
+    runId?: string,
     name: string,
     symbol?: string,
     startDate?: Date,
@@ -49,7 +50,7 @@ export class ScreenStrategiesComponent implements OnInit {
   goToDetails(strategy: any) {
     console.log('GO vers', strategy);
     this.router.navigate(
-      ['/strategy-detail', strategy.name, strategy.symbol, strategy.comparedSymbol],
+      ['/strategy-detail', strategy.name, strategy.runId, strategy.symbol, strategy.comparedSymbol],
       { state: { strategy } }
     );
   }
@@ -97,23 +98,36 @@ export class ScreenStrategiesComponent implements OnInit {
       next: (backendData: any[]) => {
         const formattedBackends = Array.isArray(backendData) ? backendData : [backendData];
         console.log(formattedBackends);
-        const mapped = formattedBackends.map(s => ({
-          name: s.name,
-          winRate: (s.winRate * s.lossRate / 100) * 100,
-          winningTrades: s.winRate,
-          losingTrades: s.lossRate,
-          totalReturn: s.totalReturn,
-          maxDrawdown: s.maxDrawdown,
-          averageTrade: s.averageTrade,
-          averageSL: s.averageSL,
-          averageTP: s.averageTP,
-          tradeCount: s.lossRate + s.winRate,
-          symbol: s.symbol,
-          comparedSymbol: s.comparedSymbol,
-          startDate: s.StartStrategie ? new Date(s.StartStrategie) : undefined,
-          endDate: s.EndStrategie ? new Date(s.EndStrategie) : undefined,
-          averageRR: s.RRmoyen
-        }));
+        const mapped = formattedBackends.map(s => {
+          console.log(s.startStrategy);
+          console.log(new Date(s.startStrategy));
+          console.log((s.StartStrategie ? new Date(s.StartStrategie) : undefined));
+
+          const start = s.startStrategy
+            ? new Date(s.startStrategy)
+            : (s.StartStrategie ? new Date(s.StartStrategie) : undefined);
+          const end = s.endStrategy
+            ? new Date(s.endStrategy)
+            : (s.EndStrategie ? new Date(s.EndStrategie) : undefined);
+          return {
+            runId: s.runId,
+            name: s.name,
+            winRate: (s.winRate * s.lossRate / 100) * 100,
+            winningTrades: s.winRate,
+            losingTrades: s.lossRate,
+            totalReturn: s.totalReturn,
+            maxDrawdown: s.maxDrawdown,
+            averageTrade: s.averageTrade,
+            averageSL: s.averageSL,
+            averageTP: s.averageTP,
+            tradeCount: s.lossRate + s.winRate,
+            symbol: s.symbol,
+            comparedSymbol: s.comparedSymbol,
+            startDate: start,
+            endDate: end,
+            averageRR: s.rrMoyen
+          };
+        });
 
         this.strategies = [...mockData, ...mapped];
         this.isLoading = false;

@@ -11,7 +11,7 @@ export const routes: Routes = [
   { path: 'statistics', component: StatisticDataComponent },
   { path: 'strategy-calculation', component: StrategyCalculationComponent },
   { path: 'screen-strategies', component: ScreenStrategiesComponent },
-  { path: 'strategy-detail/:name/:symbol/:comparedSymbol', component: StrategyDetailComponent },
+  { path: 'strategy-detail/:name/:runId/:symbol/:comparedSymbol', component: StrategyDetailComponent },
   { path: 'live-data', component: LiveDataComponent }
   //{ path: '', redirectTo: '/historical-data', pathMatch: 'full' } // Redirection par défaut
 ];

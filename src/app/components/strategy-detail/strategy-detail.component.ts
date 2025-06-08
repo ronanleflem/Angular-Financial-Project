@@ -39,6 +39,7 @@ export class StrategyDetailComponent implements OnInit {
 
   loadStrategy() {
     const strategyName = this.route.snapshot.paramMap.get('name');
+    const runId = this.route.snapshot.paramMap.get('runId');
     this.symbol = this.route.snapshot.paramMap.get('symbol') || '';
     this.comparedSymbol = this.route.snapshot.paramMap.get('comparedSymbol') || '';
 
@@ -47,13 +48,20 @@ export class StrategyDetailComponent implements OnInit {
 
     if (stateStrategy) {
       this.strategy = stateStrategy;
-    } else if (strategyName) {
+    } else if (strategyName && runId) {
       this.tradingDataService.getAllCalculatedStrategies().subscribe({
         next: (backendData: any) => {
           const formattedBackends = Array.isArray(backendData) ? backendData : [backendData];
           const match = formattedBackends.find(s => s.name === strategyName);
           if (match) {
+            const start = match.startStrategy
+              ? new Date(match.startStrategy * 1000)
+              : (match.StartStrategie ? new Date(match.StartStrategie) : undefined);
+            const end = match.endStrategy
+              ? new Date(match.endStrategy * 1000)
+              : (match.EndStrategie ? new Date(match.EndStrategie) : undefined);
             this.strategy = {
+              runId: match.runId,
               name: match.name,
               winRate: (match.winRate * match.lossRate / 100) * 100,
               winningTrades: match.winRate,
@@ -66,8 +74,8 @@ export class StrategyDetailComponent implements OnInit {
               tradeCount: match.lossRate + match.winRate,
               symbol: match.symbol,
               comparedSymbol: match.comparedSymbol,
-              startDate: match.StartStrategie ? new Date(match.StartStrategie) : undefined,
-              endDate: match.EndStrategie ? new Date(match.EndStrategie) : undefined,
+              startDate: start,
+              endDate: end,
               averageRR: match.RRmoyen
             };
           } else {
@@ -81,7 +89,7 @@ export class StrategyDetailComponent implements OnInit {
     } else {
       this.strategy = { name: strategyName, symbol: this.symbol, comparedSymbol: this.comparedSymbol };
     }
-    this.tradingDataService.getTradesByStrategyName(strategyName!).subscribe({
+    this.tradingDataService.getTradesByStrategyName(strategyName!,runId!).subscribe({
       next: (trades: any[] | null | undefined) => {
         console.log("Avant le map",trades);
         const formattedTrades = Array.isArray(trades) ? trades.map(t => ({
@@ -103,6 +111,7 @@ export class StrategyDetailComponent implements OnInit {
         console.log(this.trades);
       },
       error: (error: unknown) => {
+        console.log(strategyName+" "+runId);
         console.error('Erreur lors du chargement des trades :', error);
         this.trades = this.getMockTrades(); // fallback : mock uniquement
       }
