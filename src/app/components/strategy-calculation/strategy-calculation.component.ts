@@ -18,8 +18,8 @@ import {TradingDataService} from '../../services/trading-data.service';
 })
 export class StrategyCalculationComponent {
   strategies: string[] = ['Stratégie 1', 'Stratégie 2', 'Stratégie 3', 'Trend Following']; // Tu peux les charger dynamiquement si besoin
-  symbols: string[] = ['ES', 'NQ', 'YM', 'EURUSD']; // Exemples de symboles
-  comparedSymbol: string[] = ['ES', 'NQ', 'YM', 'EURUSD']; // Exemples de symboles
+  symbols: string[] = ['ES', 'NQ', 'YM', 'EURUSD', 'BTCUSDT']; // Exemples de symboles
+  comparedSymbol: string[] = ['ES', 'NQ', 'YM', 'EURUSD', 'BTCUSDT']; // Exemples de symboles
   timeframes: string[] = ['1min', '5min', '15min', '1h'];
   selectedStrategy: string = '';
   selectedSymbol: string = '';

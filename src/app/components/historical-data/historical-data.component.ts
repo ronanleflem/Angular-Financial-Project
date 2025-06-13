@@ -45,7 +45,7 @@ export class HistoricalDataComponent implements AfterViewInit {
 
 
   // Liste des symboles et timeframes disponibles
-  symbols = ['EURUSD', 'GBPUSD', 'USDJPY', 'NASDAQ', 'SP500'];
+  symbols = ['EURUSD', 'GBPUSD', 'USDJPY', 'NASDAQ', 'SP500', 'BTCUSDT'];
   timeframes = ['1min', '5min', '15min','30min', '1h', '4h', 'daily'];
   //timeframes = ['M1', 'M5', 'M15','M30', 'H1', 'H4', 'D1'];
 
