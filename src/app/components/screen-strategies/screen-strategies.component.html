@@ -28,6 +28,10 @@
     <th>Average Trade</th>
     <th>Average TP</th>
     <th>Average SL</th>
+    <th>totalNetReturn</th>
+    <th>netWinCount</th>
+    <th>netLossCount</th>
+    <th>averageNetTrade</th>
     <th>Action</th>
   </tr>
   </thead>
@@ -49,6 +53,10 @@
     <td>{{ strategy.averageTrade !== undefined ? (strategy.averageTrade | number:'1.2-2') : '-' }}</td>
     <td>{{ strategy.averageSL !== undefined ? (strategy.averageSL | number:'1.2-2')  : '-' }}</td>
     <td>{{ strategy.averageTP !== undefined ? (strategy.averageTP | number:'1.2-2')  : '-' }}</td>
+    <td>{{ strategy.totalNetReturn !== undefined ? (strategy.totalNetReturn | number:'1.2-2') : '-' }}</td>
+    <td>{{ strategy.netWinCount !== undefined ? (strategy.netWinCount | number:'1.2-2') : '-' }}</td>
+    <td>{{ strategy.netLossCount !== undefined ? (strategy.netLossCount | number:'1.2-2') : '-' }}</td>
+    <td>{{ strategy.averageNetTrade !== undefined ? (strategy.averageNetTrade | number:'1.2-2') : '-' }}</td>
     <td>
       <button (click)="goToDetails(strategy)">GO</button>
     </td>

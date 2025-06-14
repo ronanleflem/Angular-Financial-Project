@@ -40,6 +40,10 @@ export class ScreenStrategiesComponent implements OnInit {
     averageTP?: number,
     averageSL?: number,
     comparedSymbol?: string
+    totalNetReturn?: number,
+    netWinCount?: number,
+    netLossCount?: number,
+    averageNetTrade?: number
   }[] = [];
   isLoading: boolean = false;
 
@@ -112,20 +116,24 @@ export class ScreenStrategiesComponent implements OnInit {
           return {
             runId: s.runId,
             name: s.name,
-            winRate: (s.winRate * s.lossRate / 100) * 100,
-            winningTrades: s.winRate,
-            losingTrades: s.lossRate,
+            winRate: (s.winCount * s.lossCount / 100) * 100,
+            winningTrades: s.winCount,
+            losingTrades: s.lossCount,
             totalReturn: s.totalReturn,
             maxDrawdown: s.maxDrawdown,
             averageTrade: s.averageTrade,
             averageSL: s.averageSL,
             averageTP: s.averageTP,
-            tradeCount: s.lossRate + s.winRate,
+            tradeCount: s.lossCount + s.winCount,
             symbol: s.symbol,
             comparedSymbol: s.comparedSymbol,
             startDate: start,
             endDate: end,
-            averageRR: s.rrMoyen
+            averageRR: s.rrMoyen,
+            totalNetReturn: s.totalNetReturn,
+            netWinCount:  s.netWinCount,
+            netLossCount:  s.netLossCount,
+            averageNetTrade:  s.averageNetTrade
           };
         });
 
