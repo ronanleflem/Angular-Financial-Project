@@ -37,7 +37,7 @@ export class TradeCandlestickChartComponent implements OnChanges {
   }
 
   loadData(): void {
-    this.tradingService.getCandlesForTrade(this.tradeId, this.timeframe, this.symbol, this.comparedSymbol).subscribe(response => {
+    this.tradingService.getCandlesForTrade(this.tradeId, this.timeframe, this.symbol, this.comparedSymbol, 50, 50).subscribe(response => {
       const { candles, trade, comparedCandles } = response as any;
 
       // 🛡️ Validation des données
