@@ -98,7 +98,7 @@ export class StrategyDetailComponent implements OnInit {
           entryDate: new Date(t.entryTimestamp),
           entryPrice: t.entryPrice,
           exitPrice: t.exitPrice,
-          result: `${(t.exitPrice - t.entryPrice >= 0 ? '+' : '')}${((t.exitPrice - t.entryPrice) * 10000).toFixed(0)} pips`,
+          result: `${(t.exitPrice - t.entryPrice >= 0 ? '+' : '')}${((t.exitPrice - t.entryPrice) /** coeffMarket */ ).toFixed(0)} pips`,
           rr: t.takeProfit && t.stopLoss
             ? (Math.abs(t.takeProfit - t.entryPrice) / Math.abs(t.entryPrice - t.stopLoss)).toFixed(2)
             : null,
