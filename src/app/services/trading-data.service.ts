@@ -46,7 +46,7 @@ export class TradingDataService {
   }
 
   listStrategies(): Observable<string[]> {
-    const url = `${this.apiUrl}/strategies`;
+    const url = `${this.apiUrl}/all-name-strategies`;
     return this.http.get<string[]>(url);
   }
   getLiveCandle(symbol: string, timeframe: string) {
