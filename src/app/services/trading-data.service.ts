@@ -44,17 +44,33 @@ export class TradingDataService {
     const url = `${this.apiUrl}/all-strategies`;
     return this.http.get<any>(url);
   }
+
+  listStrategies(): Observable<string[]> {
+    const url = `${this.apiUrl}/strategies`;
+    return this.http.get<string[]>(url);
+  }
   getLiveCandle(symbol: string, timeframe: string) {
     // Remplace par ton vrai endpoint en live si t'en as un !
     const url = `${this.apiUrl}/api/live-candle?symbol=${symbol}&timeframe=${timeframe}`;
     return this.http.get<any>(url);
   }
-  getCalculationStrategy(selectedStrategy: string, selectedSymbol: string, selectedComparedSymbol: string, selectedTimeframe: string, startDate: string, endDate: string){
+  getCalculationStrategy(strategyName: string,
+                         symbol: string,
+                         comparedSymbol: string,
+                         timeframe: string,
+                         startDate: string,
+                         endDate: string,
+                         period: number = 1000) {
     const encodedStartDate = encodeURIComponent(startDate);
     const encodedEndDate = encodeURIComponent(endDate);
 
-    //const url = `http://localhost:8094/strategies/calculate?strategy=${this.selectedStrategy}&symbol=${this.selectedSymbol}&startDate=${encodedStartDate}&endDate=${encodedEndDate}`;
-    const url = `http://localhost:8090/trend-following?timeframe=${selectedTimeframe}&symbol=${selectedSymbol}&startDate=${encodedStartDate}&endDate=${encodedEndDate}&comparedSymbol=${selectedComparedSymbol}`;
+    let url = `${this.apiUrl}/run-strategy-by-name?strategyName=${strategyName}&symbol=${symbol}&timeframe=${timeframe}&period=${period}`;
+
+    if (comparedSymbol) {
+      url += `&comparedSymbol=${comparedSymbol}`;
+    }
+
+    url += `&startDate=${encodedStartDate}&endDate=${encodedEndDate}`;
 
     return this.http.get(url);
   }
