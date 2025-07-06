@@ -4,6 +4,7 @@ import 'chartjs-chart-financial';
 import annotationPlugin from 'chartjs-plugin-annotation';
 import zoomPlugin from 'chartjs-plugin-zoom';
 import { TradingDataService } from '../../services/trading-data.service';
+import { LoggingService } from '../../services/logging.service';
 import {
   CandlestickController,
   CandlestickElement
@@ -25,7 +26,10 @@ export class TradeCandlestickChartComponent implements OnChanges {
   chart: Chart | undefined;
   comparedChart: Chart | undefined;
 
-  constructor(private tradingService: TradingDataService) {
+  constructor(
+    private tradingService: TradingDataService,
+    private logger: LoggingService
+  ) {
     Chart.register(...registerables, zoomPlugin, annotationPlugin);
     Chart.register(CandlestickController, CandlestickElement);
   }
@@ -61,19 +65,13 @@ export class TradeCandlestickChartComponent implements OnChanges {
           c: c.close
         }));
 
-      console.log('[Candles]', candles);
-      console.log('[Trade]', trade);
 
       // 🛡️ Vérifie que trade.entryDate et exitDate sont valides
       const entryTime = new Date(trade.entryTimestamp).getTime();
       const exitTime = new Date(trade.exitTimestamp).getTime();
-      console.log(trade.entryTimestamp);
-      console.log(trade.exitTimestamp);
-      console.log(new Date(trade.entryTimestamp).getTime());
-      console.log(new Date(trade.exitTimestamp).getTime());
 
       if (isNaN(entryTime) || isNaN(exitTime)) {
-        console.error('Dates du trade invalides :', trade);
+        this.logger.error('Dates du trade invalides :', trade);
         return;
       }
 
@@ -90,7 +88,7 @@ export class TradeCandlestickChartComponent implements OnChanges {
     const canvas = document.getElementById(canvasId) as HTMLCanvasElement;
     const ctx = canvas?.getContext('2d');
     if (!data?.length || !trade || !canvas || !ctx) {
-      console.warn('Graphique non généré : données manquantes ou invalides');
+      this.logger.error('Graphique non généré : données manquantes ou invalides');
       return;
     }
     if (canvasId === 'tradeCandlestickChart' && this.chart) {
@@ -103,9 +101,6 @@ export class TradeCandlestickChartComponent implements OnChanges {
 
     const entryTime = new Date(trade.entryTimestamp).getTime();
     const exitTime = new Date(trade.exitTimestamp).getTime();
-
-    console.log(new Date(trade.entryTimestamp).getTime())
-    console.log(new Date(trade.exitTimestamp).getTime())
 
     const durationMs = new Date(trade.exitDate).getTime() - new Date(trade.entryDate).getTime();
     const oneDay = 24 * 60 * 60 * 1000;

@@ -2,6 +2,7 @@ import { Component } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import {JsonPipe, NgForOf, NgIf} from '@angular/common';
 import {FormsModule} from '@angular/forms';
+import { LoggingService } from '../../services/logging.service';
 
 @Component({
   selector: 'app-statistics',
@@ -48,7 +49,10 @@ export class StatisticDataComponent {
     { value: "lower-timeframe-confluence", label: "Lower Timeframe Confluence" }
   ];
 
-  constructor(private http: HttpClient) { }
+  constructor(
+    private http: HttpClient,
+    private logger: LoggingService
+  ) { }
 
   toggleTimeframe(tf: string): void {
     const index = this.selectedTimeframes.indexOf(tf);
@@ -169,7 +173,7 @@ export class StatisticDataComponent {
 
       default:
         this.isLoading = false;
-        console.warn('Analyse inconnue !');
+        this.logger.error('Analyse inconnue !');
         return;
     }
 
@@ -180,7 +184,7 @@ export class StatisticDataComponent {
         this.isLoading = false;
       },
       error: (err) => {
-        console.error(err);
+        this.logger.error(err);
         this.isLoading = false;
       }
     });

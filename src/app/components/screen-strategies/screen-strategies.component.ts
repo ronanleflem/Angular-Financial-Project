@@ -3,6 +3,7 @@ import {FormsModule} from '@angular/forms';
 import {DatePipe, DecimalPipe, NgForOf, NgIf, PercentPipe} from '@angular/common';
 import {Router} from '@angular/router';
 import {TradingDataService} from '../../services/trading-data.service';
+import { LoggingService } from '../../services/logging.service';
 import {Chart} from 'chart.js';
 
 @Component({
@@ -47,12 +48,14 @@ export class ScreenStrategiesComponent implements OnInit {
   }[] = [];
   isLoading: boolean = false;
 
-  constructor(private router: Router, private tradingService: TradingDataService
+  constructor(
+    private router: Router,
+    private tradingService: TradingDataService,
+    private logger: LoggingService
     // private strategyService: StrategyService (à injecter pour le backend)
   ) { }
 
   goToDetails(strategy: any) {
-    console.log('GO vers', strategy);
     this.router.navigate(
       ['/strategy-detail', strategy.name, strategy.runId, strategy.symbol, strategy.comparedSymbol],
       { state: { strategy } }
@@ -101,11 +104,7 @@ export class ScreenStrategiesComponent implements OnInit {
     this.tradingService.getAllCalculatedStrategies().subscribe({
       next: (backendData: any[]) => {
         const formattedBackends = Array.isArray(backendData) ? backendData : [backendData];
-        console.log(formattedBackends);
         const mapped = formattedBackends.map(s => {
-          console.log(s.startStrategy);
-          console.log(new Date(s.startStrategy));
-          console.log((s.StartStrategie ? new Date(s.StartStrategie) : undefined));
 
           const start = s.startStrategy
             ? new Date(s.startStrategy)
@@ -139,10 +138,9 @@ export class ScreenStrategiesComponent implements OnInit {
 
         this.strategies = [...mockData, ...mapped];
         this.isLoading = false;
-        console.log(this.strategies);
       },
       error: (err) => {
-        console.error('Erreur stratégie', err);
+        this.logger.error('Erreur stratégie', err);
         this.strategies = [...mockData];
         this.isLoading = false;
       }

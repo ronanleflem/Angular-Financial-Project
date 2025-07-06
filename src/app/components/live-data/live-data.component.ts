@@ -3,6 +3,7 @@ import { NgChartsModule } from 'ng2-charts';
 import { CommonModule } from '@angular/common';
 import { Chart, registerables } from 'chart.js';
 import { TradingDataService } from '../../services/trading-data.service';
+import { LoggingService } from '../../services/logging.service';
 import 'chartjs-chart-financial';
 import 'chartjs-adapter-date-fns';
 import zoomPlugin from 'chartjs-plugin-zoom';
@@ -30,7 +31,10 @@ export class LiveDataComponent implements AfterViewInit, OnDestroy {
   isStreaming = false;
   liveInterval: any; // Pour le polling ou mock de données en live
 
-  constructor(private tradingService: TradingDataService) {
+  constructor(
+    private tradingService: TradingDataService,
+    private logger: LoggingService
+  ) {
     Chart.register(...registerables, CandlestickElement, OhlcController, CandlestickController, zoomPlugin);
   }
 
@@ -45,13 +49,13 @@ export class LiveDataComponent implements AfterViewInit, OnDestroy {
   initChart() {
     const canvas = document.getElementById('liveCandlestickChart') as HTMLCanvasElement;
     if (!canvas) {
-      console.error('Canvas not found!');
+      this.logger.error('Canvas not found!');
       return;
     }
 
     const ctx = canvas.getContext('2d');
     if (!ctx) {
-      console.error('Could not get canvas context!');
+      this.logger.error('Could not get canvas context!');
       return;
     }
 
@@ -103,7 +107,7 @@ export class LiveDataComponent implements AfterViewInit, OnDestroy {
 
   startLive() {
     if (this.isStreaming) {
-      console.warn('Stream déjà en cours');
+      this.logger.error('Stream déjà en cours');
       return;
     }
 

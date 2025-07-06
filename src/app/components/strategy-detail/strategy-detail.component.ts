@@ -3,6 +3,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import {DatePipe, NgIf} from '@angular/common';
 import { CommonModule } from '@angular/common';
 import { TradingDataService } from '../../services/trading-data.service';
+import { LoggingService } from '../../services/logging.service';
 import {TradeCandlestickChartComponent} from '../trade-candlestick-chart/trade-candlestick-chart.component';
 
 @Component({
@@ -28,7 +29,8 @@ export class StrategyDetailComponent implements OnInit {
   constructor(
     private route: ActivatedRoute,
     private router: Router,
-    private tradingDataService: TradingDataService
+    private tradingDataService: TradingDataService,
+    private logger: LoggingService
   ) {}
 
   ngOnInit(): void {
@@ -91,7 +93,6 @@ export class StrategyDetailComponent implements OnInit {
     }
     this.tradingDataService.getTradesByStrategyName(strategyName!,runId!).subscribe({
       next: (trades: any[] | null | undefined) => {
-        console.log("Avant le map",trades);
         const formattedTrades = Array.isArray(trades) ? trades.map(t => ({
           id: t.id,
           type: t.tradeType, // ou t.type si c’est ta convention
@@ -107,12 +108,9 @@ export class StrategyDetailComponent implements OnInit {
         })) : [];
 
         this.trades = formattedTrades ? formattedTrades : this.getMockTrades();
-
-        console.log(this.trades);
       },
       error: (error: unknown) => {
-        console.log(strategyName+" "+runId);
-        console.error('Erreur lors du chargement des trades :', error);
+        this.logger.error('Erreur lors du chargement des trades :', error);
         this.trades = this.getMockTrades(); // fallback : mock uniquement
       }
     });

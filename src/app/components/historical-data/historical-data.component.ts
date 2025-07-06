@@ -3,6 +3,7 @@ import { NgChartsModule } from 'ng2-charts';
 import { CommonModule } from '@angular/common';
 import { Chart, registerables} from 'chart.js';
 import { TradingDataService } from '../../services/trading-data.service';
+import { LoggingService } from '../../services/logging.service';
 import 'chartjs-chart-financial'; // ✅ Importe le plugin pour les chandeliers
 import 'chartjs-adapter-date-fns'; // ✅ Pour gérer les dates correctement
 import zoomPlugin from 'chartjs-plugin-zoom';
@@ -58,20 +59,18 @@ export class HistoricalDataComponent implements AfterViewInit {
 
   isForex = true;
 
-  constructor(private tradingService: TradingDataService) {
+  constructor(
+    private tradingService: TradingDataService,
+    private logger: LoggingService
+  ) {
     Chart.register(...registerables, CandlestickElement, OhlcController, CandlestickController, zoomPlugin, annotationPlugin);
   }
 
   ngAfterViewInit() {
     this.tradingService.getHistoricalCandlesTimeframeCME('EURUSD', 'M5', this.startDate, this.endDate).subscribe(data => {
-      console.log('Données reçues :', data); // ✅ Vérifie que les données arrivent bien
-      console.log(Chart.getChart('candlestickChart')); // ✅ Devrait afficher `undefined` (normal)
-      console.log(Chart.registry.controllers);
       this.candles = data;
-      console.log("Données utilisées :", this.candles.map(c => new Date(c.date).toISOString()));
       setTimeout(() => this.createChart(), 0); // ✅ Attendre que le DOM soit prêt
       const annotations = this.getAnnotations();
-      console.log("Annotations générées :", annotations);
 
       this.chart.update();
     });
@@ -79,7 +78,6 @@ export class HistoricalDataComponent implements AfterViewInit {
 
   loadData() {
     this.tradingService.getHistoricalCandlesTimeframeCME(this.selectedSymbol, this.selectedTimeframe, this.startDate, this.endDate).subscribe(data => {
-      console.log('Données reçues loadData :', data);
       this.candles = data;
       //console.log("Données utilisées :", this.candles.map(c => new Date(c.date).toUTCString()));
       //console.log("Données utilisées :", this.candles.map(c => new Date(c.date).toISOString()));
@@ -90,7 +88,6 @@ export class HistoricalDataComponent implements AfterViewInit {
         const day = date.getUTCDay();
         return day !== 0 && day !== 6; // ✅ Exclut samedi et dimanche
       });*/
-      console.log('Données filtrées loadData :', this.candles);
       setTimeout(() => this.createChart(), 0); // ✅ Attendre que le DOM soit prêt
     });
   }
@@ -135,18 +132,17 @@ export class HistoricalDataComponent implements AfterViewInit {
   createChart() {
     const canvas = document.getElementById('candlestickChart') as HTMLCanvasElement;
     if (!canvas) {
-      console.error('Canvas not found!');
+      this.logger.error('Canvas not found!');
       return;
     }
     const ctx = canvas.getContext('2d');
     if (!ctx) {
-      console.error('Could not get canvas context!');
+      this.logger.error('Could not get canvas context!');
       return;
     }
 
     if (this.chart) this.chart.destroy();
 
-    console.log("Creation du graphique...");
     this.chart = new Chart(ctx, {
       type: 'candlestick',
       data: {
@@ -177,24 +173,24 @@ export class HistoricalDataComponent implements AfterViewInit {
                 if (typeof value === 'string' || typeof value === 'number') {
                   return new Date(value).getTime();
                 }
-                console.log("Valeur invalide :", value);
+                this.logger.debug('Valeur invalide :', value);
                 return NaN; // Retourner une valeur invalide si le type est inconnu
               },
             },
             afterBuildTicks: (scale) => {
-              console.log("Ticks générés :", scale.ticks);
+              this.logger.debug('Ticks générés :', scale.ticks);
             },
             ticks: {
               maxRotation: 0,
               minRotation: 0,
               source: 'data',
               callback: (value: number | string, index: number, values: any[]) => {
-                console.log("Tick callback exécuté pour:", value);
+                this.logger.debug('Tick callback exécuté pour:', value);
                 const date = new Date(value);
                 /*
                 const day = date.getUTCDay();
                 if (this.isForex && (day === 0 || day === 6)) {
-                  console.log("Tick callback weekend ", value);
+                  this.logger.debug('Tick callback weekend ', value);
                   return ''; // Cache les week-ends si Forex
                 }*/
                 return format(date, 'yyyy-MM-dd HH:mm'); // Utilisation de date-fns

@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import {FormsModule} from '@angular/forms';
 import {JsonPipe, NgForOf, NgIf} from '@angular/common';
 import {TradingDataService} from '../../services/trading-data.service';
+import { LoggingService } from '../../services/logging.service';
 
 @Component({
   selector: 'app-strategy-calculation',
@@ -30,7 +31,11 @@ export class StrategyCalculationComponent implements OnInit {
 
   result: any = null;
 
-  constructor(private http: HttpClient, private tradingService: TradingDataService) {}
+  constructor(
+    private http: HttpClient,
+    private tradingService: TradingDataService,
+    private logger: LoggingService
+  ) {}
 
   ngOnInit(): void {
     this.tradingService.listStrategies().subscribe({
@@ -38,7 +43,7 @@ export class StrategyCalculationComponent implements OnInit {
         this.strategies = names;
       },
       error: (err) => {
-        console.error('Erreur lors du chargement des stratégies :', err);
+        this.logger.error('Erreur lors du chargement des stratégies :', err);
       }
     });
   }
@@ -59,11 +64,10 @@ export class StrategyCalculationComponent implements OnInit {
       )
       .subscribe({
       next: (response) => {
-        console.log('Résultat de la stratégie', response);
         this.result = response;
       },
       error: (error) => {
-        console.error('Erreur lors du calcul de stratégie :', error);
+        this.logger.error('Erreur lors du calcul de stratégie :', error);
       }
     });
   }
