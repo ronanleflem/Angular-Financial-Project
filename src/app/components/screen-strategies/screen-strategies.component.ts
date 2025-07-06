@@ -3,6 +3,7 @@ import {FormsModule} from '@angular/forms';
 import {DatePipe, DecimalPipe, NgForOf, NgIf, PercentPipe} from '@angular/common';
 import {Router} from '@angular/router';
 import {TradingDataService} from '../../services/trading-data.service';
+import { Strategy } from '../../models/strategy';
 import {Chart} from 'chart.js';
 
 @Component({
@@ -22,36 +23,14 @@ export class ScreenStrategiesComponent implements OnInit {
 
   symbols: string[] = []; // À remplir via une API si besoin
   selectedSymbol: string = '';
-  strategies: {
-    runId?: string,
-    name: string,
-    symbol?: string,
-    startDate?: Date,
-    endDate?: Date,
-    winningTrades?: number,
-    losingTrades?: number,
-    winRate?: number,
-    lossRate?: number,
-    totalReturn?: number,
-    maxDrawdown?: number,
-    averageRR?: number,
-    averageTrade?: number,
-    tradeCount?: number
-    averageTP?: number,
-    averageSL?: number,
-    comparedSymbol?: string
-    totalNetReturn?: number,
-    netWinCount?: number,
-    netLossCount?: number,
-    averageNetTrade?: number
-  }[] = [];
+  strategies: Strategy[] = [];
   isLoading: boolean = false;
 
   constructor(private router: Router, private tradingService: TradingDataService
     // private strategyService: StrategyService (à injecter pour le backend)
   ) { }
 
-  goToDetails(strategy: any) {
+  goToDetails(strategy: Strategy) {
     console.log('GO vers', strategy);
     this.router.navigate(
       ['/strategy-detail', strategy.name, strategy.runId, strategy.symbol, strategy.comparedSymbol],
@@ -99,7 +78,7 @@ export class ScreenStrategiesComponent implements OnInit {
     ];
 
     this.tradingService.getAllCalculatedStrategies().subscribe({
-      next: (backendData: any[]) => {
+      next: (backendData: Strategy[]) => {
         const formattedBackends = Array.isArray(backendData) ? backendData : [backendData];
         console.log(formattedBackends);
         const mapped = formattedBackends.map(s => {

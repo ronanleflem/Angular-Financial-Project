@@ -3,6 +3,7 @@ import { NgChartsModule } from 'ng2-charts';
 import { CommonModule } from '@angular/common';
 import { Chart, registerables } from 'chart.js';
 import { TradingDataService } from '../../services/trading-data.service';
+import { Candle } from '../../models/candle';
 import 'chartjs-chart-financial';
 import 'chartjs-adapter-date-fns';
 import zoomPlugin from 'chartjs-plugin-zoom';
@@ -19,7 +20,7 @@ import { FormsModule } from '@angular/forms';
 export class LiveDataComponent implements AfterViewInit, OnDestroy {
 
   chart: any;
-  candles: any[] = [];
+  candles: Candle[] = [];
 
   symbols = ['EURUSD', 'GBPUSD', 'USDJPY', 'NASDAQ', 'SP500'];
   timeframes = ['M1', 'M5', 'M15', 'M30', 'H1', 'H4', 'D1'];
@@ -128,8 +129,9 @@ export class LiveDataComponent implements AfterViewInit, OnDestroy {
 
   fetchLiveCandle() {
     // Appelle ton service pour récupérer la dernière bougie en live
-    this.tradingService.getLiveCandle(this.selectedSymbol, this.selectedTimeframe)
-      .subscribe(latestCandle => {
+    this.tradingService
+      .getLiveCandle(this.selectedSymbol, this.selectedTimeframe)
+      .subscribe((latestCandle: Candle) => {
 
         // ➡️ Si déjà une candle pour ce timestamp, on la met à jour
         const lastCandle = this.candles[this.candles.length - 1];

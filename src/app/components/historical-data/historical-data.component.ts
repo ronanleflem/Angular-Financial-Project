@@ -3,6 +3,7 @@ import { NgChartsModule } from 'ng2-charts';
 import { CommonModule } from '@angular/common';
 import { Chart, registerables} from 'chart.js';
 import { TradingDataService } from '../../services/trading-data.service';
+import { Candle } from '../../models/candle';
 import 'chartjs-chart-financial'; // ✅ Importe le plugin pour les chandeliers
 import 'chartjs-adapter-date-fns'; // ✅ Pour gérer les dates correctement
 import zoomPlugin from 'chartjs-plugin-zoom';
@@ -21,7 +22,7 @@ import { format } from 'date-fns';
 })
 export class HistoricalDataComponent implements AfterViewInit {
   chart: any;
-  candles: any[] = [];
+  candles: Candle[] = [];
   trades = [
     {
       entryDate: new Date('2024-02-08T14:15:00'),
@@ -63,7 +64,9 @@ export class HistoricalDataComponent implements AfterViewInit {
   }
 
   ngAfterViewInit() {
-    this.tradingService.getHistoricalCandlesTimeframeCME('EURUSD', 'M5', this.startDate, this.endDate).subscribe(data => {
+    this.tradingService
+      .getHistoricalCandlesTimeframeCME('EURUSD', 'M5', this.startDate, this.endDate)
+      .subscribe((data: Candle[]) => {
       console.log('Données reçues :', data); // ✅ Vérifie que les données arrivent bien
       console.log(Chart.getChart('candlestickChart')); // ✅ Devrait afficher `undefined` (normal)
       console.log(Chart.registry.controllers);
@@ -78,7 +81,14 @@ export class HistoricalDataComponent implements AfterViewInit {
   }
 
   loadData() {
-    this.tradingService.getHistoricalCandlesTimeframeCME(this.selectedSymbol, this.selectedTimeframe, this.startDate, this.endDate).subscribe(data => {
+    this.tradingService
+      .getHistoricalCandlesTimeframeCME(
+        this.selectedSymbol,
+        this.selectedTimeframe,
+        this.startDate,
+        this.endDate
+      )
+      .subscribe((data: Candle[]) => {
       console.log('Données reçues loadData :', data);
       this.candles = data;
       //console.log("Données utilisées :", this.candles.map(c => new Date(c.date).toUTCString()));

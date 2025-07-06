@@ -8,6 +8,8 @@ import {
   CandlestickController,
   CandlestickElement
 } from 'chartjs-chart-financial';
+import { Candle } from '../../models/candle';
+import { Trade } from '../../models/trade';
 
 @Component({
   selector: 'app-trade-candlestick-chart',
@@ -37,13 +39,14 @@ export class TradeCandlestickChartComponent implements OnChanges {
   }
 
   loadData(): void {
-    this.tradingService.getCandlesForTrade(this.tradeId, this.timeframe, this.symbol, this.comparedSymbol, 50, 50).subscribe(response => {
-      const { candles, trade, comparedCandles } = response as any;
+    this.tradingService
+      .getCandlesForTrade(this.tradeId, this.timeframe, this.symbol, this.comparedSymbol, 50, 50)
+      .subscribe(({ candles, trade, comparedCandles }: { candles: Candle[]; comparedCandles: Candle[]; trade: Trade }) => {
 
       // 🛡️ Validation des données
       const data = candles
-        .filter((c: any) => !isNaN(new Date(c.date).getTime()))
-        .map((c: any) => ({
+        .filter(c => !isNaN(new Date(c.date).getTime()))
+        .map(c => ({
           x: new Date(c.date).getTime(),
           o: c.open,
           h: c.high,
@@ -52,8 +55,8 @@ export class TradeCandlestickChartComponent implements OnChanges {
         }));
 
       const comparedData = (comparedCandles || [])
-        .filter((c: any) => !isNaN(new Date(c.date).getTime()))
-        .map((c: any) => ({
+        .filter(c => !isNaN(new Date(c.date).getTime()))
+        .map(c => ({
           x: new Date(c.date).getTime(),
           o: c.open,
           h: c.high,
@@ -86,7 +89,7 @@ export class TradeCandlestickChartComponent implements OnChanges {
     });
   }
 
-  renderChart(data: any[], trade: any, canvasId: string, annotate: boolean): void {
+  renderChart(data: any[], trade: Trade, canvasId: string, annotate: boolean): void {
     const canvas = document.getElementById(canvasId) as HTMLCanvasElement;
     const ctx = canvas?.getContext('2d');
     if (!data?.length || !trade || !canvas || !ctx) {

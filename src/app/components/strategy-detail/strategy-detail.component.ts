@@ -4,6 +4,8 @@ import {DatePipe, NgIf} from '@angular/common';
 import { CommonModule } from '@angular/common';
 import { TradingDataService } from '../../services/trading-data.service';
 import {TradeCandlestickChartComponent} from '../trade-candlestick-chart/trade-candlestick-chart.component';
+import { Strategy } from '../../models/strategy';
+import { Trade } from '../../models/trade';
 
 @Component({
   selector: 'app-strategy-detail',
@@ -19,8 +21,8 @@ import {TradeCandlestickChartComponent} from '../trade-candlestick-chart/trade-c
 })
 export class StrategyDetailComponent implements OnInit {
 
-  strategy: any;
-  trades: any[] = [];
+  strategy: Strategy | null = null;
+  trades: Trade[] = [];
   currentTradeIndex: number = 0;
   comparedSymbol: string = '';
   symbol: string = '';
@@ -89,8 +91,8 @@ export class StrategyDetailComponent implements OnInit {
     } else {
       this.strategy = { name: strategyName, symbol: this.symbol, comparedSymbol: this.comparedSymbol };
     }
-    this.tradingDataService.getTradesByStrategyName(strategyName!,runId!).subscribe({
-      next: (trades: any[] | null | undefined) => {
+    this.tradingDataService.getTradesByStrategyName(strategyName!, runId!).subscribe({
+      next: (trades: Trade[] | null | undefined) => {
         console.log("Avant le map",trades);
         const formattedTrades = Array.isArray(trades) ? trades.map(t => ({
           id: t.id,
@@ -118,7 +120,7 @@ export class StrategyDetailComponent implements OnInit {
     });
 
   }
-  getMockTrades(): any[] {
+  getMockTrades(): Trade[] {
     return [
       {
         id: 1,
@@ -161,7 +163,7 @@ export class StrategyDetailComponent implements OnInit {
     const diffMs = Math.abs(endDate.getTime() - startDate.getTime());
     return Math.floor(diffMs / (1000 * 60));
   }
-  get currentTrade() {
+  get currentTrade(): Trade {
     return this.trades[this.currentTradeIndex];
   }
 

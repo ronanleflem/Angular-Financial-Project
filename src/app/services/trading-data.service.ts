@@ -1,6 +1,9 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { Candle } from '../models/candle';
+import { Trade } from '../models/trade';
+import { Strategy } from '../models/strategy';
 
 @Injectable({
   providedIn: 'root'
@@ -10,49 +13,69 @@ export class TradingDataService {
 
   constructor(private http: HttpClient) {}
 
-  getCandlesForTrade(tradeId: number, timeframe: string, symbol: string, comparedSymbol: string, beforeCandles: number = 50, afterCandles: number = 50) {
-    return this.http.get<{ candles: any[], comparedCandles: any[], trade: any }>(`${this.apiUrl}/api/finance/charts/from-trade?tradeId=${tradeId}&timeframe=${timeframe}&symbol=${symbol}&comparedSymbol=${comparedSymbol}&beforeCandles=${beforeCandles}&afterCandles=${afterCandles}`);
+  getCandlesForTrade(
+    tradeId: number,
+    timeframe: string,
+    symbol: string,
+    comparedSymbol: string,
+    beforeCandles: number = 50,
+    afterCandles: number = 50
+  ): Observable<{ candles: Candle[]; comparedCandles: Candle[]; trade: Trade }> {
+    return this.http.get<{ candles: Candle[]; comparedCandles: Candle[]; trade: Trade }>(
+      `${this.apiUrl}/api/finance/charts/from-trade?tradeId=${tradeId}&timeframe=${timeframe}&symbol=${symbol}&comparedSymbol=${comparedSymbol}&beforeCandles=${beforeCandles}&afterCandles=${afterCandles}`
+    );
   }
-  getTradesByStrategyName(strategyName: string, runId: string): Observable<any[]> {
-    console.log("runId "+runId);
-    console.log("Strategy Name "+strategyName);
+
+  getTradesByStrategyName(strategyName: string, runId: string): Observable<Trade[]> {
+    console.log('runId ' + runId);
+    console.log('Strategy Name ' + strategyName);
     const url = `${this.apiUrl}/get-trades-strategy?strategyName=${strategyName}&runId=${runId}`;
-    return this.http.get<any[]>(url);
+    return this.http.get<Trade[]>(url);
   }
-  getHistoricalCandles(symbol: string, timeframe: string): Observable<any> {
-    return this.http.get(`${this.apiUrl}/api/finance/charts/candles?symbol=${symbol}&timeframe=${timeframe}`);
+  getHistoricalCandles(symbol: string, timeframe: string): Observable<Candle[]> {
+    return this.http.get<Candle[]>(`${this.apiUrl}/api/finance/charts/candles?symbol=${symbol}&timeframe=${timeframe}`);
   }
   // http://localhost:8092/rollover-volume/unified-candles?startDate=2010-06-10T00:00:00&endDate=2010-06-15T00:00:00
-  getHistoricalCandlesCME(symbol: string, timeframe: string, startDate: string, endDate: string): Observable<any> {
+  getHistoricalCandlesCME(
+    symbol: string,
+    timeframe: string,
+    startDate: string,
+    endDate: string
+  ): Observable<Candle[]> {
     const encodedStartDate = encodeURIComponent(startDate);
     const encodedEndDate = encodeURIComponent(endDate);
 
     const url = `${this.apiUrl}/rollover-volume/unified-candles?symbol=${symbol}&timeframe=${timeframe}&startDate=${encodedStartDate}&endDate=${encodedEndDate}`;
 
-    return this.http.get(url);
+    return this.http.get<Candle[]>(url);
   }
 
-  getHistoricalCandlesTimeframeCME(symbol: string, timeframe: string, startDate: string, endDate: string): Observable<any> {
+  getHistoricalCandlesTimeframeCME(
+    symbol: string,
+    timeframe: string,
+    startDate: string,
+    endDate: string
+  ): Observable<Candle[]> {
     const encodedStartDate = encodeURIComponent(startDate);
     const encodedEndDate = encodeURIComponent(endDate);
 
     const url = `${this.apiUrl}/api/finance/charts/candles/date-time?symbol=${symbol}&timeframe=${timeframe}&startDate=${encodedStartDate}&endDate=${encodedEndDate}`;
 
-    return this.http.get(url);
+    return this.http.get<Candle[]>(url);
   }
-  getAllCalculatedStrategies(){
+  getAllCalculatedStrategies(): Observable<Strategy[]> {
     const url = `${this.apiUrl}/all-strategies`;
-    return this.http.get<any>(url);
+    return this.http.get<Strategy[]>(url);
   }
 
   listStrategies(): Observable<string[]> {
     const url = `${this.apiUrl}/all-name-strategies`;
     return this.http.get<string[]>(url);
   }
-  getLiveCandle(symbol: string, timeframe: string) {
+  getLiveCandle(symbol: string, timeframe: string): Observable<Candle> {
     // Remplace par ton vrai endpoint en live si t'en as un !
     const url = `${this.apiUrl}/api/live-candle?symbol=${symbol}&timeframe=${timeframe}`;
-    return this.http.get<any>(url);
+    return this.http.get<Candle>(url);
   }
   getCalculationStrategy(strategyName: string,
                          symbol: string,
