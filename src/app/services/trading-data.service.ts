@@ -12,6 +12,8 @@ export class TradingDataService {
   constructor(private http: HttpClient) {}
 
   getCandlesForTrade(tradeId: number, timeframe: string, symbol: string, comparedSymbol: string, beforeCandles: number = 50, afterCandles: number = 50) {
+    console.log(symbol);
+    console.log(timeframe);
     return this.http.get<{ candles: any[], comparedCandles: any[], trade: any }>(`${this.apiUrl}/api/finance/charts/from-trade?tradeId=${tradeId}&timeframe=${timeframe}&symbol=${symbol}&comparedSymbol=${comparedSymbol}&beforeCandles=${beforeCandles}&afterCandles=${afterCandles}`);
   }
   getTradesByStrategyName(strategyName: string, runId: string): Observable<any[]> {

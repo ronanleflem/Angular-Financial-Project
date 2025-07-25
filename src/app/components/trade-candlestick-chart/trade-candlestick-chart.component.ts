@@ -18,7 +18,7 @@ import {
 })
 export class TradeCandlestickChartComponent implements OnChanges {
   @Input() tradeId!: number;
-  @Input() timeframe: string = '5min';
+  @Input() timeframe: string = '';
   @Input() symbol: string = '';
   @Input() comparedSymbol: string = '';
 

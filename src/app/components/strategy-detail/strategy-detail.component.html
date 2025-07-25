@@ -6,7 +6,7 @@
   <div class="chart-wrapper">
     <app-trade-candlestick-chart
       [tradeId]="currentTrade?.id"
-      [timeframe]="'5min'"
+      [timeframe]="strategy?.timeframe"
       [symbol]="strategy?.symbol"
       [comparedSymbol]="strategy?.comparedSymbol">
     </app-trade-candlestick-chart>

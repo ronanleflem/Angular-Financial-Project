@@ -126,6 +126,7 @@ export class ScreenStrategiesComponent implements OnInit {
             averageTP: s.averageTP,
             tradeCount: s.lossCount + s.winCount,
             symbol: s.symbol,
+            timeframe: s.timeframe,
             comparedSymbol: s.comparedSymbol,
             startDate: start,
             endDate: end,
