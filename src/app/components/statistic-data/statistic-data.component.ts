@@ -2,6 +2,8 @@ import { Component } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import {JsonPipe, NgForOf, NgIf} from '@angular/common';
 import {FormsModule} from '@angular/forms';
+import { Chart } from 'chart.js';
+import { NgChartsModule } from 'ng2-charts';
 
 @Component({
   selector: 'app-statistics',
@@ -10,7 +12,8 @@ import {FormsModule} from '@angular/forms';
     NgIf,
     JsonPipe,
     NgForOf,
-    FormsModule
+    FormsModule,
+    NgChartsModule
   ],
   styleUrls: ['./statistic-data.component.css']
 })
@@ -23,6 +26,7 @@ export class StatisticDataComponent {
   startDate: string = '';
   endDate: string = '';
   maxCandles: number = 1000;
+  chart: Chart | undefined;
 
   isLoading = false;
   statistics: any;
@@ -30,7 +34,7 @@ export class StatisticDataComponent {
   statisticFields: string[] = [];
 
   timeframes = ['1min', '5min', '15min', '30min', '1h', '4h', 'daily'];
-  symbols = ['EURUSD', 'NASDAQ', 'BTCUSD']; // exemple à remplir depuis API ou autre source
+  symbols = ['EURUSD', 'NASDAQ', 'BTCUSDT']; // exemple à remplir depuis API ou autre source
 
   analyses = [
     { label: 'Bullish/Bearish Multi Timeframes', value: 'bullish-bearish-multi' },
@@ -178,6 +182,7 @@ export class StatisticDataComponent {
         this.rawResponse = data;
         this.statistics = this.transformStatistics(data);
         this.isLoading = false;
+        this.renderChart();
       },
       error: (err) => {
         console.error(err);
@@ -200,5 +205,38 @@ export class StatisticDataComponent {
     return {
       [this.selectedTimeframes[0] || 'global']: data
     };
+  }
+
+  renderChart(): void {
+    const canvas = document.getElementById('statsChart') as HTMLCanvasElement;
+    if (!canvas) {
+      return;
+    }
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      return;
+    }
+
+    if (this.chart) {
+      this.chart.destroy();
+    }
+
+    const labels = this.statisticFields;
+    const datasets = this.selectedTimeframes.map(tf => ({
+      label: tf,
+      data: labels.map(stat => this.statistics[tf]?.[stat] ?? 0),
+      backgroundColor: 'rgba(75,192,192,0.6)'
+    }));
+
+    this.chart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets
+      },
+      options: {
+        responsive: true
+      }
+    });
   }
 }
