@@ -12,6 +12,10 @@ export const routes: Routes = [
   { path: 'strategy-calculation', component: StrategyCalculationComponent },
   { path: 'screen-strategies', component: ScreenStrategiesComponent },
   { path: 'strategy-detail/:name/:runId/:symbol/:comparedSymbol', component: StrategyDetailComponent },
-  { path: 'live-data', component: LiveDataComponent }
+  { path: 'live-data', component: LiveDataComponent },
+  {
+    path: '_lab/signals',
+    loadChildren: () => import('./labs/signals/signals.routes').then(m => m.SIGNALS_ROUTES)
+  }
   //{ path: '', redirectTo: '/historical-data', pathMatch: 'full' } // Redirection par défaut
 ];
