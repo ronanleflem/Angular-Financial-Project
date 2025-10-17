@@ -1,7 +1,7 @@
 <div>
   <label for="symbol">Symbol:</label>
   <select id="symbol" [(ngModel)]="selectedSymbol">
-    <option *ngFor="let symbol of symbols" [value]="symbol">{{ symbol }}</option>
+    <option *ngFor="let symbol of symbols" [value]="symbol.symbol">{{ symbol.symbol }}</option>
   </select>
 
   <label for="timeframe">Timeframe:</label>

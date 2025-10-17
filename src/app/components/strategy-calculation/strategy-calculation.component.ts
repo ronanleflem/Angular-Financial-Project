@@ -18,8 +18,8 @@ import {TradingDataService} from '../../services/trading-data.service';
 })
 export class StrategyCalculationComponent implements OnInit {
   strategies: string[] = [];
-  symbols: string[] = ['ES', 'NQ', 'YM', 'EURUSD', 'BTCUSDT']; // Exemples de symboles
-  comparedSymbols: string[] = ['ES', 'NQ', 'YM', 'EURUSD', 'BTCUSDT']; // Exemples de symboles
+  symbols: string[] = ['ES', 'NQ', 'YM', 'EURUSD', 'BTCUSDT', 'APTUSDT']; // Exemples de symboles
+  comparedSymbols: string[] = ['ES', 'NQ', 'YM', 'EURUSD', 'BTCUSDT', 'APTUSDT']; // Exemples de symboles
   timeframes: string[] = ['1min', '5min', '15min', '1h'];
   selectedStrategy: string = '';
   selectedSymbol: string = '';

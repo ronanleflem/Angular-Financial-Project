@@ -3,6 +3,13 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 
+export interface SymbolDTO {
+  id: string;
+  symbol: string;
+  name: string;
+  market: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -21,6 +28,9 @@ export class TradingDataService {
     console.log("Strategy Name "+strategyName);
     const url = `${this.apiUrl}/get-trades-strategy?strategyName=${strategyName}&runId=${runId}`;
     return this.http.get<any[]>(url);
+  }
+  getSymbols(): Observable<SymbolDTO[]> {
+    return this.http.get<SymbolDTO[]>(`${this.apiUrl}/api/finance/symbols`);
   }
   getHistoricalCandles(symbol: string, timeframe: string): Observable<any> {
     return this.http.get(`${this.apiUrl}/api/finance/charts/candles?symbol=${symbol}&timeframe=${timeframe}`);

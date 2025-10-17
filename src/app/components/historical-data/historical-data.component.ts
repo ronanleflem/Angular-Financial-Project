@@ -1,4 +1,4 @@
-import { Component, AfterViewInit } from '@angular/core';
+import { Component, OnInit, AfterViewInit } from '@angular/core';
 import { NgChartsModule } from 'ng2-charts';
 import { CommonModule } from '@angular/common';
 import { Chart, registerables} from 'chart.js';
@@ -19,7 +19,7 @@ import { format } from 'date-fns';
   templateUrl: './historical-data.component.html',
   styleUrl: './historical-data.component.css'
 })
-export class HistoricalDataComponent implements AfterViewInit {
+export class HistoricalDataComponent implements OnInit, AfterViewInit {
   chart: any;
   candles: any[] = [];
   trades = [
@@ -45,7 +45,8 @@ export class HistoricalDataComponent implements AfterViewInit {
 
 
   // Liste des symboles et timeframes disponibles
-  symbols = ['EURUSD', 'GBPUSD', 'USDJPY', 'NASDAQ', 'SP500', 'BTCUSDT'];
+  //symbols = ['EURUSD', 'GBPUSD', 'USDJPY', 'NASDAQ', 'SP500', 'BTCUSDT'];
+  symbols: { id: string; symbol: string; name: string; market: string }[] = [];
   timeframes = ['1min', '5min', '15min','30min', '1h', '4h', 'daily'];
   //timeframes = ['M1', 'M5', 'M15','M30', 'H1', 'H4', 'D1'];
 
@@ -53,7 +54,7 @@ export class HistoricalDataComponent implements AfterViewInit {
   endDate: string = '';
 
   // Symbol et timeframe sélectionnés
-  selectedSymbol = 'EURUSD';
+  selectedSymbol = '';
   selectedTimeframe = 'M15';
 
   isForex = true;
@@ -62,7 +63,19 @@ export class HistoricalDataComponent implements AfterViewInit {
     Chart.register(...registerables, CandlestickElement, OhlcController, CandlestickController, zoomPlugin, annotationPlugin);
   }
 
+  ngOnInit() {
+        this.tradingService.getSymbols().subscribe(list => {
+            this.symbols = list ?? [];
+              if (!this.selectedSymbol && this.symbols.length) {
+                this.selectedSymbol = this.symbols[0].symbol;
+              }
+              this.loadData();
+          });
+    }
+
+
   ngAfterViewInit() {
+    /*
     this.tradingService.getHistoricalCandlesTimeframeCME('EURUSD', 'M5', this.startDate, this.endDate).subscribe(data => {
       console.log('Données reçues :', data); // ✅ Vérifie que les données arrivent bien
       console.log(Chart.getChart('candlestickChart')); // ✅ Devrait afficher `undefined` (normal)
@@ -74,7 +87,7 @@ export class HistoricalDataComponent implements AfterViewInit {
       console.log("Annotations générées :", annotations);
 
       this.chart.update();
-    });
+    });*/
   }
 
   loadData() {
@@ -152,7 +165,7 @@ export class HistoricalDataComponent implements AfterViewInit {
       data: {
         datasets: [
           {
-            label: 'EUR/USD - '+this.selectedTimeframe,
+            label: (this.selectedSymbol || '—') + ' - ' + this.selectedTimeframe,
             data: this.candles.map(c => ({
               x: new Date(c.date).getTime(),
               o: c.open,
