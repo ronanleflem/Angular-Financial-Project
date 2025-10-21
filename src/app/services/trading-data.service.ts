@@ -1,7 +1,9 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { Observable, Subject, concat, interval } from 'rxjs';
+import { map, shareReplay, switchMap, takeUntil } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
+import { HistBar, toEpochMs as histToEpochMs, toFinancialPoint as histToFinancialPoint } from '../models/hist-bar.model';
 
 export interface SymbolDTO {
   id: string;
@@ -17,6 +19,88 @@ export class TradingDataService {
   private apiUrl = environment.apiUrl;
 
   constructor(private http: HttpClient) {}
+
+  // --- IBKR status / connect (optionnel mais utile) ---
+  ibkrStatus(): Observable<{ connected: boolean }> {
+    return this.http.get<{ connected: boolean }>(`${this.apiUrl}/ibkr/status`);
+  }
+
+  ibkrConnectWait(host = '127.0.0.1', port = 7497, clientId = 1, timeoutMs = 3000): Observable<any> {
+    const params = new HttpParams()
+      .set('host', host)
+      .set('port', port)
+      .set('clientId', clientId)
+      .set('timeoutMs', timeoutMs);
+    return this.http.post(`${this.apiUrl}/ibkr/connect/wait`, null, { params });
+  }
+
+  // --- Start/Stop bars ---
+  ibkrStartLiveBars(opts: {
+    pair: string; duration?: string; barSize?: string; what?: string; rth?: number; formatDate?: number;
+  }): Observable<{ reqId: number }> {
+    const params = new HttpParams()
+      .set('pair', opts.pair)
+      .set('duration', opts.duration ?? '1 D')
+      .set('barSize', opts.barSize ?? '1 min')
+      .set('what', opts.what ?? 'MIDPOINT')
+      .set('rth', String(opts.rth ?? 0))
+      .set('formatDate', String(opts.formatDate ?? 2));
+    return this.http.post<{ reqId: number }>(`${this.apiUrl}/ibkr/live/bars/start`, null, { params });
+  }
+
+  ibkrStopLiveBars(reqId: number): Observable<{ stopped: boolean }> {
+    return this.http.post<{ stopped: boolean }>(`${this.apiUrl}/ibkr/live/bars/stop/${reqId}`, null);
+  }
+
+  // --- Bootstrap & updates ---
+  ibkrRecentLiveBars(reqId: number): Observable<HistBar[]> {
+    return this.http.get<HistBar[]>(`${this.apiUrl}/ibkr/live/bars/${reqId}`);
+  }
+
+  ibkrGetLastLiveBar(reqId: number): Observable<HistBar> {
+    return this.http.get<HistBar>(`${this.apiUrl}/ibkr/live/bars/${reqId}/last`);
+  }
+
+  streamIbkrBars(params: {
+    pair: string; duration?: string; barSize?: string; pollMs?: number;
+  }, stop$: Subject<void>): Observable<
+    | { reqId: number; mode: 'bootstrap'; bars: HistBar[] }
+    | { reqId: number; mode: 'update'; bar: HistBar }
+  > {
+    const pollMs = params.pollMs ?? 1000;
+
+    return this.ibkrStartLiveBars({
+      pair: params.pair,
+      duration: params.duration,
+      barSize: params.barSize
+    }).pipe(
+      switchMap(({ reqId }) => {
+        const bootstrap$ = this.ibkrRecentLiveBars(reqId).pipe(
+          map(list => ({
+            reqId,
+            mode: 'bootstrap' as const,
+            bars: [...list].sort((a, b) => histToEpochMs(a.time) - histToEpochMs(b.time))
+          })),
+          takeUntil(stop$)
+        );
+
+        const updates$ = interval(pollMs).pipe(
+          takeUntil(stop$),
+          switchMap(() => this.ibkrGetLastLiveBar(reqId)),
+          map(bar => ({ reqId, mode: 'update' as const, bar }))
+        );
+
+        return concat(bootstrap$, updates$).pipe(
+          takeUntil(stop$),
+          shareReplay({ bufferSize: 1, refCount: true })
+        );
+      }),
+      shareReplay({ bufferSize: 1, refCount: true })
+    );
+  }
+
+  toFinancialPoint = histToFinancialPoint;
+  toEpochMs = histToEpochMs;
 
   getCandlesForTrade(tradeId: number, timeframe: string, symbol: string, comparedSymbol: string, beforeCandles: number = 50, afterCandles: number = 50) {
     console.log(symbol);
