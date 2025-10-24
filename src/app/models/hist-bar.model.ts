@@ -24,5 +24,5 @@ export function toEpochMs(t: number | string): number {
 
 export function toFinancialPoint(b: HistBar) {
   const ts = toEpochMs(b.time);
-  return { t: new Date(ts), o: b.open, h: b.high, l: b.low, c: b.close };
+  return { x: new Date(ts), o: b.open, h: b.high, l: b.low, c: b.close };
 }
