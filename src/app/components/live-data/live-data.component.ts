@@ -4,439 +4,445 @@ import {
   Component,
   ElementRef,
   OnDestroy,
+  OnInit,
   QueryList,
   ViewChildren
 } from '@angular/core';
-import { tap } from 'rxjs/operators';
-import { FormsModule } from '@angular/forms';
-import { Subject, Subscription, of } from 'rxjs';
-import { switchMap } from 'rxjs/operators';
+import {
+  FormControl,
+  FormGroup,
+  NonNullableFormBuilder,
+  ReactiveFormsModule,
+  Validators
+} from '@angular/forms';
+import {
+  Subject,
+  Subscription,
+  combineLatest,
+  interval,
+  of
+} from 'rxjs';
+import {
+  catchError,
+  finalize,
+  startWith,
+  switchMap,
+  takeUntil
+} from 'rxjs/operators';
+import { MarketDataService } from '../../services/market-data.service';
+import { HistBar, TradeView } from '../../models/trading.models';
 import { Chart, ChartConfiguration, registerables } from 'chart.js';
 import 'chartjs-chart-financial';
 import 'chartjs-adapter-date-fns';
-import zoomPlugin from 'chartjs-plugin-zoom';
-import { CandlestickController, CandlestickElement, OhlcController, OhlcElement } from 'chartjs-chart-financial';
-import { TradingDataService } from '../../services/trading-data.service';
+import {
+  CandlestickController,
+  CandlestickElement,
+  OhlcController,
+  OhlcElement
+} from 'chartjs-chart-financial';
 
 Chart.register(
   ...registerables,
   CandlestickController,
   CandlestickElement,
   OhlcController,
-  OhlcElement,
-  zoomPlugin
+  OhlcElement
 );
 
-interface LiveChartPanel {
-  id: number;
-  provider: string;
-  pair: string;
-  duration: string;
-  barSize: string;
-  pollMs: number;
-  chart?: Chart<'candlestick'>;
-  stop$?: Subject<void>;
-  sub?: Subscription;
-  connectSub?: Subscription;
-  reqId?: number;
-  isRunning: boolean;
+const ALLOWED_BAR_SIZES: string[] = [
+  '1 sec',
+  '5 secs',
+  '10 secs',
+  '15 secs',
+  '30 secs',
+  '1 min',
+  '2 mins',
+  '3 mins',
+  '5 mins',
+  '10 mins',
+  '15 mins',
+  '20 mins',
+  '30 mins',
+  '1 hour',
+  '2 hours',
+  '3 hours',
+  '4 hours',
+  '8 hours',
+  '1 day',
+  '1W',
+  '1M'
+];
+
+type ControlFormGroup = FormGroup<{
+  broker: FormControl<string>;
+  pair: FormControl<string>;
+  barSize: FormControl<string>;
+  duration: FormControl<string>;
+  what: FormControl<string>;
+  rth: FormControl<boolean>;
+}>;
+
+interface ControlPanelState {
+  form: ControlFormGroup;
+  reqId: number | null;
+  bars: HistBar[];
+  starting: boolean;
+  stopping: boolean;
+  barsPollingSub?: Subscription;
 }
-type LiveStreamEvent =
-  | { mode: 'bootstrap'; reqId: number; bars: any[] }
-  | { mode: 'update';   reqId: number; bar: any };
+
+const PANEL_COUNT = 2;
+
 @Component({
   standalone: true,
   selector: 'app-live-data',
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, ReactiveFormsModule],
   templateUrl: './live-data.component.html',
-  styleUrls: ['./live-data.component.css']
+  styleUrls: ['./live-data.component.scss']
 })
-export class LiveDataComponent implements AfterViewInit, OnDestroy {
-  @ViewChildren('liveCanvas') liveCanvasRefs!: QueryList<ElementRef<HTMLCanvasElement>>;
+export class LiveDataComponent implements OnInit, AfterViewInit, OnDestroy {
+  @ViewChildren('chartCanvas') chartCanvasRefs!: QueryList<ElementRef<HTMLCanvasElement>>;
 
-  readonly barSizeOptions = [
-    { value: '1 min', label: '1 minute', timeUnit: 'minute' as const },
-    { value: '5 mins', label: '5 minutes', timeUnit: 'minute' as const },
-    { value: '15 mins', label: '15 minutes', timeUnit: 'minute' as const },
-    { value: '1 hour', label: '1 hour', timeUnit: 'hour' as const },
-    { value: '4 hours', label: '4 hours', timeUnit: 'hour' as const },
-    { value: '1 day', label: '1 day', timeUnit: 'day' as const }
-  ];
+  readonly brokerOptions = ['IBKR'];
+  readonly barSizeOptions = ALLOWED_BAR_SIZES;
+  readonly durationOptions = ['1 D', '1 W', '1 M'];
+  readonly whatOptions = ['MIDPOINT', 'BID_ASK'];
 
-  readonly dataProviders = [
-    { value: 'ibkr', label: 'IBKR' }
-  ];
+  readonly panels: ControlPanelState[];
 
-  private canvasChangesSub?: Subscription;
+  connected = false;
+  connecting = false;
+  settingMarketDataType = false;
+  snackbarVisible = false;
+  snackbarMessage = '';
 
-  readonly panels: LiveChartPanel[] = [
-    {
-      id: 1,
-      provider: this.dataProviders[0].value,
-      pair: 'EURUSD',
-      duration: '1 D',
-      barSize: this.barSizeOptions[0].value,
-      pollMs: 1000,
-      isRunning: false
-    },
-    {
-      id: 2,
-      provider: this.dataProviders[0].value,
-      pair: 'GBPUSD',
-      duration: '1 D',
-      barSize: this.barSizeOptions[2].value,
-      pollMs: 1000,
-      isRunning: false
-    }
-  ];
+  trades: TradeView[] = [];
 
-  constructor(private readonly data: TradingDataService) {}
+  private readonly destroy$ = new Subject<void>();
+  private charts: Chart<'candlestick'>[] = [];
+  private snackbarTimeoutHandle?: ReturnType<typeof setTimeout>;
+
+  constructor(
+    private readonly fb: NonNullableFormBuilder,
+    private readonly marketData: MarketDataService
+  ) {
+    this.panels = Array.from({ length: PANEL_COUNT }, () => ({
+      form: this.createControlForm(),
+      reqId: null,
+      bars: [],
+      starting: false,
+      stopping: false
+    }));
+  }
+
+  ngOnInit(): void {
+    this.startTradesPolling();
+  }
 
   ngAfterViewInit(): void {
     this.initializeCharts();
-    this.canvasChangesSub = this.liveCanvasRefs.changes.subscribe(() => this.initializeCharts());
+    this.chartCanvasRefs.changes.pipe(takeUntil(this.destroy$)).subscribe(() => this.initializeCharts());
+  }
+
+  connectAndWait(): void {
+    this.connecting = true;
+    this.marketData
+      .connectWait()
+      .pipe(
+        finalize(() => {
+          this.connecting = false;
+        })
+      )
+      .subscribe({
+        next: response => {
+          this.connected = !!response?.connected;
+          this.showSnackbar(this.connected ? 'Connected to IBKR' : 'Connection failed');
+        },
+        error: err => {
+          this.connected = false;
+          this.handleError('Unable to connect to IBKR', err);
+        }
+      });
+  }
+
+  setMarketDataTypeDelayed(): void {
+    this.settingMarketDataType = true;
+    this.marketData
+      .setMarketDataType(3)
+      .pipe(
+        finalize(() => {
+          this.settingMarketDataType = false;
+        })
+      )
+      .subscribe({
+        next: () => this.showSnackbar('Market data type set to 3 (Delayed)'),
+        error: err => this.handleError('Failed to set market data type', err)
+      });
+  }
+
+  startLiveBars(panelIndex: number): void {
+    if (!this.connected) {
+      this.showSnackbar('Connect to the broker before starting live bars.');
+      return;
+    }
+
+    const panel = this.panels[panelIndex];
+
+    if (panel.form.invalid) {
+      panel.form.markAllAsTouched();
+      this.showSnackbar('Please fill the required fields.');
+      return;
+    }
+
+    const { pair, duration, barSize, what, rth } = panel.form.getRawValue();
+
+    this.stopActiveStreamSilently(panelIndex);
+    panel.starting = true;
+    panel.bars = [];
+    this.updateCharts();
+
+    this.marketData
+      .startLiveBars(pair, duration, barSize, what, rth ? 1 : 0)
+      .pipe(
+        finalize(() => {
+          panel.starting = false;
+        })
+      )
+      .subscribe({
+        next: response => {
+          panel.reqId = response.reqId;
+          this.showSnackbar(`Live bars started (reqId ${response.reqId})`);
+          this.startBarsPolling(panelIndex, response.reqId);
+        },
+        error: err => this.handleError('Failed to start live bars', err)
+      });
+  }
+
+  stopLiveBars(panelIndex: number): void {
+    const panel = this.panels[panelIndex];
+    if (panel.reqId == null) {
+      return;
+    }
+
+    const currentReqId = panel.reqId;
+    panel.stopping = true;
+    this.stopBarsPolling(panelIndex);
+
+    this.marketData
+      .stopLiveBars(currentReqId)
+      .pipe(
+        finalize(() => {
+          panel.stopping = false;
+          panel.reqId = null;
+          panel.bars = [];
+          this.updateCharts();
+        })
+      )
+      .subscribe({
+        next: () => {
+          this.showSnackbar(`Live bars stopped (reqId ${currentReqId})`);
+        },
+        error: err => this.handleError('Failed to stop live bars', err)
+      });
+  }
+
+  trackTradeBy(index: number, trade: TradeView): string {
+    return `${trade.broker}-${trade.account}-${trade.symbol}-${index}`;
+  }
+
+  displayValue(value: string | number | null | undefined): string | number {
+    return value === null || value === undefined || value === '' ? '—' : value;
   }
 
   ngOnDestroy(): void {
-    this.canvasChangesSub?.unsubscribe();
-    this.panels.forEach(panel => {
-      this.stop(panel, { skipStopRequest: true });
-      panel.chart?.destroy();
+    this.destroy$.next();
+    this.destroy$.complete();
+    this.panels.forEach((_, index) => {
+      this.stopActiveStreamSilently(index);
+      this.stopBarsPolling(index);
     });
-  }
-  private log(panel: LiveChartPanel, msg: string, extra?: any) {
-    const tag = `[LiveData p#${panel.id}]`;
-    if (extra !== undefined) {
-      console.log(`${tag} ${msg}`, extra);
-    } else {
-      console.log(`${tag} ${msg}`);
+    this.destroyCharts();
+    if (this.snackbarTimeoutHandle) {
+      clearTimeout(this.snackbarTimeoutHandle);
     }
   }
-  start(panel: LiveChartPanel): void {
-    if (panel.isRunning) return;
-    this.log(panel, 'START clicked');
-    panel.isRunning = true;
-    panel.stop$ = new Subject<void>();
-    const stop$ = panel.stop$; // ref non nulle
 
-    panel.reqId = undefined;
-    this.resetDataset(panel);
-    this.log(panel, 'Dataset reset; checking IBKR status');
+  private startTradesPolling(): void {
+    const primaryBrokerControl = this.panels[0].form.controls.broker;
 
-    panel.connectSub?.unsubscribe();
-    panel.connectSub = this.data.ibkrStatus().pipe(
-      tap(s => this.log(panel, `ibkrStatus: connected=${s?.connected}`)),
-      switchMap(status => (status?.connected ? of(status) : this.data.ibkrConnectWait().pipe(
-        tap(() => this.log(panel, 'ibkrConnectWait done'))
-      )))
-    ).subscribe({
-      next: () => {
-        this.log(panel, `Provider=${panel.provider}, Pair=${panel.pair}, TF=${panel.barSize}`);
-        if (panel.provider !== 'ibkr') {
-          console.warn(`Provider "${panel.provider}" not supported yet.`);
-          this.log(panel, `Provider "${panel.provider}" not supported → stop`);
-          this.stop(panel);
-          return;
-        }
-
-        const selectedPair = panel.pair.trim();
-        if (!selectedPair) {
-          console.warn('Please provide a market symbol before starting the live stream.');
-          this.log(panel, 'No market symbol provided → stop');
-          this.stop(panel);
-          return;
-        }
-
-        this.log(panel, 'Calling streamIbkrBars()...');
-        panel.sub = this.data
-          .streamIbkrBars(
-            { pair: selectedPair, duration: panel.duration, barSize: panel.barSize, pollMs: panel.pollMs },
-            stop$
-          ).pipe(
-            tap(ev => this.log(panel, `stream event: ${ev.mode}`, ev))
+    combineLatest([
+      primaryBrokerControl.valueChanges.pipe(startWith(primaryBrokerControl.value)),
+      interval(5000).pipe(startWith(0))
+    ])
+      .pipe(
+        takeUntil(this.destroy$),
+        switchMap(([broker]) =>
+          this.marketData.listTrades(broker).pipe(
+            catchError(err => {
+              this.handleError('Failed to load open trades', err);
+              return of<TradeView[]>([]);
+            })
           )
-          .subscribe({
-            next: (event: LiveStreamEvent) => {
-              if (!panel.reqId){
-                panel.reqId = event.reqId;
-                this.log(panel, `reqId set: ${panel.reqId}`);
-              }
-
-              if (event.mode === 'bootstrap' && (event as any).bars?.length) {
-                const bars = (event as any).bars as any[];
-                this.log(panel, `bootstrap received: ${bars.length} bars`);
-                const intervalMs = this.getIntervalMs(panel.barSize);
-                const dataset = this.ensureDataset(panel);
-
-                dataset.data = bars
-                  .map(b => {
-                    const ts = this.data.toEpochMs(b.time);
-                    const bucket = this.floorToBucket(ts, intervalMs);
-                    const p = this.data.toFinancialPoint(b); // { x, o,h,l,c }
-                    return { x: new Date(bucket), o: p.o, h: p.h, l: p.l, c: p.c }; // <-- x
-                  })
-                  .sort((a: any, b: any) => new Date(a.x).getTime() - new Date(b.x).getTime()) // <-- x
-                  .reduce((acc: any[], cur: any) => {
-                    const last = acc.at(-1);
-                    if (last && new Date(last.x).getTime() === new Date(cur.x).getTime()) { // <-- x
-                      last.h = Math.max(last.h, cur.h);
-                      last.l = Math.min(last.l, cur.l);
-                      last.c = cur.c;
-                      return acc;
-                    }
-                    acc.push(cur);
-                    return acc;
-                  }, []);
-
-                this.updateDatasetMeta(panel);
-                panel.chart?.update('none');
-              }
-              else if (event.mode === 'update' && (event as any).bar) {
-                this.log(panel, 'update received → upsertLast()');
-                this.upsertLast(panel, (event as any).bar);  // <-- ajoute la bougie live
-              }
-            },
-            error: (err) => {
-              this.log(panel, 'Live stream error', err);
-              console.error('Live stream error', err);
-              this.stop(panel);
-            }
-          });
-      },
-      error: (err) => {
-        this.log(panel, 'IBKR connect/status failed', err);
-        console.error('IBKR connect/status failed', err);
-        this.stop(panel);
-      }
-    });
-  }
-
-  stop(panel: LiveChartPanel, options: { skipStopRequest?: boolean } = {}): void {
-    if (panel.stop$ && !panel.stop$.closed) {
-      panel.stop$.next();
-      panel.stop$.complete();
-    }
-
-    panel.stop$ = undefined;
-
-    panel.sub?.unsubscribe();
-    panel.sub = undefined;
-
-    panel.connectSub?.unsubscribe();
-    panel.connectSub = undefined;
-
-    const currentReqId = panel.reqId;
-    panel.reqId = undefined;
-
-    if (!options.skipStopRequest && currentReqId != null) {
-      this.data.ibkrStopLiveBars(currentReqId).subscribe({
-        error: (err) => {
-          console.error('Error stopping IBKR stream', err);
-        }
+        )
+      )
+      .subscribe(trades => {
+        this.trades = trades;
       });
-    }
-
-    panel.isRunning = false;
   }
 
-  onPairChange(panel: LiveChartPanel): void {
-    if (!panel.isRunning) {
-      this.updateDatasetMeta(panel);
-    }
+  private startBarsPolling(panelIndex: number, reqId: number): void {
+    const panel = this.panels[panelIndex];
+    this.stopBarsPolling(panelIndex);
+    panel.barsPollingSub = interval(2000)
+      .pipe(
+        startWith(0),
+        takeUntil(this.destroy$),
+        switchMap(() =>
+          this.marketData.getLiveBars(reqId).pipe(
+            catchError(err => {
+              this.handleError('Failed to fetch live bars', err);
+              return of<HistBar[]>([]);
+            })
+          )
+        )
+      )
+      .subscribe(bars => {
+        if (panel.reqId !== reqId) {
+          return;
+        }
+
+        panel.bars = [...bars]
+          .filter(bar => !!bar && typeof bar.tsMillis === 'number')
+          .sort((a, b) => a.tsMillis - b.tsMillis)
+          .slice(-500);
+        this.updateCharts();
+      });
   }
 
-  onProviderChange(panel: LiveChartPanel): void {
-    if (!panel.isRunning) {
-      this.updateDatasetMeta(panel);
-    }
-  }
-
-  onBarSizeChange(panel: LiveChartPanel): void {
-    if (!panel.isRunning) {
-      this.updateDatasetMeta(panel);
-    }
-    this.updateTimeScale(panel);
-  }
-
-  trackPanelById(_index: number, panel: LiveChartPanel): number {
-    return panel.id;
+  private stopBarsPolling(panelIndex: number): void {
+    const panel = this.panels[panelIndex];
+    panel.barsPollingSub?.unsubscribe();
+    panel.barsPollingSub = undefined;
   }
 
   private initializeCharts(): void {
-    this.panels.forEach((panel, index) => {
-      if (!panel.chart) {
-        const canvas = this.liveCanvasRefs.get(index);
-        if (canvas) {
-          this.initChartForPanel(panel, canvas.nativeElement);
-        }
+    this.destroyCharts();
+    this.chartCanvasRefs.forEach((ref, index) => {
+      const ctx = ref.nativeElement.getContext('2d');
+      if (!ctx) {
+        return;
       }
+      const chart = new Chart(ctx, this.buildChartConfig(index));
+      this.charts.push(chart);
     });
+    this.updateCharts();
   }
 
-  private initChartForPanel(panel: LiveChartPanel, canvas: HTMLCanvasElement): void {
-    const ctx = canvas.getContext('2d');
-    if (!ctx) {
-      throw new Error('Unable to acquire chart context');
-    }
-
-    panel.chart = new Chart(ctx, this.buildConfig(panel));
-    this.updateTimeScale(panel);
-  }
-
-  private buildConfig(panel: LiveChartPanel): ChartConfiguration<'candlestick'> {
-    const barSizeMeta = this.getSelectedBarSizeMeta(panel.barSize);
+  private buildChartConfig(index: number): ChartConfiguration<'candlestick'> {
     return {
       type: 'candlestick',
       data: {
-        datasets: [{
-          label: this.buildDatasetLabel(panel),
-          data: [],
-          // Empêche tout débordement hors chartArea
-          clip: 0,
-          // Contraint la largeur des chandeliers (casting car les d.ts de Chart n’ont pas ces props)
-          barThickness: 1 as any,
-          maxBarThickness: 10 as any,
-          borderWidth: 1 as any
-        } as any] // ← casting pour calmer TS sur les props spécifiques au plugin
+        datasets: [
+          {
+            label: index === 0 ? 'Live Bars' : 'Live Bars (zoomed)',
+            data: [],
+            borderWidth: 1 as any,
+            barThickness: 4 as any,
+            maxBarThickness: 12 as any
+          } as any
+        ]
       },
       options: {
         responsive: true,
-        resizeDelay: 100,
-        normalized: true,
-        parsing: false,
-        animation: false,
         maintainAspectRatio: false,
-        layout: { padding: { right: 0 } },
+        animation: false,
+        parsing: false,
         scales: {
           x: {
             type: 'time',
-            time: { unit: barSizeMeta?.timeUnit ?? 'minute' },
-            offset: true,         // espace aux extrémités pour éviter de coller le bord droit
-            bounds: 'ticks',
-            ticks: { maxRotation: 0, autoSkip: true }
+            time: {
+              unit: 'minute'
+            },
+            ticks: {
+              source: 'auto'
+            }
           },
-          y: { beginAtZero: false }
-        },
-        plugins: {
-          legend: { display: true },
-          zoom: {
-            pan: { enabled: true, mode: 'x' },
-            zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' }
+          y: {
+            beginAtZero: false
           }
         }
-        // ❌ supprime entièrement "elements: { candlestick: ... }"
-        // // devicePixelRatio: 1, // (optionnel, seulement si artefacts persistants)
       }
     };
   }
 
-
-  private ensureDataset(panel: LiveChartPanel) {
-    if (!panel.chart) {
-      throw new Error('Chart not initialised for panel');
-    }
-    const dataset = panel.chart.data.datasets[0] as any;
-    if (!Array.isArray(dataset.data)) {
-      dataset.data = [];
-    }
-    return dataset;
-  }
-
-  private resetDataset(panel: LiveChartPanel): void {
-    if (!panel.chart) {
+  private updateCharts(): void {
+    if (!this.charts.length) {
       return;
     }
-    const dataset = this.ensureDataset(panel);
-    dataset.data = [];
-    this.updateDatasetMeta(panel);
-    this.updateTimeScale(panel);
+
+    this.charts.forEach((chart, index) => {
+      const panel = this.panels[index];
+      const dataset = panel.bars.map(bar => ({
+        x: new Date(bar.tsMillis),
+        o: bar.open,
+        h: bar.high,
+        l: bar.low,
+        c: bar.close
+      }));
+
+      const [firstDataset] = chart.data.datasets;
+      if (firstDataset) {
+        firstDataset.data = dataset as any;
+      }
+      chart.update('none');
+    });
   }
 
-  private upsertLast(
-    panel: LiveChartPanel,
-    bar: { time: number | string; open: number; high: number; low: number; close: number }
-  ): void {
-    const dataset = this.ensureDataset(panel);
-    const intervalMs = this.getIntervalMs(panel.barSize);
-
-    const nextPoint = this.data.toFinancialPoint(bar);       // { x, o,h,l,c }
-    const nextTs = this.data.toEpochMs(bar.time);
-    const nextBucket = this.floorToBucket(nextTs, intervalMs);
-
-    const last = dataset.data.at(-1);
-    const lastTs = last ? new Date(last.x).getTime() : undefined;   // <-- x
-    const lastBucket = lastTs != null ? this.floorToBucket(lastTs, intervalMs) : undefined;
-
-    if (last && lastBucket === nextBucket) {
-      last.h = Math.max(last.h, nextPoint.h);
-      last.l = Math.min(last.l, nextPoint.l);
-      last.c = nextPoint.c;
-    } else {
-      // ignore out-of-order
-      if (lastBucket != null && nextBucket < lastBucket) return;
-
-      dataset.data.push({
-        x: new Date(nextBucket), o: nextPoint.o, h: nextPoint.h, l: nextPoint.l, c: nextPoint.c
-      });
-      this.log(panel, `dataset size=${(dataset.data as any[]).length}`);
-      if (dataset.data.length > 500) dataset.data.shift();
-    }
-
-    panel.chart?.update('none');
+  private destroyCharts(): void {
+    this.charts.forEach(chart => chart.destroy());
+    this.charts = [];
   }
 
-  private updateDatasetMeta(panel: LiveChartPanel): void {
-    if (!panel.chart) {
+  private stopActiveStreamSilently(panelIndex: number): void {
+    const panel = this.panels[panelIndex];
+    if (panel.reqId == null) {
       return;
     }
-    const dataset = this.ensureDataset(panel);
-    dataset.label = this.buildDatasetLabel(panel);
-    panel.chart.update('none');
+    const activeReqId = panel.reqId;
+    panel.reqId = null;
+    panel.bars = [];
+    this.stopBarsPolling(panelIndex);
+    this.marketData
+      .stopLiveBars(activeReqId)
+      .pipe(catchError(() => of(null)))
+      .subscribe();
   }
 
-  private buildDatasetLabel(panel: LiveChartPanel): string {
-    const barSizeLabel = this.getSelectedBarSizeMeta(panel.barSize)?.label ?? panel.barSize;
-    const providerLabel = this.getProviderLabel(panel.provider);
-    return `${panel.pair.trim() || '—'} · ${barSizeLabel}${providerLabel ? ` · ${providerLabel}` : ''}`;
+  private handleError(message: string, error: unknown): void {
+    console.error(message, error);
+    this.showSnackbar(message);
   }
 
-  /** Convertit "1 min" | "5 mins" | "15 mins" | "1 hour" | "4 hours" | "1 day" => intervalle en ms */
-  private getIntervalMs(barSize: string): number {
-    const v = barSize.toLowerCase().trim();
-    if (v.startsWith('1 min')) return 60_000;
-    if (v.startsWith('5 min')) return 5 * 60_000;
-    if (v.startsWith('15 min')) return 15 * 60_000;
-    if (v.startsWith('1 hour')) return 60 * 60_000;
-    if (v.startsWith('4 hours')) return 4 * 60 * 60_000;
-    if (v.startsWith('1 day')) return 24 * 60 * 60_000;
-    // défaut: 1 min
-    return 60_000;
-  }
-
-  /** Arrondi "floor" du timestamp au début du bucket de l'intervalle */
-  private floorToBucket(tsMs: number, intervalMs: number): number {
-    return Math.floor(tsMs / intervalMs) * intervalMs;
-  }
-
-
-  private getProviderLabel(provider: string): string {
-    return this.dataProviders.find(p => p.value === provider)?.label ?? '';
-  }
-
-  private getSelectedBarSizeMeta(barSize: string) {
-    return this.barSizeOptions.find(option => option.value === barSize);
-  }
-
-  private updateTimeScale(panel: LiveChartPanel): void {
-    if (!panel.chart?.options?.scales) {
-      return;
+  private showSnackbar(message: string): void {
+    this.snackbarMessage = message;
+    this.snackbarVisible = true;
+    if (this.snackbarTimeoutHandle) {
+      clearTimeout(this.snackbarTimeoutHandle);
     }
-    const meta = this.getSelectedBarSizeMeta(panel.barSize);
-    const timeUnit = meta?.timeUnit ?? 'minute';
-    const xScale: any = panel.chart.options.scales['x'];
-    if (xScale?.time) {
-      xScale.time.unit = timeUnit;
-      panel.chart.update('none');
-    }
+    this.snackbarTimeoutHandle = setTimeout(() => {
+      this.snackbarVisible = false;
+      this.snackbarMessage = '';
+    }, 3000);
+  }
+
+  private createControlForm(): ControlFormGroup {
+    return this.fb.group({
+      broker: ['IBKR', Validators.required],
+      pair: ['EURUSD', Validators.required],
+      barSize: ['1 min', Validators.required],
+      duration: ['1 D', Validators.required],
+      what: ['MIDPOINT', Validators.required],
+      rth: [false]
+    });
   }
 }

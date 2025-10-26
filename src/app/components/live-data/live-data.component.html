@@ -1,50 +1,144 @@
-<div class="panels">
-  <div class="panel" *ngFor="let panel of panels; trackBy: trackPanelById">
-    <header class="panel-header">
-      <h2>Live Chart {{ panel.id }}</h2>
-      <span class="status" [class.running]="panel.isRunning">● {{ panel.isRunning ? 'Running' : 'Stopped' }}</span>
-    </header>
+<div class="live-data-page">
+  <div class="top-layout">
+    <aside class="controls-column">
+      <section class="control-panel" *ngFor="let panel of panels; let idx = index">
+        <header>
+          <h2>Live Control &amp; Trades {{ idx + 1 }}</h2>
+        </header>
 
-    <div class="toolbar">
-      <div class="control-group">
-        <label class="control">
-          <span>Provider</span>
-          <select [(ngModel)]="panel.provider" (ngModelChange)="onProviderChange(panel)" [disabled]="panel.isRunning">
-            <option *ngFor="let providerOption of dataProviders" [ngValue]="providerOption.value">
-              {{ providerOption.label }}
-            </option>
-          </select>
-        </label>
+        <form [formGroup]="panel.form" class="control-form">
+          <div class="form-grid">
+            <label>
+              <span>Broker</span>
+              <select formControlName="broker">
+                <option *ngFor="let broker of brokerOptions" [value]="broker">{{ broker }}</option>
+              </select>
+            </label>
 
-        <label class="control">
-          <span>Market</span>
-          <input
-            type="text"
-            [(ngModel)]="panel.pair"
-            (ngModelChange)="onPairChange(panel)"
-            [disabled]="panel.isRunning"
-            placeholder="EURUSD"
-          />
-        </label>
+            <label>
+              <span>Market</span>
+              <input type="text" formControlName="pair" placeholder="EURUSD" />
+            </label>
 
-        <label class="control">
-          <span>Timeframe</span>
-          <select [(ngModel)]="panel.barSize" (ngModelChange)="onBarSizeChange(panel)" [disabled]="panel.isRunning">
-            <option *ngFor="let option of barSizeOptions" [ngValue]="option.value">
-              {{ option.label }}
-            </option>
-          </select>
-        </label>
+            <label>
+              <span>Bar Size</span>
+              <select formControlName="barSize">
+                <option *ngFor="let size of barSizeOptions" [value]="size">{{ size }}</option>
+              </select>
+            </label>
+
+            <label>
+              <span>Duration</span>
+              <select formControlName="duration">
+                <option *ngFor="let duration of durationOptions" [value]="duration">{{ duration }}</option>
+              </select>
+            </label>
+
+            <label>
+              <span>What To Show</span>
+              <select formControlName="what">
+                <option *ngFor="let option of whatOptions" [value]="option">{{ option }}</option>
+              </select>
+            </label>
+
+            <label class="checkbox">
+              <input type="checkbox" formControlName="rth" />
+              <span>Use RTH</span>
+            </label>
+          </div>
+
+          <div class="buttons">
+            <button type="button" (click)="connectAndWait()" [disabled]="connecting">
+              {{ connecting ? 'Connecting…' : 'Connect &amp; Wait' }}
+            </button>
+            <button
+              type="button"
+              (click)="setMarketDataTypeDelayed()"
+              [disabled]="!connected || settingMarketDataType"
+            >
+              {{ settingMarketDataType ? 'Setting…' : 'Market Data Type = 3 (Delayed)' }}
+            </button>
+            <button type="button" (click)="startLiveBars(idx)" [disabled]="!connected || panel.starting">
+              {{ panel.starting ? 'Starting…' : 'Start Live Bars' }}
+            </button>
+            <button
+              type="button"
+              (click)="stopLiveBars(idx)"
+              [disabled]="panel.reqId === null || panel.stopping"
+            >
+              {{ panel.stopping ? 'Stopping…' : 'Stop Live Bars' }}
+            </button>
+          </div>
+        </form>
+
+        <div class="status-line">
+          <span class="status-indicator" [class.connected]="connected"></span>
+          <span>{{ connected ? 'Connected' : 'Disconnected' }}</span>
+          <span class="req-id" *ngIf="panel.reqId !== null">Current reqId: {{ panel.reqId }}</span>
+        </div>
+      </section>
+    </aside>
+
+    <div class="charts-column">
+      <div class="chart-card" *ngFor="let panel of panels; let idx = index">
+        <header class="chart-header">
+          <h3>Live Chart {{ idx + 1 }}</h3>
+        </header>
+        <div class="chart-body">
+          <canvas #chartCanvas></canvas>
+        </div>
       </div>
-
-      <div class="actions">
-        <button (click)="start(panel)" [disabled]="panel.isRunning">Start</button>
-        <button (click)="stop(panel)" [disabled]="!panel.isRunning">Stop</button>
-      </div>
-    </div>
-
-    <div class="chart-wrap">
-      <canvas #liveCanvas></canvas>
     </div>
   </div>
+
+  <section class="trades-panel">
+    <header>
+      <h2>Open Trades</h2>
+    </header>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Broker</th>
+            <th>Account</th>
+            <th>Symbol</th>
+            <th>SecType</th>
+            <th>Currency</th>
+            <th>Exchange</th>
+            <th>ConId</th>
+            <th>Position</th>
+            <th>Avg Cost</th>
+            <th>Mkt Px</th>
+            <th>Mkt Value</th>
+            <th>Unreal PnL</th>
+            <th>Real PnL</th>
+            <th>As Of</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let trade of trades; trackBy: trackTradeBy">
+            <td>{{ trade.broker }}</td>
+            <td>{{ trade.account }}</td>
+            <td>{{ trade.symbol }}</td>
+            <td>{{ displayValue(trade.secType) }}</td>
+            <td>{{ displayValue(trade.currency) }}</td>
+            <td>{{ displayValue(trade.exchange) }}</td>
+            <td>{{ displayValue(trade.conid) }}</td>
+            <td>{{ trade.position }}</td>
+            <td>{{ trade.avgCost | number:'1.2-4' }}</td>
+            <td>{{ trade.marketPrice !== null ? (trade.marketPrice | number:'1.2-4') : '—' }}</td>
+            <td>{{ trade.marketValue !== null ? (trade.marketValue | number:'1.2-4') : '—' }}</td>
+            <td>{{ trade.unrealizedPnL !== null ? (trade.unrealizedPnL | number:'1.2-4') : '—' }}</td>
+            <td>{{ trade.realizedPnL !== null ? (trade.realizedPnL | number:'1.2-4') : '—' }}</td>
+            <td>{{ trade.asOfMillis | date:'HH:mm:ss' }}</td>
+          </tr>
+          <tr *ngIf="trades.length === 0">
+            <td colspan="14" class="empty">No open trades found.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
 </div>
+
+<div class="snackbar" *ngIf="snackbarVisible">{{ snackbarMessage }}</div>
