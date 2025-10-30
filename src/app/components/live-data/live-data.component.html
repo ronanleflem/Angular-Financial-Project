@@ -1,5 +1,16 @@
 <div class="live-data-page">
   <div class="top-layout">
+    <div class="charts-column">
+      <div class="chart-card" *ngFor="let panel of panels; let idx = index">
+        <header class="chart-header">
+          <h3>Live Chart {{ idx + 1 }}</h3>
+        </header>
+        <div class="chart-body">
+          <canvas #chartCanvas></canvas>
+        </div>
+      </div>
+    </div>
+
     <aside class="controls-column">
       <section class="control-panel" *ngFor="let panel of panels; let idx = index">
         <header>
@@ -78,17 +89,6 @@
         </div>
       </section>
     </aside>
-
-    <div class="charts-column">
-      <div class="chart-card" *ngFor="let panel of panels; let idx = index">
-        <header class="chart-header">
-          <h3>Live Chart {{ idx + 1 }}</h3>
-        </header>
-        <div class="chart-body">
-          <canvas #chartCanvas></canvas>
-        </div>
-      </div>
-    </div>
   </div>
 
   <section class="trades-panel">
