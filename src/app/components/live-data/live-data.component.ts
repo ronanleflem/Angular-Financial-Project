@@ -124,7 +124,8 @@ export class LiveDataComponent implements OnInit, AfterViewInit, OnDestroy {
 
   readonly panels: ControlPanelState[];
 
-  readonly summaryBrokerControl = new FormControl<string>('ALL');
+  readonly summaryBrokerControl: FormControl<string>;
+  readonly summaryBrokerOptions: SummaryBrokerOption[];
 
   connected = false;
   connecting = false;
@@ -148,17 +149,16 @@ export class LiveDataComponent implements OnInit, AfterViewInit, OnDestroy {
     MEXC: 60_000
   };
 
-  get summaryBrokerOptions(): SummaryBrokerOption[] {
-    return [
-      { value: 'ALL', label: 'Tous les brokers' },
-      ...this.brokerOptions.map(broker => ({ value: broker, label: broker }))
-    ];
-  }
-
   constructor(
     private readonly fb: NonNullableFormBuilder,
     private readonly marketData: MarketDataService
   ) {
+    this.summaryBrokerControl = this.fb.control('ALL');
+    this.summaryBrokerOptions = [
+      { value: 'ALL', label: 'Tous les brokers' },
+      ...this.brokerOptions.map(broker => ({ value: broker, label: broker }))
+    ];
+
     this.panels = Array.from({ length: PANEL_COUNT }, () => ({
       form: this.createControlForm(),
       reqId: null,
@@ -488,7 +488,13 @@ export class LiveDataComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private updatePortfolioSummary(): void {
     const selection = this.summaryBrokerControl.value ?? 'ALL';
-    const relevantBrokers = selection === 'ALL' ? this.brokerOptions : [selection];
+
+    const relevantBrokers =
+      selection === 'ALL'
+        ? this.brokerOptions
+        : this.brokerOptions.includes(selection)
+          ? [selection]
+          : [];
 
     const relevantTrades =
       selection === 'ALL'
