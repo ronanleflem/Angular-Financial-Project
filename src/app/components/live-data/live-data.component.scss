@@ -23,6 +23,7 @@
 }
 
 .control-panel,
+.summary-panel,
 .trades-panel,
 .chart-card {
   background: #ffffff;
@@ -32,6 +33,7 @@
 }
 
 .control-panel,
+.summary-panel,
 .trades-panel {
   padding: 1.5rem;
 }
@@ -66,6 +68,79 @@
 
 .chart-header h3 {
   font-size: 1.125rem;
+}
+
+.summary-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.summary-panel header h2 {
+  margin: 0;
+  font-weight: 600;
+  color: #0f172a;
+  font-size: 1.25rem;
+}
+
+.summary-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.summary-select {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.875rem;
+  color: #475569;
+}
+
+.summary-select select {
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.6);
+  padding: 0.55rem 0.75rem;
+  font-size: 0.95rem;
+  color: #0f172a;
+  background: #f8fafc;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.summary-select select:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+  background: #ffffff;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.9rem 1rem;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(96, 165, 250, 0.05));
+  border: 1px solid rgba(37, 99, 235, 0.15);
+}
+
+.summary-label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #64748b;
+}
+
+.summary-value {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #0f172a;
 }
 
 .charts-column {
@@ -268,6 +343,10 @@
   }
 
   .buttons {
+    grid-template-columns: 1fr;
+  }
+
+  .summary-grid {
     grid-template-columns: 1fr;
   }
 }

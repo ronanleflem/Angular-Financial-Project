@@ -95,6 +95,18 @@ interface ControlPanelState {
 
 const PANEL_COUNT = 2;
 
+type SummaryBrokerOption = {
+  value: string;
+  label: string;
+};
+
+interface PortfolioSummary {
+  totalPortfolio: number;
+  liquidity: number;
+  positionsValue: number;
+  positionsCount: number;
+}
+
 @Component({
   standalone: true,
   selector: 'app-live-data',
@@ -105,12 +117,14 @@ const PANEL_COUNT = 2;
 export class LiveDataComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChildren('chartCanvas') chartCanvasRefs!: QueryList<ElementRef<HTMLCanvasElement>>;
 
-  readonly brokerOptions = ['IBKR'];
+  readonly brokerOptions = ['IBKR', 'MEXC'];
   readonly barSizeOptions = ALLOWED_BAR_SIZES;
   readonly durationOptions = ['1 D', '1 W', '1 M'];
   readonly whatOptions = ['MIDPOINT', 'BID_ASK'];
 
   readonly panels: ControlPanelState[];
+
+  readonly summaryBrokerControl = new FormControl<string>('ALL');
 
   connected = false;
   connecting = false;
@@ -119,10 +133,27 @@ export class LiveDataComponent implements OnInit, AfterViewInit, OnDestroy {
   snackbarMessage = '';
 
   trades: TradeView[] = [];
+  summaryMetrics: PortfolioSummary = {
+    totalPortfolio: 0,
+    liquidity: 0,
+    positionsValue: 0,
+    positionsCount: 0
+  };
 
   private readonly destroy$ = new Subject<void>();
   private charts: Chart<'candlestick'>[] = [];
   private snackbarTimeoutHandle?: ReturnType<typeof setTimeout>;
+  private readonly brokerLiquidity: Record<string, number> = {
+    IBKR: 150_000,
+    MEXC: 60_000
+  };
+
+  get summaryBrokerOptions(): SummaryBrokerOption[] {
+    return [
+      { value: 'ALL', label: 'Tous les brokers' },
+      ...this.brokerOptions.map(broker => ({ value: broker, label: broker }))
+    ];
+  }
 
   constructor(
     private readonly fb: NonNullableFormBuilder,
@@ -139,6 +170,10 @@ export class LiveDataComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnInit(): void {
     this.startTradesPolling();
+    this.summaryBrokerControl.valueChanges
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => this.updatePortfolioSummary());
+    this.updatePortfolioSummary();
   }
 
   ngAfterViewInit(): void {
@@ -289,6 +324,7 @@ export class LiveDataComponent implements OnInit, AfterViewInit, OnDestroy {
       )
       .subscribe(trades => {
         this.trades = trades;
+        this.updatePortfolioSummary();
       });
   }
 
@@ -448,6 +484,37 @@ export class LiveDataComponent implements OnInit, AfterViewInit, OnDestroy {
   private handleError(message: string, error: unknown): void {
     console.error(message, error);
     this.showSnackbar(message);
+  }
+
+  private updatePortfolioSummary(): void {
+    const selection = this.summaryBrokerControl.value ?? 'ALL';
+    const relevantBrokers = selection === 'ALL' ? this.brokerOptions : [selection];
+
+    const relevantTrades =
+      selection === 'ALL'
+        ? this.trades
+        : this.trades.filter(trade => trade.broker === selection);
+
+    const liquidity = relevantBrokers.reduce(
+      (total, broker) => total + (this.brokerLiquidity[broker] ?? 0),
+      0
+    );
+
+    const positionsValue = relevantTrades.reduce((total, trade) => {
+      if (typeof trade.marketValue === 'number') {
+        return total + trade.marketValue;
+      }
+      return total + trade.position * trade.avgCost;
+    }, 0);
+
+    const positionsCount = relevantTrades.filter(trade => trade.position !== 0).length;
+
+    this.summaryMetrics = {
+      totalPortfolio: positionsValue + liquidity,
+      liquidity,
+      positionsValue,
+      positionsCount
+    };
   }
 
   private showSnackbar(message: string): void {

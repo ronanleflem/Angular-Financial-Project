@@ -88,6 +88,44 @@
           <span class="req-id" *ngIf="panel.reqId !== null">Current reqId: {{ panel.reqId }}</span>
         </div>
       </section>
+
+      <section class="summary-panel">
+        <header>
+          <h2>Vue d'ensemble du portefeuille</h2>
+        </header>
+
+        <div class="summary-body">
+          <label class="summary-select">
+            <span>Broker</span>
+            <select [formControl]="summaryBrokerControl">
+              <option *ngFor="let option of summaryBrokerOptions" [value]="option.value">
+                {{ option.label }}
+              </option>
+            </select>
+          </label>
+
+          <div class="summary-grid">
+            <div class="summary-item">
+              <span class="summary-label">Montant global</span>
+              <span class="summary-value">
+                {{ summaryMetrics.totalPortfolio | number: '1.0-2' }} $
+              </span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">Liquidité disponible</span>
+              <span class="summary-value">{{ summaryMetrics.liquidity | number: '1.0-2' }} $</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">Montant des positions</span>
+              <span class="summary-value">{{ summaryMetrics.positionsValue | number: '1.0-2' }} $</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">Positions</span>
+              <span class="summary-value">{{ summaryMetrics.positionsCount }}</span>
+            </div>
+          </div>
+        </div>
+      </section>
     </aside>
   </div>
 
