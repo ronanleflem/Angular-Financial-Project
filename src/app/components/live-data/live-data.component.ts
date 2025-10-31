@@ -127,7 +127,6 @@ export class LiveDataComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly summaryBrokerControl: FormControl<string>;
   readonly summaryBrokerOptions: SummaryBrokerOption[];
 
-  connected = false;
   connecting = false;
   settingMarketDataType = false;
   snackbarVisible = false;
@@ -148,6 +147,7 @@ export class LiveDataComponent implements OnInit, AfterViewInit, OnDestroy {
     IBKR: 150_000,
     MEXC: 60_000
   };
+  private readonly brokerConnectionStatus: Record<string, boolean> = {};
 
   constructor(
     private readonly fb: NonNullableFormBuilder,
@@ -166,6 +166,10 @@ export class LiveDataComponent implements OnInit, AfterViewInit, OnDestroy {
       starting: false,
       stopping: false
     }));
+
+    this.brokerOptions.forEach(broker => {
+      this.brokerConnectionStatus[broker] = false;
+    });
   }
 
   ngOnInit(): void {
@@ -181,7 +185,14 @@ export class LiveDataComponent implements OnInit, AfterViewInit, OnDestroy {
     this.chartCanvasRefs.changes.pipe(takeUntil(this.destroy$)).subscribe(() => this.initializeCharts());
   }
 
-  connectAndWait(): void {
+  connectAndWait(requestedBroker?: string | null): void {
+    const broker = this.normalizeBroker(requestedBroker);
+    if (broker !== 'IBKR') {
+      this.updateBrokerConnection(broker, true);
+      this.showSnackbar(`${broker} connecté`);
+      return;
+    }
+
     this.connecting = true;
     this.marketData
       .connectWait()
@@ -192,17 +203,33 @@ export class LiveDataComponent implements OnInit, AfterViewInit, OnDestroy {
       )
       .subscribe({
         next: response => {
-          this.connected = !!response?.connected;
-          this.showSnackbar(this.connected ? 'Connected to IBKR' : 'Connection failed');
+          const connected = !!response?.connected;
+          this.updateBrokerConnection(broker, connected);
+          this.showSnackbar(
+            connected
+              ? `${broker} connecté`
+              : `Connexion à ${broker} échouée`
+          );
         },
         error: err => {
-          this.connected = false;
-          this.handleError('Unable to connect to IBKR', err);
+          this.updateBrokerConnection(broker, false);
+          this.handleError(`Impossible de se connecter à ${broker}`, err);
         }
       });
   }
 
-  setMarketDataTypeDelayed(): void {
+  setMarketDataTypeDelayed(requestedBroker?: string | null): void {
+    const broker = this.normalizeBroker(requestedBroker);
+    if (!this.isBrokerConnected(broker)) {
+      this.showSnackbar(`Connectez ${broker} avant de définir le type de données.`);
+      return;
+    }
+
+    if (broker !== 'IBKR') {
+      this.showSnackbar(`La configuration différée n'est pas requise pour ${broker}.`);
+      return;
+    }
+
     this.settingMarketDataType = true;
     this.marketData
       .setMarketDataType(3)
@@ -218,12 +245,18 @@ export class LiveDataComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   startLiveBars(panelIndex: number): void {
-    if (!this.connected) {
-      this.showSnackbar('Connect to the broker before starting live bars.');
+    const panel = this.panels[panelIndex];
+    const broker = panel.form.controls.broker.value;
+
+    if (!this.isBrokerConnected(broker)) {
+      this.showSnackbar('Connectez le broker sélectionné avant de démarrer les flux.');
       return;
     }
 
-    const panel = this.panels[panelIndex];
+    if (broker !== 'IBKR') {
+      this.showSnackbar(`Les flux en direct ne sont pas disponibles pour ${broker} dans cette version.`);
+      return;
+    }
 
     if (panel.form.invalid) {
       panel.form.markAllAsTouched();
@@ -313,14 +346,17 @@ export class LiveDataComponent implements OnInit, AfterViewInit, OnDestroy {
     ])
       .pipe(
         takeUntil(this.destroy$),
-        switchMap(([broker]) =>
-          this.marketData.listTrades(broker).pipe(
+        switchMap(([broker]) => {
+          if (!this.isBrokerConnected(broker) || broker !== 'IBKR') {
+            return of<TradeView[]>([]);
+          }
+          return this.marketData.listTrades(broker).pipe(
             catchError(err => {
               this.handleError('Failed to load open trades', err);
               return of<TradeView[]>([]);
             })
-          )
-        )
+          );
+        })
       )
       .subscribe(trades => {
         this.trades = trades;
@@ -496,6 +532,19 @@ export class LiveDataComponent implements OnInit, AfterViewInit, OnDestroy {
           ? [selection]
           : [];
 
+    if (
+      relevantBrokers.length === 0 ||
+      !relevantBrokers.every(broker => this.isBrokerConnected(broker))
+    ) {
+      this.summaryMetrics = {
+        totalPortfolio: 0,
+        liquidity: 0,
+        positionsValue: 0,
+        positionsCount: 0
+      };
+      return;
+    }
+
     const relevantTrades =
       selection === 'ALL'
         ? this.trades
@@ -523,6 +572,13 @@ export class LiveDataComponent implements OnInit, AfterViewInit, OnDestroy {
     };
   }
 
+  isBrokerConnected(broker: string | null | undefined): boolean {
+    if (!broker || !this.brokerOptions.includes(broker)) {
+      return false;
+    }
+    return !!this.brokerConnectionStatus[broker];
+  }
+
   private showSnackbar(message: string): void {
     this.snackbarMessage = message;
     this.snackbarVisible = true;
@@ -544,5 +600,20 @@ export class LiveDataComponent implements OnInit, AfterViewInit, OnDestroy {
       what: ['MIDPOINT', Validators.required],
       rth: [false]
     });
+  }
+
+  private normalizeBroker(broker: string | null | undefined): string {
+    if (broker && this.brokerOptions.includes(broker)) {
+      return broker;
+    }
+    return this.brokerOptions[0];
+  }
+
+  private updateBrokerConnection(broker: string, connected: boolean): void {
+    this.brokerConnectionStatus[broker] = connected;
+    if (!connected) {
+      this.trades = [];
+    }
+    this.updatePortfolioSummary();
   }
 }

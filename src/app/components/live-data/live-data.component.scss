@@ -24,6 +24,7 @@
 
 .control-panel,
 .summary-panel,
+.broker-status-panel,
 .trades-panel,
 .chart-card {
   background: #ffffff;
@@ -34,6 +35,7 @@
 
 .control-panel,
 .summary-panel,
+.broker-status-panel,
 .trades-panel {
   padding: 1.5rem;
 }
@@ -76,7 +78,20 @@
   gap: 1.25rem;
 }
 
+.broker-status-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
 .summary-panel header h2 {
+  margin: 0;
+  font-weight: 600;
+  color: #0f172a;
+  font-size: 1.25rem;
+}
+
+.broker-status-panel header h2 {
   margin: 0;
   font-weight: 600;
   color: #0f172a;
@@ -87,6 +102,58 @@
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+}
+
+.broker-status-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.broker-status-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  background: rgba(248, 250, 252, 0.9);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.broker-status-list li.connected {
+  border-color: rgba(34, 197, 94, 0.35);
+  background: rgba(220, 252, 231, 0.6);
+  box-shadow: 0 6px 16px rgba(34, 197, 94, 0.12);
+}
+
+.broker-status-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #ef4444;
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.2);
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.broker-status-indicator.connected {
+  background: #22c55e;
+  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.2);
+}
+
+.broker-name {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.broker-state {
+  margin-left: auto;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #1e293b;
 }
 
 .summary-select {
