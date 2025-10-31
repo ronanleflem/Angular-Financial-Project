@@ -40,13 +40,15 @@ import {
   OhlcController,
   OhlcElement
 } from 'chartjs-chart-financial';
+import zoomPlugin from 'chartjs-plugin-zoom';
 
 Chart.register(
   ...registerables,
   CandlestickController,
   CandlestickElement,
   OhlcController,
-  OhlcElement
+  OhlcElement,
+  zoomPlugin
 );
 
 const ALLOWED_BAR_SIZES: string[] = [
@@ -357,6 +359,10 @@ export class LiveDataComponent implements OnInit, AfterViewInit, OnDestroy {
         maintainAspectRatio: false,
         animation: false,
         parsing: false,
+        interaction: {
+          mode: 'nearest',
+          intersect: false
+        },
         scales: {
           x: {
             type: 'time',
@@ -369,6 +375,27 @@ export class LiveDataComponent implements OnInit, AfterViewInit, OnDestroy {
           },
           y: {
             beginAtZero: false
+          }
+        },
+        plugins: {
+          zoom: {
+            pan: {
+              enabled: true,
+              mode: 'xy',
+              modifierKey: 'shift'
+            },
+            zoom: {
+              wheel: {
+                enabled: true
+              },
+              pinch: {
+                enabled: true
+              },
+              drag: {
+                enabled: true
+              },
+              mode: 'xy'
+            }
           }
         }
       }
