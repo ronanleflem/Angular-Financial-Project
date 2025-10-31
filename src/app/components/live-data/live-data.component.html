@@ -59,17 +59,25 @@
           </div>
 
           <div class="buttons">
-            <button type="button" (click)="connectAndWait()" [disabled]="connecting">
+            <button
+              type="button"
+              (click)="connectAndWait(panel.form.controls.broker.value)"
+              [disabled]="connecting"
+            >
               {{ connecting ? 'Connecting…' : 'Connect &amp; Wait' }}
             </button>
             <button
               type="button"
-              (click)="setMarketDataTypeDelayed()"
-              [disabled]="!connected || settingMarketDataType"
+              (click)="setMarketDataTypeDelayed(panel.form.controls.broker.value)"
+              [disabled]="!isBrokerConnected(panel.form.controls.broker.value) || settingMarketDataType"
             >
               {{ settingMarketDataType ? 'Setting…' : 'Market Data Type = 3 (Delayed)' }}
             </button>
-            <button type="button" (click)="startLiveBars(idx)" [disabled]="!connected || panel.starting">
+            <button
+              type="button"
+              (click)="startLiveBars(idx)"
+              [disabled]="!isBrokerConnected(panel.form.controls.broker.value) || panel.starting"
+            >
               {{ panel.starting ? 'Starting…' : 'Start Live Bars' }}
             </button>
             <button
@@ -83,10 +91,65 @@
         </form>
 
         <div class="status-line">
-          <span class="status-indicator" [class.connected]="connected"></span>
-          <span>{{ connected ? 'Connected' : 'Disconnected' }}</span>
+          <span
+            class="status-indicator"
+            [class.connected]="isBrokerConnected(panel.form.controls.broker.value)"
+          ></span>
+          <span>{{ isBrokerConnected(panel.form.controls.broker.value) ? 'Connected' : 'Disconnected' }}</span>
           <span class="req-id" *ngIf="panel.reqId !== null">Current reqId: {{ panel.reqId }}</span>
         </div>
+      </section>
+
+      <section class="summary-panel">
+        <header>
+          <h2>Vue d'ensemble du portefeuille</h2>
+        </header>
+
+        <div class="summary-body">
+          <label class="summary-select">
+            <span>Broker</span>
+            <select [formControl]="summaryBrokerControl">
+              <option *ngFor="let option of summaryBrokerOptions" [value]="option.value">
+                {{ option.label }}
+              </option>
+            </select>
+          </label>
+
+          <div class="summary-grid">
+            <div class="summary-item">
+              <span class="summary-label">Montant global</span>
+              <span class="summary-value">
+                {{ summaryMetrics.totalPortfolio | number: '1.0-2' }} $
+              </span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">Liquidité disponible</span>
+              <span class="summary-value">{{ summaryMetrics.liquidity | number: '1.0-2' }} $</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">Montant des positions</span>
+              <span class="summary-value">{{ summaryMetrics.positionsValue | number: '1.0-2' }} $</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">Positions</span>
+              <span class="summary-value">{{ summaryMetrics.positionsCount }}</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="broker-status-panel">
+        <header>
+          <h2>Statut des brokers</h2>
+        </header>
+
+        <ul class="broker-status-list">
+          <li *ngFor="let broker of brokerOptions" [class.connected]="isBrokerConnected(broker)">
+            <span class="broker-status-indicator" [class.connected]="isBrokerConnected(broker)"></span>
+            <span class="broker-name">{{ broker }}</span>
+            <span class="broker-state">{{ isBrokerConnected(broker) ? 'Connecté' : 'Déconnecté' }}</span>
+          </li>
+        </ul>
       </section>
     </aside>
   </div>
