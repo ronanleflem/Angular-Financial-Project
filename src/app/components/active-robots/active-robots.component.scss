@@ -1,0 +1,246 @@
+:host {
+  display: block;
+  padding: 1.75rem;
+  box-sizing: border-box;
+  background: #f8fafc;
+  min-height: 100%;
+}
+
+.active-robots-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.page-header h1 {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.page-header p {
+  margin: 0.35rem 0 0;
+  color: #475569;
+  font-size: 0.95rem;
+}
+
+.filters {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  background: #ffffff;
+  padding: 1.25rem 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+  color: #475569;
+  min-width: 180px;
+}
+
+.filters select {
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.6);
+  padding: 0.55rem 0.75rem;
+  font-size: 0.95rem;
+  color: #0f172a;
+  background: #f8fafc;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.filters select:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+  background: #ffffff;
+}
+
+.tables-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.5rem;
+}
+
+.live-bottom-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 420px;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.live-bottom-split .left,
+.live-bottom-split .right {
+  min-height: 420px;
+}
+
+app-live-signal-chart,
+app-live-signals-table {
+  display: block;
+  height: 100%;
+}
+
+app-live-signals-table {
+  overflow: auto;
+}
+
+.panel {
+  background: #ffffff;
+  border-radius: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 10px 32px rgba(15, 23, 42, 0.08);
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem;
+}
+
+.panel header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.panel header h2 {
+  margin: 0;
+  font-size: 1.35rem;
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.panel-count {
+  font-size: 0.9rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 0.75rem 0.85rem;
+  text-align: left;
+  font-size: 0.95rem;
+  color: #0f172a;
+}
+
+th {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #475569;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.4);
+}
+
+tbody tr:not(:last-child) td {
+  border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+.cell-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.cell-main .title {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.cell-main .subtitle {
+  font-size: 0.8rem;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.25rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.1);
+  color: #1d4ed8;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.status.active {
+  background: rgba(34, 197, 94, 0.15);
+  color: #15803d;
+}
+
+.status.inactive {
+  background: rgba(239, 68, 68, 0.15);
+  color: #b91c1c;
+}
+
+.action {
+  border: none;
+  border-radius: 999px;
+  padding: 0.45rem 1.1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: rgba(34, 197, 94, 0.1);
+  color: #15803d;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.action.stop {
+  background: rgba(239, 68, 68, 0.12);
+  color: #b91c1c;
+}
+
+.action:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 16px rgba(15, 23, 42, 0.1);
+}
+
+.empty {
+  text-align: center;
+  padding: 1.5rem;
+  color: #94a3b8;
+  font-style: italic;
+}
+
+@media (max-width: 960px) {
+  :host {
+    padding: 1.25rem;
+  }
+
+  .tables-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .live-bottom-split {
+    grid-template-columns: 1fr;
+  }
+}

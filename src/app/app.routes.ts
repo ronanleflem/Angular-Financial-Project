@@ -5,6 +5,7 @@ import { StrategyCalculationComponent } from './components/strategy-calculation/
 import {ScreenStrategiesComponent} from './components/screen-strategies/screen-strategies.component';
 import {StrategyDetailComponent} from './components/strategy-detail/strategy-detail.component';
 import {LiveDataComponent} from './components/live-data/live-data.component'; // 🆕
+import {ActiveRobotsComponent} from './components/active-robots/active-robots.component';
 
 export const routes: Routes = [
   { path: 'historical-data', component: HistoricalDataComponent },
@@ -13,6 +14,7 @@ export const routes: Routes = [
   { path: 'screen-strategies', component: ScreenStrategiesComponent },
   { path: 'strategy-detail/:name/:runId/:symbol/:comparedSymbol', component: StrategyDetailComponent },
   { path: 'live-data', component: LiveDataComponent },
+  { path: 'active-robots', component: ActiveRobotsComponent },
   {
     path: '_lab/signals',
     loadChildren: () => import('./labs/signals/signals.routes').then(m => m.SIGNALS_ROUTES)

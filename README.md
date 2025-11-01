@@ -57,3 +57,11 @@ Angular CLI does not come with an end-to-end testing framework by default. You c
 ## Additional Resources
 
 For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+
+## Robots actifs overlay
+
+La page « Robots actifs » propose désormais un graphique OHLC et un tableau de signaux en temps réel :
+
+- Le graphique interroge `GET /marketdata/ohlcv/window` pour afficher les 50 bougies précédant l’entrée sélectionnée et prolonge jusqu’à la sortie lorsque `payload.exitTsUtc`/`payload.exitPrice` sont fournis.
+- Le tableau des signaux s’abonne au flux Server-Sent Events `/live/stream`. Chaque trade reçu est ajouté en temps réel (les 200 derniers sont conservés) et un clic sur une ligne recharge la fenêtre OHLC.
+- L’affichage repose sur la bibliothèque [`lightweight-charts`](https://github.com/tradingview/lightweight-charts) pour le rendu des chandeliers.

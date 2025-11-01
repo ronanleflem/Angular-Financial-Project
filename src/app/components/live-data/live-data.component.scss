@@ -104,6 +104,31 @@
   gap: 1.25rem;
 }
 
+.robots-button {
+  align-self: flex-start;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.95), rgba(59, 130, 246, 0.9));
+  color: #ffffff;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  padding: 0.6rem 1.4rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  box-shadow: 0 12px 20px rgba(37, 99, 235, 0.25);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.robots-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 28px rgba(37, 99, 235, 0.3);
+}
+
+.robots-button:active {
+  transform: translateY(0);
+  box-shadow: 0 8px 16px rgba(37, 99, 235, 0.25);
+}
+
 .broker-status-list {
   list-style: none;
   margin: 0;

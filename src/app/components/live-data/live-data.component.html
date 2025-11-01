@@ -115,28 +115,32 @@
             </select>
           </label>
 
-          <div class="summary-grid">
-            <div class="summary-item">
-              <span class="summary-label">Montant global</span>
-              <span class="summary-value">
-                {{ summaryMetrics.totalPortfolio | number: '1.0-2' }} $
-              </span>
-            </div>
-            <div class="summary-item">
-              <span class="summary-label">Liquidité disponible</span>
-              <span class="summary-value">{{ summaryMetrics.liquidity | number: '1.0-2' }} $</span>
-            </div>
-            <div class="summary-item">
-              <span class="summary-label">Montant des positions</span>
-              <span class="summary-value">{{ summaryMetrics.positionsValue | number: '1.0-2' }} $</span>
-            </div>
-            <div class="summary-item">
-              <span class="summary-label">Positions</span>
-              <span class="summary-value">{{ summaryMetrics.positionsCount }}</span>
-            </div>
-          </div>
+      <div class="summary-grid">
+        <div class="summary-item">
+          <span class="summary-label">Montant global</span>
+          <span class="summary-value">
+            {{ summaryMetrics.totalPortfolio | number: '1.0-2' }} $
+          </span>
         </div>
-      </section>
+        <div class="summary-item">
+          <span class="summary-label">Liquidité disponible</span>
+          <span class="summary-value">{{ summaryMetrics.liquidity | number: '1.0-2' }} $</span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-label">Montant des positions</span>
+          <span class="summary-value">{{ summaryMetrics.positionsValue | number: '1.0-2' }} $</span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-label">Positions</span>
+          <span class="summary-value">{{ summaryMetrics.positionsCount }}</span>
+        </div>
+      </div>
+
+      <button type="button" class="robots-button" (click)="openActiveRobots()">
+        Robots actifs
+      </button>
+    </div>
+  </section>
 
       <section class="broker-status-panel">
         <header>
@@ -202,6 +206,7 @@
       </table>
     </div>
   </section>
+
 </div>
 
 <div class="snackbar" *ngIf="snackbarVisible">{{ snackbarMessage }}</div>

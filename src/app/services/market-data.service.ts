@@ -3,6 +3,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { HistBar, StartBarsResponse, TradeView } from '../models/trading.models';
+import { OhlcvBar } from '../models/live-signal.model';
 
 @Injectable({
   providedIn: 'root'
@@ -64,5 +65,32 @@ export class MarketDataService {
   listTrades(broker = 'IBKR'): Observable<TradeView[]> {
     const params = new HttpParams().set('broker', broker);
     return this.http.get<TradeView[]>(`${this.baseUrl}/trades`, { params });
+  }
+
+  getWindow(params: {
+    symbol: string;
+    timeframe: string;
+    endTsUtc: string;
+    barsBack: number;
+    exitTsUtc?: string;
+    maxForward?: number;
+  }): Observable<{ bars: OhlcvBar[] }> {
+    let httpParams = new HttpParams()
+      .set('symbol', params.symbol)
+      .set('timeframe', params.timeframe)
+      .set('endTsUtc', params.endTsUtc)
+      .set('barsBack', String(params.barsBack));
+
+    if (params.exitTsUtc) {
+      httpParams = httpParams.set('exitTsUtc', params.exitTsUtc);
+    }
+
+    if (params.maxForward !== undefined) {
+      httpParams = httpParams.set('maxForward', String(params.maxForward));
+    }
+
+    return this.http.get<{ bars: OhlcvBar[] }>(`${this.baseUrl}/marketdata/ohlcv/window`, {
+      params: httpParams
+    });
   }
 }

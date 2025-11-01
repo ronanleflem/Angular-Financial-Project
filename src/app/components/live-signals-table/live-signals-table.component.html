@@ -1,0 +1,41 @@
+<div class="signals-table">
+  <table>
+    <thead>
+      <tr>
+        <th>Time (UTC)</th>
+        <th>Symbol</th>
+        <th>TF</th>
+        <th>Side</th>
+        <th>Entry</th>
+        <th>RR</th>
+        <th>SL</th>
+        <th>TP</th>
+        <th>Strategy</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr
+        *ngFor="let signal of signals; trackBy: trackBySignal"
+        (click)="onSelect(signal)"
+        [class.selected]="selectedSignal?.strategyId === signal.strategyId && selectedSignal?.tsOpenUtc === signal.tsOpenUtc"
+      >
+        <td>{{ signal.tsOpenUtc | date: 'yyyy-MM-dd HH:mm:ss':'UTC' }}</td>
+        <td>{{ signal.symbol }}</td>
+        <td>{{ signal.timeframe }}</td>
+        <td>
+          <span class="side" [class.long]="signal.side === 'LONG'" [class.short]="signal.side === 'SHORT'">
+            {{ signal.side }}
+          </span>
+        </td>
+        <td>{{ signal.entryPrice | number: '1.2-5' }}</td>
+        <td>{{ signal.expectedRr !== undefined ? (signal.expectedRr | number: '1.2-2') : '—' }}</td>
+        <td>{{ signal.sl !== undefined ? (signal.sl | number: '1.2-5') : '—' }}</td>
+        <td>{{ signal.tp !== undefined ? (signal.tp | number: '1.2-5') : '—' }}</td>
+        <td>{{ signal.strategyId }}</td>
+      </tr>
+      <tr *ngIf="signals.length === 0">
+        <td colspan="9" class="empty">En attente de signaux…</td>
+      </tr>
+    </tbody>
+  </table>
+</div>

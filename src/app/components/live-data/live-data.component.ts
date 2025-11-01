@@ -41,6 +41,7 @@ import {
   OhlcElement
 } from 'chartjs-chart-financial';
 import zoomPlugin from 'chartjs-plugin-zoom';
+import { Router } from '@angular/router';
 
 Chart.register(
   ...registerables,
@@ -151,7 +152,8 @@ export class LiveDataComponent implements OnInit, AfterViewInit, OnDestroy {
 
   constructor(
     private readonly fb: NonNullableFormBuilder,
-    private readonly marketData: MarketDataService
+    private readonly marketData: MarketDataService,
+    private readonly router: Router
   ) {
     this.summaryBrokerControl = this.fb.control('ALL');
     this.summaryBrokerOptions = [
@@ -170,6 +172,12 @@ export class LiveDataComponent implements OnInit, AfterViewInit, OnDestroy {
     this.brokerOptions.forEach(broker => {
       this.brokerConnectionStatus[broker] = false;
     });
+  }
+
+  openActiveRobots(): void {
+    const broker = this.summaryBrokerControl.value;
+    const queryParams = broker && broker !== 'ALL' ? { broker } : undefined;
+    this.router.navigate(['/active-robots'], { queryParams });
   }
 
   ngOnInit(): void {
