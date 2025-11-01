@@ -4,6 +4,10 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { Subject, merge } from 'rxjs';
 import { startWith, takeUntil } from 'rxjs/operators';
+import { LiveSignal } from '../../models/live-signal.model';
+import { LiveSignalChartComponent } from '../live-signal-chart/live-signal-chart.component';
+import { LiveSignalsTableComponent } from '../live-signals-table/live-signals-table.component';
+import { LiveSignalsService } from '../../services/live-signals.service';
 
 type BrokerOption = {
   value: string;
@@ -35,7 +39,7 @@ interface RobotStatus {
 @Component({
   selector: 'app-active-robots',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, LiveSignalChartComponent, LiveSignalsTableComponent],
   templateUrl: './active-robots.component.html',
   styleUrls: ['./active-robots.component.scss']
 })
@@ -70,8 +74,12 @@ export class ActiveRobotsComponent implements OnInit, OnDestroy {
 
   filteredMarkets: MarketListening[] = [];
   filteredRobots: RobotStatus[] = [];
+  selectedSignal: LiveSignal | null = null;
 
-  constructor(private readonly route: ActivatedRoute) {
+  constructor(
+    private readonly route: ActivatedRoute,
+    private readonly liveSignalsService: LiveSignalsService
+  ) {
     const brokers = Array.from(new Set([...this.markets, ...this.robots].map(item => item.broker))).sort();
     this.brokerOptions = [
       { value: 'ALL', label: 'Tous les brokers' },
@@ -86,6 +94,13 @@ export class ActiveRobotsComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    this.liveSignalsService.connect();
+    this.liveSignalsService.selected$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(signal => {
+        this.selectedSignal = signal;
+      });
+
     merge(
       this.brokerControl.valueChanges,
       this.timeframeControl.valueChanges
@@ -110,10 +125,15 @@ export class ActiveRobotsComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+    this.liveSignalsService.disconnect();
   }
 
   toggleRobot(robot: RobotStatus): void {
     robot.active = !robot.active;
+  }
+
+  onSelectSignal(signal: LiveSignal): void {
+    this.selectedSignal = signal;
   }
 
   formatDurationSince(startedAt: string): string {

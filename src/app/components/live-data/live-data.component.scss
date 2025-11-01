@@ -40,29 +40,6 @@
   padding: 1.5rem;
 }
 
-.live-bottom-split {
-  display: grid;
-  grid-template-columns: 1fr 420px;
-  gap: 12px;
-  margin-top: 16px;
-}
-
-.live-bottom-split .left,
-.live-bottom-split .right {
-  min-height: 420px;
-}
-
-app-live-signal-chart {
-  display: block;
-  height: 420px;
-}
-
-app-live-signals-table {
-  display: block;
-  height: 420px;
-  overflow: auto;
-}
-
 .chart-card {
   padding: 1rem 1.25rem 1.5rem;
   display: flex;

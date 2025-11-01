@@ -68,6 +68,28 @@
   gap: 1.5rem;
 }
 
+.live-bottom-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 420px;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.live-bottom-split .left,
+.live-bottom-split .right {
+  min-height: 420px;
+}
+
+app-live-signal-chart,
+app-live-signals-table {
+  display: block;
+  height: 100%;
+}
+
+app-live-signals-table {
+  overflow: auto;
+}
+
 .panel {
   background: #ffffff;
   border-radius: 14px;
@@ -215,6 +237,10 @@ tbody tr:not(:last-child) td {
   }
 
   .tables-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .live-bottom-split {
     grid-template-columns: 1fr;
   }
 }

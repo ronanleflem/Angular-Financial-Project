@@ -113,4 +113,13 @@
       </div>
     </section>
   </div>
+
+  <div class="live-bottom-split">
+    <div class="left">
+      <app-live-signal-chart [signal]="selectedSignal"></app-live-signal-chart>
+    </div>
+    <div class="right">
+      <app-live-signals-table (select)="onSelectSignal($event)"></app-live-signals-table>
+    </div>
+  </div>
 </div>

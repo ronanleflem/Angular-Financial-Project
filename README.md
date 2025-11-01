@@ -58,10 +58,10 @@ Angular CLI does not come with an end-to-end testing framework by default. You c
 
 For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
 
-## Live page overlay
+## Robots actifs overlay
 
-The live monitoring page now embeds an OHLC viewer and a real-time signals list:
+La page « Robots actifs » propose désormais un graphique OHLC et un tableau de signaux en temps réel :
 
-- The chart requests data from `GET /marketdata/ohlcv/window` to draw the 50 candles leading to the selected entry and extends to the exit candle when `payload.exitTsUtc`/`payload.exitPrice` are present.
-- The signals table subscribes to the Server-Sent Events stream exposed at `/live/stream`. Each incoming trade is appended in real time (the UI keeps the latest 200 entries) and clicking a row reloads the OHLC window.
-- The view depends on the [`lightweight-charts`](https://github.com/tradingview/lightweight-charts) package for rendering candlesticks.
+- Le graphique interroge `GET /marketdata/ohlcv/window` pour afficher les 50 bougies précédant l’entrée sélectionnée et prolonge jusqu’à la sortie lorsque `payload.exitTsUtc`/`payload.exitPrice` sont fournis.
+- Le tableau des signaux s’abonne au flux Server-Sent Events `/live/stream`. Chaque trade reçu est ajouté en temps réel (les 200 derniers sont conservés) et un clic sur une ligne recharge la fenêtre OHLC.
+- L’affichage repose sur la bibliothèque [`lightweight-charts`](https://github.com/tradingview/lightweight-charts) pour le rendu des chandeliers.
