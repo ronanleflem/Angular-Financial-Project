@@ -1,0 +1,10 @@
+<div class="chart-wrapper">
+  <div class="chart-container" #chartContainer></div>
+  <div class="placeholder" *ngIf="!signal">
+    Sélectionnez un signal pour afficher le graphique.
+  </div>
+  <div class="placeholder" *ngIf="signal && !loading && !hasData">
+    Aucune donnée OHLC disponible pour ce signal.
+  </div>
+  <div class="loading" *ngIf="loading">Chargement…</div>
+</div>

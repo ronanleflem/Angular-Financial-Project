@@ -41,6 +41,11 @@ import {
   OhlcElement
 } from 'chartjs-chart-financial';
 import zoomPlugin from 'chartjs-plugin-zoom';
+import { Router } from '@angular/router';
+import { LiveSignal } from '../../models/live-signal.model';
+import { LiveSignalChartComponent } from '../live-signal-chart/live-signal-chart.component';
+import { LiveSignalsTableComponent } from '../live-signals-table/live-signals-table.component';
+import { LiveSignalsService } from '../../services/live-signals.service';
 
 Chart.register(
   ...registerables,
@@ -110,7 +115,7 @@ interface PortfolioSummary {
 @Component({
   standalone: true,
   selector: 'app-live-data',
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, LiveSignalChartComponent, LiveSignalsTableComponent],
   templateUrl: './live-data.component.html',
   styleUrls: ['./live-data.component.scss']
 })
@@ -133,6 +138,7 @@ export class LiveDataComponent implements OnInit, AfterViewInit, OnDestroy {
   snackbarMessage = '';
 
   trades: TradeView[] = [];
+  selectedSignal: LiveSignal | null = null;
   summaryMetrics: PortfolioSummary = {
     totalPortfolio: 0,
     liquidity: 0,
@@ -151,7 +157,9 @@ export class LiveDataComponent implements OnInit, AfterViewInit, OnDestroy {
 
   constructor(
     private readonly fb: NonNullableFormBuilder,
-    private readonly marketData: MarketDataService
+    private readonly marketData: MarketDataService,
+    private readonly router: Router,
+    private readonly liveSignalsService: LiveSignalsService
   ) {
     this.summaryBrokerControl = this.fb.control('ALL');
     this.summaryBrokerOptions = [
@@ -172,7 +180,20 @@ export class LiveDataComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
+  openActiveRobots(): void {
+    const broker = this.summaryBrokerControl.value;
+    const queryParams = broker && broker !== 'ALL' ? { broker } : undefined;
+    this.router.navigate(['/active-robots'], { queryParams });
+  }
+
   ngOnInit(): void {
+    this.liveSignalsService.connect();
+    this.liveSignalsService.selected$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(signal => {
+        this.selectedSignal = signal;
+      });
+
     this.startTradesPolling();
     this.summaryBrokerControl.valueChanges
       .pipe(takeUntil(this.destroy$))
@@ -335,6 +356,12 @@ export class LiveDataComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.snackbarTimeoutHandle) {
       clearTimeout(this.snackbarTimeoutHandle);
     }
+    this.liveSignalsService.disconnect();
+  }
+
+  onSelectSignal(signal: LiveSignal): void {
+    this.selectedSignal = signal;
+    this.liveSignalsService.select(signal);
   }
 
   private startTradesPolling(): void {

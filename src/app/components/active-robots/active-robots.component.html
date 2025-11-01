@@ -1,0 +1,116 @@
+<div class="active-robots-page">
+  <header class="page-header">
+    <div>
+      <h1>Robots actifs</h1>
+      <p>Visualisez l'activité des marchés surveillés et pilotez vos robots par broker et timeframe.</p>
+    </div>
+  </header>
+
+  <section class="filters">
+    <label>
+      <span>Broker</span>
+      <select [formControl]="brokerControl">
+        <option *ngFor="let option of brokerOptions" [value]="option.value">
+          {{ option.label }}
+        </option>
+      </select>
+    </label>
+
+    <label>
+      <span>Timeframe</span>
+      <select [formControl]="timeframeControl">
+        <option *ngFor="let option of timeframeOptions" [value]="option.value">
+          {{ option.label }}
+        </option>
+      </select>
+    </label>
+  </section>
+
+  <div class="tables-grid">
+    <section class="panel markets-panel">
+      <header>
+        <h2>Marchés surveillés</h2>
+        <span class="panel-count">{{ filteredMarkets.length }} marché{{ filteredMarkets.length > 1 ? 's' : '' }}</span>
+      </header>
+
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Marché</th>
+              <th>Timeframe</th>
+              <th>Durée d'écoute</th>
+              <th>Robots actifs</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let market of filteredMarkets">
+              <td>
+                <div class="cell-main">
+                  <span class="title">{{ market.market }}</span>
+                  <span class="subtitle">{{ market.broker }}</span>
+                </div>
+              </td>
+              <td>{{ market.timeframe }}</td>
+              <td>{{ formatDurationSince(market.startedAt) }}</td>
+              <td>
+                <span class="badge">{{ market.robotsListening }}</span>
+              </td>
+            </tr>
+            <tr *ngIf="filteredMarkets.length === 0">
+              <td colspan="4" class="empty">Aucun marché ne correspond à ces filtres.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel robots-panel">
+      <header>
+        <h2>Robots</h2>
+        <span class="panel-count">{{ filteredRobots.length }} robot{{ filteredRobots.length > 1 ? 's' : '' }}</span>
+      </header>
+
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Stratégie</th>
+              <th>Marché</th>
+              <th>Timeframes</th>
+              <th>Durée</th>
+              <th>État</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let robot of filteredRobots">
+              <td>
+                <div class="cell-main">
+                  <span class="title">{{ robot.strategyName }}</span>
+                  <span class="subtitle">{{ robot.broker }}</span>
+                </div>
+              </td>
+              <td>{{ robot.market }}</td>
+              <td>{{ robot.timeframes.join(', ') }}</td>
+              <td>{{ formatDurationSince(robot.startedAt) }}</td>
+              <td>
+                <span class="status" [class.active]="robot.active" [class.inactive]="!robot.active">
+                  {{ getRobotStateLabel(robot) }}
+                </span>
+              </td>
+              <td>
+                <button type="button" class="action" [class.stop]="robot.active" (click)="toggleRobot(robot)">
+                  {{ robot.active ? 'Stop' : 'Start' }}
+                </button>
+              </td>
+            </tr>
+            <tr *ngIf="filteredRobots.length === 0">
+              <td colspan="6" class="empty">Aucun robot ne correspond à ces filtres.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</div>
