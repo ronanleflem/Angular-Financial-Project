@@ -31,6 +31,7 @@ import {
 } from 'rxjs/operators';
 import { MarketDataService } from '../../services/market-data.service';
 import { HistBar, TradeView } from '../../models/trading.models';
+import { PortfolioSnapshot } from '../../models/portfolio.model';
 import { Chart, ChartConfiguration, registerables } from 'chart.js';
 import 'chartjs-chart-financial';
 import 'chartjs-adapter-date-fns';
@@ -144,11 +145,9 @@ export class LiveDataComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
   private charts: Chart<'candlestick'>[] = [];
   private snackbarTimeoutHandle?: ReturnType<typeof setTimeout>;
-  private readonly brokerLiquidity: Record<string, number> = {
-    IBKR: 150_000,
-    MEXC: 60_000
-  };
   private readonly brokerConnectionStatus: Record<string, boolean> = {};
+  private portfolioSnapshots: Record<string, PortfolioSnapshot> = {};
+  private portfolioSnapshotLoading = false;
 
   constructor(
     private readonly fb: NonNullableFormBuilder,
@@ -184,7 +183,10 @@ export class LiveDataComponent implements OnInit, AfterViewInit, OnDestroy {
     this.startTradesPolling();
     this.summaryBrokerControl.valueChanges
       .pipe(takeUntil(this.destroy$))
-      .subscribe(() => this.updatePortfolioSummary());
+      .subscribe(() => {
+        this.updatePortfolioSummary();
+        this.refreshPortfolioSnapshots();
+      });
     this.updatePortfolioSummary();
   }
 
@@ -369,6 +371,9 @@ export class LiveDataComponent implements OnInit, AfterViewInit, OnDestroy {
       .subscribe(trades => {
         this.trades = trades;
         this.updatePortfolioSummary();
+        if (Object.keys(this.portfolioSnapshots).length === 0) {
+          this.refreshPortfolioSnapshots();
+        }
       });
   }
 
@@ -531,53 +536,7 @@ export class LiveDataComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private updatePortfolioSummary(): void {
-    const selection = this.summaryBrokerControl.value ?? 'ALL';
-
-    const relevantBrokers =
-      selection === 'ALL'
-        ? this.brokerOptions
-        : this.brokerOptions.includes(selection)
-          ? [selection]
-          : [];
-
-    if (
-      relevantBrokers.length === 0 ||
-      !relevantBrokers.every(broker => this.isBrokerConnected(broker))
-    ) {
-      this.summaryMetrics = {
-        totalPortfolio: 0,
-        liquidity: 0,
-        positionsValue: 0,
-        positionsCount: 0
-      };
-      return;
-    }
-
-    const relevantTrades =
-      selection === 'ALL'
-        ? this.trades
-        : this.trades.filter(trade => trade.broker === selection);
-
-    const liquidity = relevantBrokers.reduce(
-      (total, broker) => total + (this.brokerLiquidity[broker] ?? 0),
-      0
-    );
-
-    const positionsValue = relevantTrades.reduce((total, trade) => {
-      if (typeof trade.marketValue === 'number') {
-        return total + trade.marketValue;
-      }
-      return total + trade.position * trade.avgCost;
-    }, 0);
-
-    const positionsCount = relevantTrades.filter(trade => trade.position !== 0).length;
-
-    this.summaryMetrics = {
-      totalPortfolio: positionsValue + liquidity,
-      liquidity,
-      positionsValue,
-      positionsCount
-    };
+    this.updatePortfolioSummaryFromSnapshots();
   }
 
   isBrokerConnected(broker: string | null | undefined): boolean {
@@ -621,7 +580,124 @@ export class LiveDataComponent implements OnInit, AfterViewInit, OnDestroy {
     this.brokerConnectionStatus[broker] = connected;
     if (!connected) {
       this.trades = [];
+      delete this.portfolioSnapshots[broker];
     }
     this.updatePortfolioSummary();
+    if (connected) {
+      this.refreshPortfolioSnapshots();
+    }
+  }
+
+  private getConnectedBrokers(): string[] {
+    return this.brokerOptions.filter(broker => this.isBrokerConnected(broker));
+  }
+
+  private refreshPortfolioSnapshots(): void {
+    const connectedBrokers = this.getConnectedBrokers();
+
+    if (connectedBrokers.length === 0 || this.portfolioSnapshotLoading) {
+      if (connectedBrokers.length === 0) {
+        this.portfolioSnapshots = {};
+        this.resetSummaryMetrics();
+      }
+      return;
+    }
+
+    this.portfolioSnapshotLoading = true;
+    this.marketData
+      .getPortfolioSnapshots()
+      .pipe(
+        takeUntil(this.destroy$),
+        finalize(() => {
+          this.portfolioSnapshotLoading = false;
+        }),
+        catchError(err => {
+          console.error('Failed to load portfolio snapshots', err);
+          return of<PortfolioSnapshot[]>([]);
+        })
+      )
+      .subscribe(response => {
+        const snapshotsArray = Array.isArray(response) ? response : response ? [response] : [];
+        const snapshotMap: Record<string, PortfolioSnapshot> = {};
+
+        snapshotsArray.forEach(snapshot => {
+          if (snapshot && snapshot.broker && connectedBrokers.includes(snapshot.broker)) {
+            snapshotMap[snapshot.broker] = snapshot;
+          }
+        });
+
+        this.portfolioSnapshots = snapshotMap;
+        this.updatePortfolioSummaryFromSnapshots();
+      });
+  }
+
+  private updatePortfolioSummaryFromSnapshots(): void {
+    const selection = this.summaryBrokerControl.value ?? 'ALL';
+    const connectedBrokers = this.getConnectedBrokers();
+
+    if (connectedBrokers.length === 0) {
+      this.resetSummaryMetrics();
+      return;
+    }
+
+    const relevantBrokers =
+      selection === 'ALL'
+        ? connectedBrokers
+        : connectedBrokers.includes(selection)
+          ? [selection]
+          : [];
+
+    if (relevantBrokers.length === 0) {
+      this.resetSummaryMetrics();
+      return;
+    }
+
+    const snapshots = relevantBrokers
+      .map(broker => this.portfolioSnapshots[broker])
+      .filter((snapshot): snapshot is PortfolioSnapshot => !!snapshot);
+
+    if (snapshots.length === 0) {
+      this.resetSummaryMetrics();
+      return;
+    }
+
+    const totalPortfolio = snapshots.reduce(
+      (total, snapshot) => total + (snapshot.totalMarketValue ?? 0),
+      0
+    );
+
+    const liquidity = snapshots.reduce(
+      (total, snapshot) => total + (snapshot.availableLiquidity ?? 0),
+      0
+    );
+
+    const positionsValue = snapshots.reduce((total, snapshot) => {
+      const brokerPositionsValue = snapshot.positions.reduce(
+        (positionTotal, position) => positionTotal + (position.marketValue ?? 0),
+        0
+      );
+      return total + brokerPositionsValue;
+    }, 0);
+
+    const positionsCount = snapshots.reduce(
+      (total, snapshot) => total + snapshot.positions.length,
+      0
+    );
+
+    this.summaryMetrics = {
+      totalPortfolio,
+      liquidity,
+      positionsValue,
+      positionsCount
+    };
+  }
+
+  private resetSummaryMetrics(): void {
+    this.summaryMetrics = {
+      totalPortfolio: 0,
+      liquidity: 0,
+      positionsValue: 0,
+      positionsCount: 0
+    };
   }
 }
