@@ -3,6 +3,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { HistBar, StartBarsResponse, TradeView } from '../models/trading.models';
+import { PortfolioSnapshot } from '../models/portfolio.model';
 import { OhlcvBar } from '../models/live-signal.model';
 
 @Injectable({
@@ -65,6 +66,10 @@ export class MarketDataService {
   listTrades(broker = 'IBKR'): Observable<TradeView[]> {
     const params = new HttpParams().set('broker', broker);
     return this.http.get<TradeView[]>(`${this.baseUrl}/trades`, { params });
+  }
+
+  getPortfolioSnapshots(): Observable<PortfolioSnapshot[] | PortfolioSnapshot> {
+    return this.http.get<PortfolioSnapshot[] | PortfolioSnapshot>(`${this.baseUrl}/portfolio`);
   }
 
   getWindow(params: {
