@@ -1,0 +1,199 @@
+<section class="market-analysis">
+  <header class="market-analysis__header">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+    <form [formGroup]="analysisForm" class="analysis-form" (ngSubmit)="loadAnalysis()">
+      <mat-form-field appearance="outline">
+        <mat-label>Symbole</mat-label>
+        <mat-select formControlName="symbol">
+          <mat-option value="EURUSD">EURUSD (Forex)</mat-option>
+          <mat-option value="GBPUSD">GBPUSD (Forex)</mat-option>
+          <mat-option value="BTCUSD">BTCUSD (Crypto)</mat-option>
+          <mat-option value="ETHUSD">ETHUSD (Crypto)</mat-option>
+          <mat-option value="AAPL">AAPL (Actions)</mat-option>
+          <mat-option value="MSFT">MSFT (Actions)</mat-option>
+          <mat-option value="SPY">SPY (ETF)</mat-option>
+          <mat-option value="EEM">EEM (ETF)</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Timeframe</mat-label>
+        <mat-select formControlName="timeframe">
+          <mat-option value="15m">15m</mat-option>
+          <mat-option value="1h">1h</mat-option>
+          <mat-option value="4h">4h</mat-option>
+          <mat-option value="1d">1D</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Timeframes comparaison</mat-label>
+        <input matInput formControlName="timeframesCsv" placeholder="15m,1h,4h" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Nombre de bougies</mat-label>
+        <input matInput type="number" formControlName="range" />
+      </mat-form-field>
+
+      <button mat-flat-button color="primary" type="submit" [disabled]="loading()">
+        <mat-icon>auto_graph</mat-icon>
+        Analyser
+      </button>
+    </form>
+    <mat-progress-bar *ngIf="loading()" mode="indeterminate"></mat-progress-bar>
+  </header>
+
+  <section class="kpis" *ngIf="kpis() as summary">
+    <mat-card class="kpi-card" *ngFor="let item of [
+      { label: 'ATR %', value: summary.atrPercent, suffix: '%' },
+      { label: 'Range moyen', value: summary.averageRange },
+      { label: 'Skewness', value: summary.skewness },
+      { label: 'Kurtosis', value: summary.kurtosis },
+      { label: 'Max DD', value: summary.maxDrawdown, suffix: '%' }
+    ]">
+      <mat-card-header>
+        <mat-card-title>{{ item.label }}</mat-card-title>
+        <mat-chip *ngIf="candlesMock()" class="mock-chip" appearance="outlined">mock</mat-chip>
+      </mat-card-header>
+      <mat-card-content>
+        <span class="kpi-value">{{ item.value | number:'1.0-2' }}{{ item.suffix ?? '' }}</span>
+      </mat-card-content>
+    </mat-card>
+  </section>
+
+  <mat-card class="content-card">
+    <mat-tab-group>
+      <mat-tab label="Saisonnalité">
+        <div class="tab-header">
+          <h3>Saisonnalité mensuelle & hebdomadaire</h3>
+          <mat-chip *ngIf="seasonalityMock()" class="mock-chip" appearance="outlined">mock</mat-chip>
+        </div>
+        <div class="seasonality-charts">
+          @let monthConfig = monthChartConfig();
+          @let dowConfig = dowChartConfig();
+          <div class="chart">
+            <canvas
+              baseChart
+              [data]="monthConfig.data"
+              [options]="monthConfig.options"
+              [type]="monthConfig.type"
+            ></canvas>
+          </div>
+          <div class="chart">
+            <canvas
+              baseChart
+              [data]="dowConfig.data"
+              [options]="dowConfig.options"
+              [type]="dowConfig.type"
+            ></canvas>
+          </div>
+        </div>
+        <mat-divider></mat-divider>
+        <div class="heatmap-container">
+          <div class="tab-header">
+            <h3>Heatmap horaire</h3>
+          </div>
+          @let heatmapConfig = heatmapChartConfig();
+          <div class="heatmap-chart">
+            <canvas
+              baseChart
+              [data]="heatmapConfig.data"
+              [options]="heatmapConfig.options"
+              [type]="heatmapConfig.type"
+            ></canvas>
+          </div>
+        </div>
+      </mat-tab>
+      <mat-tab label="Patterns & Probabilités">
+        <div class="tab-header">
+          <h3>Statistiques d'événements</h3>
+          <mat-chip *ngIf="statsMock()" class="mock-chip" appearance="outlined">mock</mat-chip>
+        </div>
+        <div class="stats-table-wrapper" *ngIf="statsSummary().length; else statsEmpty">
+          <table class="stats-table">
+            <thead>
+              <tr>
+                <th>Événement</th>
+                <th>Cible</th>
+                <th>N</th>
+                <th>p̂</th>
+                <th>IC bas</th>
+                <th>IC haut</th>
+                <th>Lift</th>
+                <th>q-value</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let row of statsSummary(); trackBy: trackStat">
+                <td>{{ row.event }}</td>
+                <td>{{ row.target }}</td>
+                <td>{{ row.n | number }}</td>
+                <td>{{ row.pHat | number:'1.2-2' }}</td>
+                <td>{{ row.ciLow | number:'1.2-2' }}</td>
+                <td>{{ row.ciHigh | number:'1.2-2' }}</td>
+                <td>{{ (row.lift ?? 0) | number:'1.2-2' }}</td>
+                <td>
+                  @if (row.qValue !== undefined) {
+                    {{ row.qValue | number:'1.2-2' }}
+                  } @else {
+                    -
+                  }
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <ng-template #statsEmpty>
+          <p class="empty-state">Aucune statistique disponible pour ce filtre.</p>
+        </ng-template>
+      </mat-tab>
+      <mat-tab label="Filtres">
+        <div class="tab-header">
+          <h3>Filtres actifs</h3>
+          <mat-chip *ngIf="filters().isMock" class="mock-chip" appearance="outlined">mock</mat-chip>
+        </div>
+        <div class="filters-grid" *ngIf="filters().cards.length; else filtersEmpty">
+          <mat-card class="filter-card" *ngFor="let card of filters().cards; trackBy: trackFilter">
+            <mat-card-header>
+              <mat-card-title>{{ card.title }}</mat-card-title>
+              <mat-chip class="source-chip" [ngClass]="card.source.toLowerCase()">
+                {{ card.source === 'JAVA' ? '🟪 JAVA' : '🔵 PY' }}
+              </mat-chip>
+            </mat-card-header>
+            <mat-card-content>
+              <p class="filter-category">{{ card.category }}</p>
+              <p class="filter-description" *ngIf="card.description">{{ card.description }}</p>
+              <div class="filter-metrics">
+                <div class="metric" *ngIf="card.score as score">
+                  <span>Score</span>
+                  <mat-progress-bar mode="determinate" [value]="score * 100"></mat-progress-bar>
+                  <strong>{{ score | number:'1.2-2' }}</strong>
+                </div>
+                <div class="metric" *ngIf="card.ratio as ratio">
+                  <span>Ratio</span>
+                  <mat-progress-bar mode="determinate" [value]="ratio * 100"></mat-progress-bar>
+                  <strong>{{ ratio | percent:'1.0-1' }}</strong>
+                </div>
+                <div class="metric" *ngFor="let metric of card.metrics | keyvalue">
+                  <span>{{ metric.key }}</span>
+                  <strong>{{ metric.value }}</strong>
+                </div>
+              </div>
+              <div class="sparkline" *ngIf="card.series?.length">
+                @let path = filterSparklines().get(card.id);
+                <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+                  <path [attr.d]="path" />
+                </svg>
+              </div>
+            </mat-card-content>
+          </mat-card>
+        </div>
+        <ng-template #filtersEmpty>
+          <p class="empty-state">Aucun filtre disponible.</p>
+        </ng-template>
+      </mat-tab>
+    </mat-tab-group>
+  </mat-card>
+</section>
