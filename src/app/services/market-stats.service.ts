@@ -72,14 +72,12 @@ export class MarketStatsService {
     }
 
     return this.http
-      .get<Array<StatsSummaryRow | StatsSummaryRow & {
-        p_hat?: number;
-        ci_low?: number;
-        ci_high?: number;
-        q_value?: number;
-      }>>(`${environment.pyApiUrl}/stats/summary`, { params })
+      .get<RawStatsSummaryRow[]>(`${environment.pyApiUrl}/stats/summary`, { params })
       .pipe(
-        map(data => ({ data: data.map(row => normalizeStatsSummaryRow(row)), isMock: false } satisfies ApiResult<StatsSummaryRow[]>)),
+        map(data => ({
+          data: data.map(row => normalizeStatsSummaryRow(row)),
+          isMock: false
+        }) satisfies ApiResult<StatsSummaryRow[]>),
         catchError(error => {
           console.warn('Stats summary endpoint unavailable, using mock dataset.', error);
           return of({ data: getMockStatsSummary(), isMock: true });
@@ -140,20 +138,52 @@ export class MarketStatsService {
   }
 }
 
-function normalizeStatsSummaryRow(row: StatsSummaryRow | (StatsSummaryRow & {
-  p_hat?: number;
-  ci_low?: number;
-  ci_high?: number;
-  q_value?: number;
-})): StatsSummaryRow {
+function normalizeStatsSummaryRow(row: RawStatsSummaryRow): StatsSummaryRow {
   return {
     event: row.event,
     target: row.target,
     n: row.n,
-    pHat: 'pHat' in row && typeof row.pHat === 'number' ? row.pHat : row.p_hat ?? row.pHat ?? 0,
-    ciLow: 'ciLow' in row && typeof row.ciLow === 'number' ? row.ciLow : row.ci_low ?? row.ciLow ?? 0,
-    ciHigh: 'ciHigh' in row && typeof row.ciHigh === 'number' ? row.ciHigh : row.ci_high ?? row.ciHigh ?? 0,
+    pHat:
+      typeof row.pHat === 'number'
+        ? row.pHat
+        : typeof row.p_hat === 'number'
+          ? row.p_hat
+          : 0,
+    ciLow:
+      typeof row.ciLow === 'number'
+        ? row.ciLow
+        : typeof row.ci_low === 'number'
+          ? row.ci_low
+          : 0,
+    ciHigh:
+      typeof row.ciHigh === 'number'
+        ? row.ciHigh
+        : typeof row.ci_high === 'number'
+          ? row.ci_high
+          : 0,
     lift: row.lift,
-    qValue: 'qValue' in row && typeof row.qValue === 'number' ? row.qValue : row.q_value ?? row.qValue,
+    qValue:
+      typeof row.qValue === 'number'
+        ? row.qValue
+        : typeof row.q_value === 'number'
+          ? row.q_value
+          : undefined
   };
 }
+
+type RawStatsSummaryRow = {
+  event: string;
+  target: string;
+  n: number;
+  // camelCase possibles
+  pHat?: number;
+  ciLow?: number;
+  ciHigh?: number;
+  lift?: number;
+  qValue?: number;
+  // snake_case possibles (backend Python)
+  p_hat?: number;
+  ci_low?: number;
+  ci_high?: number;
+  q_value?: number;
+};

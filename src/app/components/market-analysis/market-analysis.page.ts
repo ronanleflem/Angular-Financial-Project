@@ -33,7 +33,7 @@ import {
   ScatterController,
   Tooltip
 } from 'chart.js';
-import { BaseChartDirective, NgChartsModule } from 'ng2-charts';
+import { NgChartsModule } from 'ng2-charts';
 import { forkJoin } from 'rxjs';
 
 import {
@@ -74,8 +74,7 @@ type FilterAggregate = {
     MatSnackBarModule,
     MatProgressBarModule,
     MatDividerModule,
-    NgChartsModule,
-    BaseChartDirective
+    NgChartsModule
   ],
   templateUrl: './market-analysis.page.html',
   styleUrls: ['./market-analysis.page.scss'],
@@ -182,7 +181,10 @@ export class MarketAnalysisPage {
             data: dataPoints,
             pointRadius: 18,
             pointHoverRadius: 18,
-            pointBackgroundColor: ctx => heatmapColor((ctx.raw as HeatmapPoint).value),
+            pointBackgroundColor: ctx => {
+              const raw = ctx.raw as HeatmapPoint | undefined;
+              return heatmapColor(raw?.value ?? 0);
+            },
             pointStyle: 'rectRounded',
             borderWidth: 0
           }
@@ -271,15 +273,41 @@ export class MarketAnalysisPage {
           this.statsSummary.set(result.stats.data);
           this.statsMock.set(result.stats.isMock);
 
+          const multiCards = Array.isArray(result.multi.data)
+            ? result.multi.data
+            : result.multi.data
+              ? [result.multi.data as FilterCard]
+              : [];
+
+          const liquidityCards = Array.isArray(result.liquidity.data)
+            ? result.liquidity.data
+            : result.liquidity.data
+              ? [result.liquidity.data as unknown as FilterCard]
+              : [];
+
           const combinedFilters = [
             result.benford.data,
-            ...result.multi.data,
-            ...(Array.isArray(result.liquidity.data) ? result.liquidity.data : [])
-          ].filter((card): card is FilterCard => Boolean(card?.id));
+            ...multiCards,
+            ...liquidityCards
+          ].filter(
+            (card): card is FilterCard =>
+              !!card && typeof card.id === 'string' && card.id.length > 0
+          );
 
           this.filters.set({
             cards: combinedFilters,
-            isMock: result.multi.isMock || result.benford.isMock || result.liquidity.isMock
+            isMock:
+              result.multi.isMock ||
+              result.benford.isMock ||
+              result.liquidity.isMock
+          });
+
+          this.filters.set({
+            cards: combinedFilters,
+            isMock:
+              result.multi.isMock ||
+              result.benford.isMock ||
+              result.liquidity.isMock
           });
 
           this.loading.set(false);

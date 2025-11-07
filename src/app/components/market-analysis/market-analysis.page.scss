@@ -1,35 +1,97 @@
-.market-analysis {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  padding: 1.5rem;
-}
-
+/* --- HEADER centré avec style arrondi --- */
 .market-analysis__header {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  background: var(--mat-sys-surface, #121212);
-  padding: 1rem 1.5rem;
-  border-radius: 0.75rem;
-  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.25);
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+
+  background: #ffffff;
+  border-radius: 16px; /* coins arrondis */
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+  padding: 2rem 3rem 1.75rem;
 }
 
-.analysis-form {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 1rem;
-  align-items: end;
+/* --- FORMULAIRE --- */
+.market-analysis__header .analysis-form {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1.25rem 2rem;
+  align-items: flex-end;
+  width: 100%;
+  max-width: 1200px; /* limite la largeur */
 }
 
-.analysis-form button {
+/* --- CHAMPS --- */
+.market-analysis__header mat-form-field {
+  min-width: 200px;
+  flex: 1;
+  font-size: 1.05rem;
+}
+
+.market-analysis__header mat-label,
+.market-analysis__header .mat-mdc-select-value,
+.market-analysis__header .mat-mdc-input-element {
+  font-size: 1rem !important;
+}
+
+/* --- LISTE DÉROULANTE opaque + taille lisible --- */
+.mat-mdc-select-panel {
+  background: #ffffff !important;
+  color: #111827 !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25) !important;
+  border-radius: 10px !important; /* arrondi du menu déroulant */
+  font-size: 1rem !important;
+}
+
+.mat-mdc-option .mdc-list-item__primary-text {
+  color: #111827 !important;
+  font-size: 1rem !important;
+}
+
+/* Survol option */
+.mat-mdc-option.mdc-list-item--selected,
+.mat-mdc-option.mdc-list-item--activated,
+.mat-mdc-option:hover {
+  background: rgba(99, 102, 241, 0.1) !important;
+}
+
+/* --- BOUTON --- */
+.market-analysis__header button[mat-flat-button] {
+  background-color: #6366f1;
+  color: #ffffff;
   height: 56px;
-  align-self: stretch;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 10px; /* bouton arrondi */
+  font-size: 1.05rem;
+  padding: 0 1.5rem;
 }
 
+/* --- Progress bar --- */
+.market-analysis__header mat-progress-bar {
+  margin-top: 0.75rem;
+}
+
+/* --- Responsive --- */
+@media (max-width: 768px) {
+  .market-analysis__header {
+    padding: 1.5rem;
+  }
+
+  .market-analysis__header .analysis-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .market-analysis__header mat-form-field {
+    width: 100%;
+  }
+}
+
+/* KPIs */
 .kpis {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -37,15 +99,20 @@
 }
 
 .kpi-card {
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(59, 130, 246, 0.12));
+  background: linear-gradient(
+      135deg,
+      rgba(99, 102, 241, 0.06),
+      rgba(59, 130, 246, 0.06)
+  );
 }
 
 .kpi-value {
   font-size: 1.75rem;
   font-weight: 700;
-  color: var(--mat-sys-on-surface, #f8fafc);
+  color: #111827;
 }
 
+/* Contenu principal */
 .content-card {
   padding: 1.5rem;
 }
@@ -96,10 +163,11 @@
 }
 
 .empty-state {
-  color: rgba(226, 232, 240, 0.7);
+  color: rgba(75, 85, 99, 0.9);
   font-style: italic;
 }
 
+/* Filtres */
 .filters-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
@@ -114,13 +182,13 @@
 
 .filter-category {
   font-weight: 600;
-  color: rgba(226, 232, 240, 0.85);
+  color: #111827;
   margin-bottom: 0.5rem;
 }
 
 .filter-description {
   margin-bottom: 0.75rem;
-  color: rgba(226, 232, 240, 0.75);
+  color: #4b5563;
 }
 
 .filter-metrics {
@@ -132,7 +200,7 @@
 .metric span {
   font-size: 0.75rem;
   text-transform: uppercase;
-  color: rgba(148, 163, 184, 0.85);
+  color: #9ca3af;
 }
 
 .metric strong {
@@ -151,30 +219,18 @@
 
 .sparkline path {
   fill: none;
-  stroke: #22d3ee;
+  stroke: #2563eb;
   stroke-width: 2;
 }
 
 .source-chip.java {
-  background-color: rgba(124, 58, 237, 0.2);
-  color: #c4b5fd;
+  background-color: rgba(124, 58, 237, 0.1);
+  color: #6d28d9;
 }
 
 .source-chip.py {
-  background-color: rgba(37, 99, 235, 0.2);
-  color: #bfdbfe;
+  background-color: rgba(37, 99, 235, 0.1);
+  color: #2563eb;
 }
 
-@media (max-width: 768px) {
-  .market-analysis {
-    padding: 1rem;
-  }
 
-  .market-analysis__header {
-    top: -1px;
-  }
-
-  .analysis-form {
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  }
-}
