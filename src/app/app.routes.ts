@@ -16,6 +16,10 @@ export const routes: Routes = [
   { path: 'live-data', component: LiveDataComponent },
   { path: 'active-robots', component: ActiveRobotsComponent },
   {
+    path: 'data-availability',
+    loadComponent: () => import('./pages/data-availability/data-availability.page').then(m => m.DataAvailabilityPageComponent)
+  },
+  {
     path: '_lab/signals',
     loadChildren: () => import('./labs/signals/signals.routes').then(m => m.SIGNALS_ROUTES)
   }
