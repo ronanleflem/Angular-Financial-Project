@@ -22,10 +22,18 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatDividerModule } from '@angular/material/divider';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { debounceTime, map, startWith } from 'rxjs/operators';
+import { debounceTime, finalize, map, startWith } from 'rxjs/operators';
 import { Observable } from 'rxjs';
 import { DataCatalogService } from '../../services/data-catalog.service';
-import { DataSeries, SaveRangeRequest, SaveResult, SymbolRef, Candle } from '../../models/data-catalog.models';
+import {
+  Candle,
+  DataImportJob,
+  DataImportJobRequest,
+  DataSeries,
+  SaveRangeRequest,
+  SymbolRef,
+} from '../../models/data-catalog.models';
+import { DataImportService } from '../../services/data-import.service';
 import { SymbolService } from '../../services/symbol.service';
 import { DEFAULT_SYMBOLS } from '../../mocks/data-catalog.mocks';
 
@@ -74,6 +82,7 @@ export class DataAvailabilityPageComponent implements OnInit, AfterViewInit {
   private readonly fb = inject(FormBuilder);
   private readonly snackBar = inject(MatSnackBar);
   private readonly dataCatalog = inject(DataCatalogService);
+  private readonly dataImport = inject(DataImportService);
   private readonly symbolService = inject(SymbolService);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -380,16 +389,23 @@ export class DataAvailabilityPageComponent implements OnInit, AfterViewInit {
     };
 
     this.savingRange.set(true);
-    this.dataCatalog
-      .saveRange(payload)
-      .pipe(takeUntilDestroyed(this.destroyRef))
+    const jobRequest = this.buildJobRequest(payload);
+    this.dataImport
+      .createJob(jobRequest)
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => this.savingRange.set(false))
+      )
       .subscribe({
-        next: result => this.handleSaveResult(result, payload, scanAfter),
+        next: job => this.handleJobCreated(job, payload, scanAfter),
         error: err => {
-          console.error('Save range failed', err);
-          this.handleSaveResult({ ok: true, mock: true, message: 'Saved (mock fallback)' }, payload, scanAfter);
+          console.error('Data import job creation failed', err);
+          const mockJob = this.buildMockJob(payload);
+          this.handleJobCreated(mockJob, payload, scanAfter, {
+            mock: true,
+            messageOverride: 'Backend indisponible, job simulé créé.',
+          });
         },
-        complete: () => this.savingRange.set(false),
       });
   }
 
@@ -399,34 +415,111 @@ export class DataAvailabilityPageComponent implements OnInit, AfterViewInit {
     this.scanAfterSave.setValue(true);
   }
 
-  private handleSaveResult(result: SaveResult, payload: SaveRangeRequest, scanAfter: boolean): void {
-    this.savingRange.set(false);
-    const message = result.mock ? result.message ?? 'Sauvegarde simulée' : result.message ?? 'Sauvegarde déclenchée';
-    this.snackBar.open(message, 'Fermer', { duration: 4000 });
+  private handleJobCreated(
+    job: DataImportJob,
+    payload: SaveRangeRequest,
+    scanAfter: boolean,
+    options?: { mock?: boolean; messageOverride?: string }
+  ): void {
+    const isMock = options?.mock ?? false;
+    const statusLabel = this.formatJobStatus(job.status);
+    let message = options?.messageOverride;
 
-    if (!result.ok) {
-      return;
+    if (!message) {
+      const prefix = isMock ? "Job d'import simulé" : "Job d'import créé";
+      message = `${prefix} (#${job.id}) — statut ${statusLabel}`;
+      if (!isMock && scanAfter) {
+        message = `${message} — Scanner les gaps une fois le job terminé.`;
+      }
     }
+
+    this.snackBar.open(message, 'Fermer', { duration: 5000 });
 
     const newSeries: DataSeries = {
       symbol: payload.symbol,
       broker: payload.broker,
       timeframe: payload.timeframe,
-      start: payload.start,
-      end: payload.end,
+      start: job.startDate || payload.start,
+      end: job.endDate || payload.end,
       count: 0,
       coveragePct: 0,
       sessions: '-',
-      tz: payload.timezone ?? 'UTC',
-      updatedAt: new Date().toISOString(),
-      source: result.mock ? 'Mock' : payload.source,
+      tz: job.timezone || payload.timezone || 'UTC',
+      updatedAt: job.updatedAt || job.createdAt || new Date().toISOString(),
+      source: isMock ? 'Mock' : this.normalizeSourceType(job.sourceType ?? payload.source),
+      venue: job.venue || payload.venue,
     };
 
     this.upsertSeries(newSeries);
 
-    if (scanAfter) {
+    if (scanAfter && isMock) {
       this.scanGaps(newSeries);
     }
+  }
+
+  private buildJobRequest(payload: SaveRangeRequest): DataImportJobRequest {
+    return {
+      broker: payload.broker,
+      symbol: payload.symbol,
+      timeframe: payload.timeframe,
+      startDate: payload.start,
+      endDate: payload.end,
+      sourceType: payload.source,
+      venue: payload.venue || undefined,
+      timezone: payload.timezone || undefined,
+      conflictPolicy: payload.conflictPolicy,
+      rollover: payload.rollover,
+    };
+  }
+
+  private buildMockJob(payload: SaveRangeRequest): DataImportJob {
+    const now = new Date().toISOString();
+    return {
+      id: `mock-${Date.now()}`,
+      broker: payload.broker,
+      symbol: payload.symbol,
+      timeframe: payload.timeframe,
+      startDate: payload.start,
+      endDate: payload.end,
+      sourceType: payload.source,
+      venue: payload.venue,
+      timezone: payload.timezone,
+      conflictPolicy: payload.conflictPolicy,
+      rollover: payload.rollover,
+      status: 'UNKNOWN',
+      progress: 0,
+      message: 'Mock job (fallback)',
+      createdAt: now,
+      updatedAt: now,
+    };
+  }
+
+  private formatJobStatus(status?: DataImportJob['status']): string {
+    switch (status) {
+      case 'PENDING':
+        return 'En attente';
+      case 'RUNNING':
+        return 'En cours';
+      case 'COMPLETED':
+        return 'Terminé';
+      case 'FAILED':
+        return 'Échec';
+      case 'CANCELLED':
+        return 'Annulé';
+      default:
+        return 'Inconnu';
+    }
+  }
+
+  private normalizeSourceType(source?: string): DataSeries['source'] {
+    const normalized = (source ?? '').toUpperCase();
+    if (normalized === 'CSV') {
+      return 'CSV';
+    }
+    if (normalized === 'MOCK') {
+      return 'Mock';
+    }
+    return 'API';
   }
 
   private upsertSeries(series: DataSeries): void {

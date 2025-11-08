@@ -11,6 +11,7 @@ export type SessionType = '24/7' | 'RTH' | 'Globex' | '-';
 export type DataSourceType = 'API' | 'CSV' | 'Mock';
 export type ConflictPolicy = 'merge' | 'overwrite' | 'skip';
 export type RolloverPolicy = 'date' | 'volume';
+export type DataImportJobStatus = 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED' | 'CANCELLED' | 'UNKNOWN';
 
 export interface DataSeries {
   symbol: string;
@@ -51,16 +52,42 @@ export interface SaveRangeRequest {
   rollover?: RolloverPolicy;
 }
 
-export interface SaveResult {
-  ok: boolean;
-  mock?: boolean;
-  message?: string;
-}
-
 export interface SymbolRef {
   id?: string;
   ticker: string;
   name?: string;
   market?: string;
+}
+
+export interface DataImportJobRequest {
+  broker: string;
+  symbol: string;
+  timeframe: string;
+  startDate: string;
+  endDate: string;
+  sourceType: string;
+  venue?: string;
+  timezone?: string;
+  conflictPolicy?: ConflictPolicy;
+  rollover?: RolloverPolicy;
+}
+
+export interface DataImportJob {
+  id: string;
+  broker: string;
+  symbol: string;
+  timeframe: string;
+  startDate: string;
+  endDate: string;
+  sourceType: string;
+  venue?: string;
+  timezone?: string;
+  conflictPolicy?: ConflictPolicy;
+  rollover?: RolloverPolicy;
+  status?: DataImportJobStatus;
+  progress?: number;
+  message?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 

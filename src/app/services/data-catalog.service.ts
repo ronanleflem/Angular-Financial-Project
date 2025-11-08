@@ -7,11 +7,9 @@ import {
   Candle,
   CoverageInfo,
   DataSeries,
-  SaveRangeRequest,
-  SaveResult,
   SymbolRef,
 } from '../models/data-catalog.models';
-import { DEFAULT_SYMBOLS, MOCK_SAVE_OK, MOCK_SERIES, getMockCandles } from '../mocks/data-catalog.mocks';
+import { DEFAULT_SYMBOLS, MOCK_SERIES, getMockCandles } from '../mocks/data-catalog.mocks';
 
 @Injectable({ providedIn: 'root' })
 export class DataCatalogService {
@@ -115,56 +113,6 @@ export class DataCatalogService {
           );
         })
       );
-  }
-
-  saveRange(req: SaveRangeRequest): Observable<SaveResult> {
-    const broker = (req.broker ?? '').toLowerCase();
-
-    if (broker.includes('binance')) {
-      const params = new HttpParams()
-        .set('symbol', req.symbol)
-        .set('interval', req.timeframe)
-        .set('startDate', req.start)
-        .set('endDate', req.end);
-      return this.http.get(`${this.apiUrl}/api/finance/charts/binance/historical-range`, { params }).pipe(
-        map(() => ({ ok: true, mock: false, message: 'Binance range requested' } as SaveResult)),
-        catchError(err => {
-          console.warn('[DataCatalogService] binance range fallback', err);
-          return of({ ...MOCK_SAVE_OK });
-        })
-      );
-    }
-
-    if (req.source === 'CSV') {
-      const body = {
-        symbol: req.symbol,
-        timeframe: req.timeframe,
-        startDate: req.start,
-        endDate: req.end,
-        timezone: req.timezone,
-        venue: req.venue,
-        conflictPolicy: req.conflictPolicy,
-        rollover: req.rollover,
-      };
-      const endpoint = broker.includes('databento') || broker.includes('cme')
-        ? `${this.apiUrl}/api/finance/charts/load-csv/cme`
-        : `${this.apiUrl}/api/finance/charts/load-csv/tradingview`;
-      return this.http.post(endpoint, body).pipe(
-        map(() => ({ ok: true, mock: false, message: 'CSV ingestion submitted' } as SaveResult)),
-        catchError(err => {
-          console.warn('[DataCatalogService] csv ingestion fallback', err);
-          return of({ ...MOCK_SAVE_OK });
-        })
-      );
-    }
-
-    if (broker.includes('ibkr') || broker.includes('mexc')) {
-      console.warn('[DataCatalogService] broker not yet supported, returning mock');
-      return of({ ...MOCK_SAVE_OK });
-    }
-
-    console.warn('[DataCatalogService] generic save fallback');
-    return of({ ...MOCK_SAVE_OK });
   }
 
   private buildSeriesFromProbes(query: {
