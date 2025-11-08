@@ -6,6 +6,15 @@
   box-sizing: border-box;
 }
 
+
+:host ::ng-deep mat-horizontal-stepper .mat-horizontal-stepper-header-container {
+  padding-bottom: 12px;
+}
+
+:host ::ng-deep mat-horizontal-stepper .mat-horizontal-content-container {
+  padding-top: 8px;
+}
+
 .header-toolbar {
   position: sticky;
   top: 1.75rem;
