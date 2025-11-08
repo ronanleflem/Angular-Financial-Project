@@ -129,7 +129,9 @@ export class DataAvailabilityPageComponent implements OnInit, AfterViewInit {
   ] as const;
 
   readonly lockedColumns = new Set(this.allColumns.filter(c => c.locked).map(c => c.key));
-  readonly visibleColumns = signal(new Set(this.allColumns.map(c => c.key)));
+  readonly visibleColumns = signal<Set<string>>(
+    new Set(this.allColumns.map(c => c.key))
+  );
   readonly columnLabels = this.allColumns.reduce<Record<string, string>>((acc, col) => {
     acc[col.key] = col.label;
     return acc;
@@ -372,8 +374,8 @@ export class DataAvailabilityPageComponent implements OnInit, AfterViewInit {
       end: this.toIsoString(stepTwoValue.end),
       venue: stepOneValue.venue || undefined,
       timezone: stepTwoValue.timezone || undefined,
-      conflictPolicy: stepTwoValue.conflictPolicy || undefined,
-      rollover: stepTwoValue.rollover || undefined,
+      conflictPolicy: (stepTwoValue.conflictPolicy || undefined) as SaveRangeRequest['conflictPolicy'],
+      rollover: (stepTwoValue.rollover || undefined) as SaveRangeRequest['rollover'],
     };
 
     this.savingRange.set(true);
@@ -393,7 +395,7 @@ export class DataAvailabilityPageComponent implements OnInit, AfterViewInit {
   resetForm(): void {
     this.stepOne.reset({ broker: '', marketType: '', venue: '', source: 'API' });
     this.stepTwo.reset({ symbol: '', timeframe: '', start: null, end: null, timezone: 'UTC', conflictPolicy: 'merge', rollover: 'date' });
-    this.scanAfterSave.set(true);
+    this.scanAfterSave.setValue(true);
   }
 
   private handleSaveResult(result: SaveResult, payload: SaveRangeRequest, scanAfter: boolean): void {
@@ -545,8 +547,10 @@ export class DataAvailabilityPageComponent implements OnInit, AfterViewInit {
       case 'end':
       case 'updatedAt':
         return series[column] ? new Date(series[column]).toISOString() : '';
-      default:
-        return String((series as Record<string, unknown>)[column] ?? '');
+      default: {
+        const record = series as unknown as Record<string, unknown>;
+        return String(record[column] ?? '');
+      }
     }
   }
 }

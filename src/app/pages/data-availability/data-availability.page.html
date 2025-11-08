@@ -359,7 +359,7 @@
         <div class="step-actions">
           <button mat-button matStepperPrevious>Précédent</button>
           <button mat-raised-button color="primary" (click)="onSaveRange(false)" [disabled]="savingRange()">Sauvegarder</button>
-          <button mat-stroked-button color="accent" (click)="onSaveRange(scanAfterSave.value ?? false)" [disabled]="savingRange()">Sauvegarder &amp; scanner</button>
+          <button mat-stroked-button color="accent" (click)="onSaveRange(scanAfterSave.value)" [disabled]="savingRange()">Sauvegarder &amp; scanner</button>
         </div>
 
         <div class="saving-overlay" *ngIf="savingRange()">
