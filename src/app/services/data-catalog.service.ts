@@ -126,7 +126,7 @@ export class DataCatalogService {
         .set('interval', req.timeframe)
         .set('startDate', req.start)
         .set('endDate', req.end);
-      return this.http.get(`${this.apiUrl}/binance/historical-range`, { params }).pipe(
+      return this.http.get(`${this.apiUrl}/api/finance/charts/binance/historical-range`, { params }).pipe(
         map(() => ({ ok: true, mock: false, message: 'Binance range requested' } as SaveResult)),
         catchError(err => {
           console.warn('[DataCatalogService] binance range fallback', err);
