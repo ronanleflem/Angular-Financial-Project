@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { AfterViewInit, Component, OnInit, ViewChild, inject, signal } from '@angular/core';
+import { AfterViewInit, Component, DestroyRef, OnInit, ViewChild, inject, signal } from '@angular/core';
 import { FormBuilder, FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
@@ -75,6 +75,7 @@ export class DataAvailabilityPageComponent implements OnInit, AfterViewInit {
   private readonly snackBar = inject(MatSnackBar);
   private readonly dataCatalog = inject(DataCatalogService);
   private readonly symbolService = inject(SymbolService);
+  private readonly destroyRef = inject(DestroyRef);
 
   @ViewChild(MatPaginator) paginator?: MatPaginator;
   @ViewChild(MatSort) sort?: MatSort;
@@ -158,14 +159,14 @@ export class DataAvailabilityPageComponent implements OnInit, AfterViewInit {
   ngOnInit(): void {
     this.symbolService
       .getAll()
-      .pipe(takeUntilDestroyed())
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(list => {
         this.symbols = list.length ? list : DEFAULT_SYMBOLS;
         this.setupAutocomplete();
       });
 
     this.filtersForm.controls.columns.valueChanges
-      .pipe(takeUntilDestroyed())
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(selection => {
         const locked = new Set(this.lockedColumns);
         const merged = new Set<string>([...locked, ...selection]);
@@ -173,15 +174,15 @@ export class DataAvailabilityPageComponent implements OnInit, AfterViewInit {
       });
 
     this.filtersForm.controls.search.valueChanges
-      .pipe(debounceTime(200), takeUntilDestroyed())
+      .pipe(debounceTime(200), takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.applyFilters());
 
     this.filtersForm.controls.start.valueChanges
-      .pipe(debounceTime(100), takeUntilDestroyed())
+      .pipe(debounceTime(100), takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.applyFilters());
 
     this.filtersForm.controls.end.valueChanges
-      .pipe(debounceTime(100), takeUntilDestroyed())
+      .pipe(debounceTime(100), takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.applyFilters());
 
     const fetchTriggers = [
@@ -192,7 +193,7 @@ export class DataAvailabilityPageComponent implements OnInit, AfterViewInit {
     ];
 
     fetchTriggers.forEach(stream =>
-      stream.pipe(debounceTime(250), takeUntilDestroyed()).subscribe(() => this.refresh())
+      stream.pipe(debounceTime(250), takeUntilDestroyed(this.destroyRef)).subscribe(() => this.refresh())
     );
 
     this.dataSource.filterPredicate = (data, filter) => {
@@ -237,7 +238,7 @@ export class DataAvailabilityPageComponent implements OnInit, AfterViewInit {
     this.loading.set(true);
     this.dataCatalog
       .listSeriesAvailability({ broker: broker || undefined, marketType: marketType || undefined, symbol: symbol || undefined, timeframe: timeframe || undefined })
-      .pipe(takeUntilDestroyed())
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: series => {
           this.seriesCache = series;
@@ -286,7 +287,7 @@ export class DataAvailabilityPageComponent implements OnInit, AfterViewInit {
 
     this.dataCatalog
       .probeSeries(row.symbol, row.timeframe)
-      .pipe(takeUntilDestroyed())
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: candles => {
           const coverage = this.dataCatalog.computeCoverage(candles, row.timeframe);
@@ -313,7 +314,7 @@ export class DataAvailabilityPageComponent implements OnInit, AfterViewInit {
   scanGaps(series: DataSeries): void {
     this.dataCatalog
       .probeSeries(series.symbol, series.timeframe)
-      .pipe(takeUntilDestroyed())
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(candles => {
         const coverage = this.dataCatalog.computeCoverage(candles, series.timeframe);
         const updated: DataSeries = {
@@ -381,7 +382,7 @@ export class DataAvailabilityPageComponent implements OnInit, AfterViewInit {
     this.savingRange.set(true);
     this.dataCatalog
       .saveRange(payload)
-      .pipe(takeUntilDestroyed())
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: result => this.handleSaveResult(result, payload, scanAfter),
         error: err => {
