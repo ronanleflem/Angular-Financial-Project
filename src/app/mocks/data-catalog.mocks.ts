@@ -1,4 +1,4 @@
-import { Candle, DataSeries, SaveResult, SymbolRef } from '../models/data-catalog.models';
+import { Candle, DataSeries, SymbolRef } from '../models/data-catalog.models';
 
 export const DEFAULT_SYMBOLS: SymbolRef[] = [
   { ticker: 'EURUSD', name: 'Euro / US Dollar', market: 'FX' },
@@ -197,8 +197,6 @@ export const MOCK_SERIES: DataSeries[] = [
     source: 'Mock'
   }
 ];
-
-export const MOCK_SAVE_OK: SaveResult = { ok: true, mock: true, message: 'Saved (mock)' };
 
 export function getMockCandles(symbol: string, timeframe: string): Candle[] {
   const existing = MOCK_CANDLES[symbol]?.[timeframe];
