@@ -124,6 +124,24 @@
   }
 }
 
+.import-mode-toggle {
+  margin: 2rem 0 1rem;
+  display: flex;
+  justify-content: flex-start;
+
+  ::ng-deep .mat-button-toggle-group {
+    border-radius: 999px;
+    overflow: hidden;
+    box-shadow: 0 8px 16px rgba(15, 23, 42, 0.12);
+  }
+
+  ::ng-deep .mat-button-toggle-button {
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+  }
+}
+
 :host ::ng-deep .mat-mdc-autocomplete-panel,
 :host ::ng-deep .mat-mdc-select-panel {
   background: #ffffff !important;
@@ -500,6 +518,46 @@ tbody tr:not(:last-child) td {
   border-radius: 16px;
   box-shadow: 0 16px 32px rgba(15, 23, 42, 0.12);
   border: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.universe-card {
+  margin: 2rem 0 0;
+  padding: 1.75rem;
+  border-radius: 16px;
+  box-shadow: 0 16px 32px rgba(15, 23, 42, 0.12);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: #ffffff;
+}
+
+.universe-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.25rem 1.5rem;
+
+  mat-form-field {
+    width: 100%;
+    --mdc-outlined-text-field-container-shape: 14px;
+    --mdc-outlined-text-field-outline-color: rgba(15, 23, 42, 0.16);
+    --mdc-outlined-text-field-hover-outline-color: rgba(37, 99, 235, 0.9);
+    --mdc-outlined-text-field-focus-outline-color: rgba(37, 99, 235, 0.95);
+    --mat-mdc-form-field-label-text-color: rgba(15, 23, 42, 0.72);
+  }
+
+  .date-range-field .mat-mdc-form-field-infix {
+    min-height: 64px;
+  }
+}
+
+.universe-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.universe-spinner {
+  --mdc-circular-progress-active-indicator-color: #2563eb;
 }
 
 .step-content {

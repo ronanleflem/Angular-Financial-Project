@@ -242,7 +242,14 @@
   </mat-drawer>
 </mat-drawer-container>
 
-<mat-card class="range-card" aria-label="Formulaire de sauvegarde de plage">
+<section class="import-mode-toggle" aria-label="Mode d'import">
+  <mat-button-toggle-group [(ngModel)]="mode" (change)="onModeChange($event)" aria-label="Mode d'import">
+    <mat-button-toggle value="instrument">Instrument</mat-button-toggle>
+    <mat-button-toggle value="universe">Univers</mat-button-toggle>
+  </mat-button-toggle-group>
+</section>
+
+<mat-card class="range-card" aria-label="Formulaire de sauvegarde de plage" *ngIf="mode === 'instrument'">
   <mat-horizontal-stepper>
     <mat-step [stepControl]="stepOne" label="Source">
       <form [formGroup]="stepOne" class="step-content">
@@ -368,4 +375,72 @@
       </div>
     </mat-step>
   </mat-horizontal-stepper>
+</mat-card>
+
+<mat-card class="universe-card" aria-label="Formulaire d'import d'univers" *ngIf="mode === 'universe'">
+  <div class="universe-form">
+    <mat-form-field appearance="outline">
+      <mat-label>Univers</mat-label>
+      <mat-select [(ngModel)]="selectedUniverseCode" name="universeCode">
+        <mat-option *ngFor="let u of universes" [value]="u.code">
+          {{ u.name }} ({{ u.type }} · {{ u.approxSize || '?' }} actifs)
+        </mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Broker</mat-label>
+      <mat-select [(ngModel)]="universeBroker" name="universeBroker">
+        <mat-option *ngFor="let broker of universeBrokers" [value]="broker">{{ broker }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Timeframe</mat-label>
+      <mat-select [(ngModel)]="universeTimeframe" name="universeTimeframe">
+        <mat-option *ngFor="let tf of timeframePresets" [value]="tf">{{ tf }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="date-range-field">
+      <mat-label>Période</mat-label>
+      <mat-date-range-input [rangePicker]="universeRangePicker">
+        <input matStartDate [(ngModel)]="universeStartDate" name="universeStart" placeholder="Début" />
+        <input matEndDate [(ngModel)]="universeEndDate" name="universeEnd" placeholder="Fin" />
+      </mat-date-range-input>
+      <mat-datepicker-toggle matIconSuffix [for]="universeRangePicker"></mat-datepicker-toggle>
+      <mat-date-range-picker #universeRangePicker></mat-date-range-picker>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Asset class (optionnel)</mat-label>
+      <input matInput [(ngModel)]="universeAssetClass" name="universeAssetClass" placeholder="EQUITY, CRYPTO..." />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Venue (optionnel)</mat-label>
+      <input matInput [(ngModel)]="universeVenue" name="universeVenue" placeholder="NYSE, BINANCEUS..." />
+    </mat-form-field>
+
+    <div class="universe-actions">
+      <button mat-raised-button color="primary" type="button" (click)="onImportUniverse()" [disabled]="universeImporting">
+        Lancer import univers
+      </button>
+      <mat-progress-spinner
+        *ngIf="universeImporting"
+        diameter="28"
+        mode="indeterminate"
+        class="universe-spinner"
+      ></mat-progress-spinner>
+      <button
+        mat-stroked-button
+        color="accent"
+        type="button"
+        *ngIf="showUniverseRefreshButton"
+        (click)="onRefreshAfterUniverse()"
+      >
+        Rafraîchir les séries
+      </button>
+    </div>
+  </div>
 </mat-card>

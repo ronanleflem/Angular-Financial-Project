@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { AfterViewInit, Component, DestroyRef, OnInit, ViewChild, inject, signal } from '@angular/core';
-import { FormBuilder, FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormControl, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -20,6 +20,7 @@ import { MatStepperModule } from '@angular/material/stepper';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatButtonToggleChange, MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatDividerModule } from '@angular/material/divider';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { debounceTime, finalize, map, startWith } from 'rxjs/operators';
@@ -35,6 +36,7 @@ import {
 } from '../../models/data-catalog.models';
 import { DataImportService } from '../../services/data-import.service';
 import { SymbolService } from '../../services/symbol.service';
+import { UniverseCatalog, UniverseImportRequest, UniverseService } from '../../services/universe.service';
 import { DEFAULT_SYMBOLS } from '../../mocks/data-catalog.mocks';
 
 interface HistogramBucket {
@@ -53,9 +55,11 @@ interface GapDetail {
   standalone: true,
   imports: [
     CommonModule,
+    FormsModule,
     ReactiveFormsModule,
     MatToolbarModule,
     MatButtonModule,
+    MatButtonToggleModule,
     MatIconModule,
     MatFormFieldModule,
     MatInputModule,
@@ -84,6 +88,7 @@ export class DataAvailabilityPageComponent implements OnInit, AfterViewInit {
   private readonly dataCatalog = inject(DataCatalogService);
   private readonly dataImport = inject(DataImportService);
   private readonly symbolService = inject(SymbolService);
+  private readonly universeService = inject(UniverseService);
   private readonly destroyRef = inject(DestroyRef);
 
   @ViewChild(MatPaginator) paginator?: MatPaginator;
@@ -150,10 +155,23 @@ export class DataAvailabilityPageComponent implements OnInit, AfterViewInit {
   readonly timeframePresets = ['1m', '5m', '15m', '1h', '4h', '1d', '1w'];
   readonly brokers = ['Binance', 'MEXC', 'IBKR', 'Databento CSV', 'CSV TradingView', 'Autre'];
   readonly marketTypes = ['FX', 'Crypto', 'Equity', 'ETF', 'Futures'];
+  readonly universeBrokers = ['IBKR', 'BINANCE', 'MEXC', 'BYBIT', 'KUCOIN'];
 
   symbols: SymbolRef[] = [];
   filteredSymbols$!: Observable<SymbolRef[]>;
   filteredStepSymbols$!: Observable<SymbolRef[]>;
+
+  mode: 'instrument' | 'universe' = 'instrument';
+  universes: UniverseCatalog[] = [];
+  selectedUniverseCode?: string;
+  universeBroker = 'IBKR';
+  universeTimeframe = '1d';
+  universeStartDate?: Date | null;
+  universeEndDate?: Date | null;
+  universeVenue?: string;
+  universeAssetClass?: string;
+  universeImporting = false;
+  showUniverseRefreshButton = false;
 
   private seriesCache: DataSeries[] = [];
   loading = signal(false);
@@ -172,6 +190,19 @@ export class DataAvailabilityPageComponent implements OnInit, AfterViewInit {
       .subscribe(list => {
         this.symbols = list.length ? list : DEFAULT_SYMBOLS;
         this.setupAutocomplete();
+      });
+
+    this.universeService
+      .getCatalog()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: universes => (this.universes = Array.isArray(universes) ? universes : []),
+        error: err => {
+          console.error('Failed to load universe catalog', err);
+          this.snackBar.open('Impossible de charger les univers disponibles, réessaie plus tard', 'Fermer', {
+            duration: 5000,
+          });
+        },
       });
 
     this.filtersForm.controls.columns.valueChanges
@@ -225,6 +256,59 @@ export class DataAvailabilityPageComponent implements OnInit, AfterViewInit {
     };
 
     this.refresh();
+  }
+
+  onModeChange(event: MatButtonToggleChange): void {
+    const selected = event.value as 'instrument' | 'universe';
+    this.mode = selected;
+    if (selected === 'instrument') {
+      this.showUniverseRefreshButton = false;
+    }
+  }
+
+  onImportUniverse(): void {
+    if (!this.selectedUniverseCode || !(this.universeStartDate instanceof Date) || !(this.universeEndDate instanceof Date)) {
+      this.snackBar.open('Univers et dates obligatoires', 'Fermer', { duration: 3000 });
+      return;
+    }
+
+    const request: UniverseImportRequest = {
+      code: this.selectedUniverseCode,
+      broker: this.universeBroker,
+      timeframe: this.universeTimeframe,
+      startDate: this.universeStartDate.toISOString(),
+      endDate: this.universeEndDate.toISOString(),
+    };
+
+    const venue = (this.universeVenue ?? '').trim();
+    const assetClass = (this.universeAssetClass ?? '').trim();
+    if (venue) {
+      request.venue = venue;
+    }
+    if (assetClass) {
+      request.assetClass = assetClass;
+    }
+
+    this.showUniverseRefreshButton = false;
+    this.universeImporting = true;
+    this.universeService
+      .importUniverse(request)
+      .pipe(finalize(() => (this.universeImporting = false)))
+      .subscribe({
+        next: () => {
+          this.snackBar.open(`Import univers ${this.selectedUniverseCode} lancé (async)`, 'OK', { duration: 4000 });
+          this.showUniverseRefreshButton = true;
+        },
+        error: err => {
+          console.error('Universe import failed', err);
+          this.snackBar.open("Erreur lors de l'import univers", 'Fermer', { duration: 5000 });
+        },
+      });
+  }
+
+  onRefreshAfterUniverse(): void {
+    this.refresh();
+    this.showUniverseRefreshButton = false;
   }
 
   ngAfterViewInit(): void {
