@@ -163,6 +163,8 @@ export class DataAvailabilityPageComponent implements OnInit, AfterViewInit {
 
   mode: 'instrument' | 'universe' = 'instrument';
   universes: UniverseCatalog[] = [];
+  filteredUniverses: UniverseCatalog[] = [];
+  universeSearchTerm = '';
   selectedUniverseCode?: string;
   universeBroker = 'IBKR';
   universeTimeframe = '1d';
@@ -196,9 +198,14 @@ export class DataAvailabilityPageComponent implements OnInit, AfterViewInit {
       .getCatalog()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: universes => (this.universes = Array.isArray(universes) ? universes : []),
+        next: universes => {
+          this.universes = Array.isArray(universes) ? universes : [];
+          this.filteredUniverses = [...this.universes];
+        },
         error: err => {
           console.error('Failed to load universe catalog', err);
+          this.universes = [];
+          this.filteredUniverses = [];
           this.snackBar.open('Impossible de charger les univers disponibles, réessaie plus tard', 'Fermer', {
             duration: 5000,
           });
@@ -256,6 +263,21 @@ export class DataAvailabilityPageComponent implements OnInit, AfterViewInit {
     };
 
     this.refresh();
+  }
+
+  onUniverseSearchChange(term: string): void {
+    this.universeSearchTerm = term;
+    const t = term.trim().toLowerCase();
+    if (!t) {
+      this.filteredUniverses = [...this.universes];
+      return;
+    }
+    this.filteredUniverses = this.universes.filter(u =>
+      (u.code && u.code.toLowerCase().includes(t)) ||
+      (u.name && u.name.toLowerCase().includes(t)) ||
+      (u.type && u.type.toLowerCase().includes(t)) ||
+      (u.provider && u.provider.toLowerCase().includes(t))
+    );
   }
 
   onModeChange(event: MatButtonToggleChange): void {
