@@ -380,9 +380,14 @@
 <mat-card class="universe-card" aria-label="Formulaire d'import d'univers" *ngIf="mode === 'universe'">
   <div class="universe-form">
     <mat-form-field appearance="outline">
+      <mat-label>Rechercher un univers...</mat-label>
+      <input matInput [(ngModel)]="universeAssetClass" (ngModelChange)="onUniverseSearchChange($event)" placeholder="EQUITY, CRYPTO..." />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
       <mat-label>Univers</mat-label>
       <mat-select [(ngModel)]="selectedUniverseCode" name="universeCode">
-        <mat-option *ngFor="let u of universes" [value]="u.code">
+        <mat-option *ngFor="let u of filteredUniverses" [value]="u.code">
           {{ u.name }} ({{ u.type }} · {{ u.approxSize || '?' }} actifs)
         </mat-option>
       </mat-select>
