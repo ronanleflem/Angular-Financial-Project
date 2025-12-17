@@ -381,7 +381,12 @@
   <div class="universe-form">
     <mat-form-field appearance="outline">
       <mat-label>Rechercher un univers...</mat-label>
-      <input matInput [(ngModel)]="universeAssetClass" (ngModelChange)="onUniverseSearchChange($event)" placeholder="EQUITY, CRYPTO..." />
+      <input
+        matInput
+        [(ngModel)]="universeSearchTerm"
+        (ngModelChange)="onUniverseSearchChange($event)"
+        placeholder="EQUITY, CRYPTO..."
+      />
     </mat-form-field>
 
     <mat-form-field appearance="outline">
@@ -419,7 +424,10 @@
 
     <mat-form-field appearance="outline">
       <mat-label>Asset class (optionnel)</mat-label>
-      <input matInput [(ngModel)]="universeAssetClass" name="universeAssetClass" placeholder="EQUITY, CRYPTO..." />
+      <mat-select [(ngModel)]="universeAssetClass" name="universeAssetClass">
+        <mat-option value="">—</mat-option>
+        <mat-option *ngFor="let asset of assetClassOptions" [value]="asset">{{ asset }}</mat-option>
+      </mat-select>
     </mat-form-field>
 
     <mat-form-field appearance="outline">
