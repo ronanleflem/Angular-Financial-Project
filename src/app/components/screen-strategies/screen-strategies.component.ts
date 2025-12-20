@@ -53,8 +53,9 @@ export class ScreenStrategiesComponent implements OnInit {
 
   goToDetails(strategy: any) {
     console.log('GO vers', strategy);
+    const safeComparedSymbol = strategy?.comparedSymbol ?? 'none';
     this.router.navigate(
-      ['/strategy-detail', strategy.name, strategy.runId, strategy.symbol, strategy.comparedSymbol],
+      ['/strategy-detail', strategy.name, strategy.runId, strategy.symbol, safeComparedSymbol],
       { state: { strategy } }
     );
   }

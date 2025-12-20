@@ -41,7 +41,8 @@ export class StrategyDetailComponent implements OnInit {
     const strategyName = this.route.snapshot.paramMap.get('name');
     const runId = this.route.snapshot.paramMap.get('runId');
     this.symbol = this.route.snapshot.paramMap.get('symbol') || '';
-    this.comparedSymbol = this.route.snapshot.paramMap.get('comparedSymbol') || '';
+    const comparedParam = this.route.snapshot.paramMap.get('comparedSymbol');
+    this.comparedSymbol = comparedParam && comparedParam !== 'none' ? comparedParam : '';
 
     const navState = this.router.getCurrentNavigation()?.extras.state || history.state;
     const stateStrategy = navState?.['strategy'];
@@ -94,16 +95,27 @@ export class StrategyDetailComponent implements OnInit {
         console.log("Avant le map",trades);
         const formattedTrades = Array.isArray(trades) ? trades.map(t => ({
           id: t.id,
-          type: t.tradeType, // ou t.type si c’est ta convention
-          entryDate: new Date(t.entryTimestamp),
+          tradeType: t.tradeType,
+          assetClass: t.assetClass,
+          entryTimestamp: t.entryTimestamp ? new Date(t.entryTimestamp) : null,
+          exitTimestamp: t.exitTimestamp ? new Date(t.exitTimestamp) : null,
           entryPrice: t.entryPrice,
           exitPrice: t.exitPrice,
-          result: `${(t.exitPrice - t.entryPrice >= 0 ? '+' : '')}${((t.exitPrice - t.entryPrice) /** coeffMarket */ ).toFixed(0)} pips`,
+          stopLoss: t.stopLoss,
+          takeProfit: t.takeProfit,
+          profitOrLoss: t.profitOrLoss,
+          pnlPct: t.pnlPct,
+          maxDrawdownPct: t.maxDrawdownPct,
+          quantity: t.quantity,
+          cycleId: t.cycleId,
+          confidenceScore: t.confidenceScore,
+          symbol: t.symbol,
+          intermediateEntries: t.intermediateEntries,
           rr: t.takeProfit && t.stopLoss
             ? (Math.abs(t.takeProfit - t.entryPrice) / Math.abs(t.entryPrice - t.stopLoss)).toFixed(2)
             : null,
           duration: this.getDurationInMinutes(t.entryTimestamp, t.exitTimestamp),
-          comment: `Trade auto chargé de ${t.strategyName}`
+          comment: `Trade auto charge de ${t.strategyName}`
         })) : [];
 
         this.trades = formattedTrades ? formattedTrades : this.getMockTrades();
@@ -122,42 +134,73 @@ export class StrategyDetailComponent implements OnInit {
     return [
       {
         id: 1,
-        type: 'Long',
-        entryDate: new Date('2024-01-05 09:30'),
+        tradeType: 'Long',
+        assetClass: 'FX',
+        entryTimestamp: new Date('2024-01-05 09:30'),
+        exitTimestamp: new Date('2024-01-05 11:30'),
         entryPrice: 1.1000,
         exitPrice: 1.1050,
-        result: '+50 pips',
+        stopLoss: 1.0980,
+        takeProfit: 1.1050,
+        profitOrLoss: 0.0050,
+        pnlPct: 0.45,
+        maxDrawdownPct: 0.1,
+        quantity: 1,
+        cycleId: 1,
+        confidenceScore: 0.72,
+        symbol: 'EURUSD',
         rr: 2.5,
         duration: 120,
-        comment: 'Breakout validé après la KillZone NY'
+        comment: 'Breakout valide apres la KillZone NY'
       },
       {
         id: 2,
-        type: 'Short',
-        entryDate: new Date('2024-01-10 14:00'),
+        tradeType: 'Short',
+        assetClass: 'FX',
+        entryTimestamp: new Date('2024-01-10 14:00'),
+        exitTimestamp: new Date('2024-01-10 14:45'),
         entryPrice: 1.1100,
         exitPrice: 1.1080,
-        result: '+20 pips',
+        stopLoss: 1.1120,
+        takeProfit: 1.1080,
+        profitOrLoss: 0.0020,
+        pnlPct: 0.18,
+        maxDrawdownPct: 0.05,
+        quantity: 1,
+        cycleId: 2,
+        confidenceScore: 0.61,
+        symbol: 'EURUSD',
         rr: 1.0,
         duration: 45,
-        comment: 'Reversal sur zone de déséquilibre'
+        comment: 'Reversal sur zone de desequilibre'
       },
       {
         id: 3,
-        type: 'Long',
-        entryDate: new Date('2024-01-15 08:00'),
+        tradeType: 'Long',
+        assetClass: 'FX',
+        entryTimestamp: new Date('2024-01-15 08:00'),
+        exitTimestamp: new Date('2024-01-15 09:00'),
         entryPrice: 1.0950,
         exitPrice: 1.0920,
-        result: '-30 pips',
+        stopLoss: 1.0920,
+        takeProfit: 1.1000,
+        profitOrLoss: -0.0030,
+        pnlPct: -0.27,
+        maxDrawdownPct: 0.2,
+        quantity: 1,
+        cycleId: 3,
+        confidenceScore: 0.4,
+        symbol: 'EURUSD',
         rr: -1.5,
         duration: 60,
         comment: 'Erreur de lecture de structure'
       }
     ];
   }
-  getDurationInMinutes(start: string, end: string): number {
-    const startDate = new Date(start);
-    const endDate = new Date(end);
+  getDurationInMinutes(start: string | Date | null | undefined, end: string | Date | null | undefined): number {
+    if (!start || !end) return 0;
+    const startDate = start instanceof Date ? start : new Date(start);
+    const endDate = end instanceof Date ? end : new Date(end);
     const diffMs = Math.abs(endDate.getTime() - startDate.getTime());
     return Math.floor(diffMs / (1000 * 60));
   }

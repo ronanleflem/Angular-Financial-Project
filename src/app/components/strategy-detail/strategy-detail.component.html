@@ -46,20 +46,27 @@
 
 <!-- Détail du trade actif -->
 <div class="trade-detail" *ngIf="currentTrade">
-  <h3>Détail du Trade Actuel</h3>
+  <h3>Detail du Trade Actuel</h3>
   <table>
     <tr><td>ID :</td><td>{{ currentTrade.id }}</td></tr>
     <tr><td>Type :</td><td>{{ currentTrade.tradeType || currentTrade.type }}</td></tr>
-    <tr><td>Date d'entrée :</td><td>{{ currentTrade.entryTimestamp || currentTrade.entryDate | date:'short' }}</td></tr>
-    <tr><td>Prix d'entrée :</td><td>{{ currentTrade.entryPrice }}</td></tr>
+    <tr><td>Classe d'actif :</td><td>{{ currentTrade.assetClass || '-' }}</td></tr>
+    <tr><td>Symbole :</td><td>{{ currentTrade.symbol || '-' }}</td></tr>
+    <tr><td>Entrees intermediaires :</td><td>{{ currentTrade.intermediateEntries?.length ? (currentTrade.intermediateEntries | json) : '-' }}</td></tr>
+    <tr><td>Cycle ID :</td><td>{{ currentTrade.cycleId ?? '-' }}</td></tr>
+    <tr><td>Quantite :</td><td>{{ currentTrade.quantity ?? '-' }}</td></tr>
+    <tr><td>Score de confiance :</td><td>{{ currentTrade.confidenceScore ?? '-' }}</td></tr>
+    <tr><td>Date d'entree :</td><td>{{ (currentTrade.entryTimestamp || currentTrade.entryDate) | date:'short' }}</td></tr>
+    <tr><td>Date de sortie :</td><td>{{ currentTrade.exitTimestamp ? (currentTrade.exitTimestamp | date:'short') : '-' }}</td></tr>
+    <tr><td>Prix d'entree :</td><td>{{ currentTrade.entryPrice }}</td></tr>
     <tr><td>Prix de sortie :</td><td>{{ currentTrade.exitPrice }}</td></tr>
-    <tr><td>Stop Loss :</td><td>{{ currentTrade.stopLoss || 'N/A' }}</td></tr>
-    <tr><td>Take Profit :</td><td>{{ currentTrade.takeProfit || 'N/A' }}</td></tr>
-    <tr><td>Résultat :</td><td>
-      {{ currentTrade.result || (currentTrade.profitOrLoss * 10000 | number:'1.0-0') + ' pips' }}
-    </td></tr>
-    <tr><td>RR :</td><td>{{ currentTrade.rr || 'Calculé plus tard' }}</td></tr>
-    <tr><td>Durée :</td><td>{{ currentTrade.duration || 'Calculé plus tard' }}</td></tr>
+    <tr><td>Stop Loss :</td><td>{{ currentTrade.stopLoss ?? 'N/A' }}</td></tr>
+    <tr><td>Take Profit :</td><td>{{ currentTrade.takeProfit ?? 'N/A' }}</td></tr>
+    <tr><td>Profit / Loss :</td><td>{{ currentTrade.profitOrLoss ?? '-' }}</td></tr>
+    <tr><td>PNL % :</td><td>{{ currentTrade.pnlPct == null ? '-' : (currentTrade.pnlPct | percent:'1.2-2') }}</td></tr>
+    <tr><td>Max Drawdown % :</td><td>{{ currentTrade.maxDrawdownPct == null ? '-' : (currentTrade.maxDrawdownPct | percent:'1.2-2') }}</td></tr>
+    <tr><td>RR :</td><td>{{ currentTrade.rr || 'Calcule plus tard' }}</td></tr>
+    <tr><td>Duree :</td><td>{{ currentTrade.duration || 'Calcule plus tard' }}</td></tr>
     <tr><td>Commentaire :</td><td>{{ currentTrade.comment || '-' }}</td></tr>
   </table>
 </div>
