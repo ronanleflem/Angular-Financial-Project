@@ -5,6 +5,30 @@ import {FormsModule} from '@angular/forms';
 import { Chart } from 'chart.js';
 import { NgChartsModule } from 'ng2-charts';
 
+export type ChartDatasetPayload = {
+  labels: string[];
+  datasets: Array<{
+    label: string;
+    data: number[];
+    backgroundColor: string;
+  }>;
+};
+
+export function buildChartDatasets(
+  statistics: Record<string, Record<string, number | null | undefined>> | undefined,
+  statisticFields: string[],
+  selectedTimeframes: string[]
+): ChartDatasetPayload {
+  const labels = statisticFields;
+  const datasets = selectedTimeframes.map(tf => ({
+    label: tf,
+    data: labels.map(stat => statistics?.[tf]?.[stat] ?? 0),
+    backgroundColor: 'rgba(75,192,192,0.6)'
+  }));
+
+  return { labels, datasets };
+}
+
 @Component({
   selector: 'app-statistics',
   templateUrl: './statistic-data.component.html',
@@ -221,12 +245,11 @@ export class StatisticDataComponent {
       this.chart.destroy();
     }
 
-    const labels = this.statisticFields;
-    const datasets = this.selectedTimeframes.map(tf => ({
-      label: tf,
-      data: labels.map(stat => this.statistics[tf]?.[stat] ?? 0),
-      backgroundColor: 'rgba(75,192,192,0.6)'
-    }));
+    const { labels, datasets } = buildChartDatasets(
+      this.statistics,
+      this.statisticFields,
+      this.selectedTimeframes
+    );
 
     this.chart = new Chart(ctx, {
       type: 'bar',
