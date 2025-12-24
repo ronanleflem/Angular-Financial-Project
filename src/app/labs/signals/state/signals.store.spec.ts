@@ -2,7 +2,14 @@ import { SignalsStore } from './signals.store';
 
 describe('SignalsStore', () => {
   let store: SignalsStore;
-  beforeEach(() => { store = new SignalsStore(); });
+  let getItemSpy: jasmine.Spy;
+  let setItemSpy: jasmine.Spy;
+
+  beforeEach(() => {
+    getItemSpy = spyOn(localStorage, 'getItem').and.returnValue(null);
+    setItemSpy = spyOn(localStorage, 'setItem');
+    store = new SignalsStore();
+  });
 
   it('increments/decrements/resets count', () => {
     expect(store.count()).toBe(0);
@@ -29,5 +36,32 @@ describe('SignalsStore', () => {
 
     store.clearCompleted();
     expect(store.todos().length).toBe(0);
+  });
+
+  it('filters todos by status', () => {
+    store.addTodo('A');
+    store.addTodo('B');
+    const [firstId] = store.todos().map(t => t.id);
+
+    store.toggleTodo(firstId);
+
+    store.filter.set('active');
+    expect(store.filteredTodos().every(t => !t.completed)).toBeTrue();
+    expect(store.filteredTodos().length).toBe(1);
+
+    store.filter.set('completed');
+    expect(store.filteredTodos().every(t => t.completed)).toBeTrue();
+    expect(store.filteredTodos().length).toBe(1);
+
+    store.filter.set('all');
+    expect(store.filteredTodos().length).toBe(2);
+  });
+
+  it('persists count changes to localStorage', () => {
+    const key = 'signals-demo:count';
+    expect(getItemSpy).toHaveBeenCalledWith(key);
+
+    store.inc();
+    expect(setItemSpy).toHaveBeenCalledWith(key, '1');
   });
 });
