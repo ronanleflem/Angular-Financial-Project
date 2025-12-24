@@ -11,6 +11,7 @@ import {FormsModule} from '@angular/forms';
 import annotationPlugin from 'chartjs-plugin-annotation';
 import { AnnotationOptions, LineAnnotationOptions, LabelPosition } from 'chartjs-plugin-annotation';
 import { format } from 'date-fns';
+import { mapCandlesToOhlc } from '../candlestick-chart.utils';
 
 @Component({
   selector: 'app-historical-data',
@@ -166,13 +167,7 @@ export class HistoricalDataComponent implements OnInit, AfterViewInit {
         datasets: [
           {
             label: (this.selectedSymbol || '—') + ' - ' + this.selectedTimeframe,
-            data: this.candles.map(c => ({
-              x: new Date(c.date).getTime(),
-              o: c.open,
-              h: c.high,
-              l: c.low,
-              c: c.close
-            })),
+            data: mapCandlesToOhlc(this.candles),
             borderColor: 'black',
             backgroundColor: 'rgba(0, 128, 0, 0.5)',
             barThickness: 1,
@@ -251,5 +246,4 @@ export class HistoricalDataComponent implements OnInit, AfterViewInit {
     });
   }
 }
-
 

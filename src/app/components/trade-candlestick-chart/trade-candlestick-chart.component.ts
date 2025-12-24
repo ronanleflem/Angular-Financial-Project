@@ -8,6 +8,12 @@ import {
   CandlestickController,
   CandlestickElement
 } from 'chartjs-chart-financial';
+import {
+  alignComparedOhlc,
+  buildOhlcDataset,
+  buildTradeAnnotation,
+  mapCandlesToOhlc
+} from '../candlestick-chart.utils';
 
 @Component({
   selector: 'app-trade-candlestick-chart',
@@ -41,25 +47,9 @@ export class TradeCandlestickChartComponent implements OnChanges {
       const { candles, trade, comparedCandles } = response as any;
 
       // 🛡️ Validation des données
-      const data = candles
-        .filter((c: any) => !isNaN(new Date(c.date).getTime()))
-        .map((c: any) => ({
-          x: new Date(c.date).getTime(),
-          o: c.open,
-          h: c.high,
-          l: c.low,
-          c: c.close
-        }));
-
-      const comparedData = (comparedCandles || [])
-        .filter((c: any) => !isNaN(new Date(c.date).getTime()))
-        .map((c: any) => ({
-          x: new Date(c.date).getTime(),
-          o: c.open,
-          h: c.high,
-          l: c.low,
-          c: c.close
-        }));
+      const data = mapCandlesToOhlc(candles);
+      const comparedData = mapCandlesToOhlc(comparedCandles || []);
+      const alignedComparedData = alignComparedOhlc(data, comparedData);
 
       console.log('[Candles]', candles);
       console.log('[Trade]', trade);
@@ -78,15 +68,15 @@ export class TradeCandlestickChartComponent implements OnChanges {
       }
 
       setTimeout(() => {
-        this.renderChart(data, trade, 'tradeCandlestickChart', true);
-        if (comparedData.length) {
-          this.renderChart(comparedData, trade, 'comparedCandlestickChart', false);
+        this.renderChart(data, trade, 'tradeCandlestickChart', true, `Trade #${this.tradeId}`);
+        if (alignedComparedData.length) {
+          this.renderChart(alignedComparedData, trade, 'comparedCandlestickChart', false, this.comparedSymbol);
         }
       }, 0);
     });
   }
 
-  renderChart(data: any[], trade: any, canvasId: string, annotate: boolean): void {
+  renderChart(data: any[], trade: any, canvasId: string, annotate: boolean, label: string): void {
     const canvas = document.getElementById(canvasId) as HTMLCanvasElement;
     const ctx = canvas?.getContext('2d');
     if (!data?.length || !trade || !canvas || !ctx) {
@@ -114,10 +104,7 @@ export class TradeCandlestickChartComponent implements OnChanges {
     const newChart = new Chart(ctx, {
       type: 'candlestick',
       data: {
-        datasets: [{
-          label: canvasId === 'tradeCandlestickChart' ? `Trade #${this.tradeId}` : this.comparedSymbol,
-          data,
-        }]
+        datasets: [buildOhlcDataset(data, label)]
       },
       options: {
         responsive: true,
@@ -145,23 +132,7 @@ export class TradeCandlestickChartComponent implements OnChanges {
         },
         plugins: {
           annotation: annotate ? {
-            annotations: {
-              tradeBox: {
-                type: 'box',
-                xMin: entryTime,
-                xMax: exitTime,
-                yMin: trade.stopLoss,
-                yMax: trade.takeProfit,
-                backgroundColor: trade.result === 'win' ? 'rgba(0,255,0,0.2)' : 'rgba(255,0,0,0.2)',
-                borderColor: trade.result === 'win' ? 'green' : 'red',
-                borderWidth: 2,
-                label: {
-                  content: 'Trade',
-                  //enabled: true,
-                  position: 'start'
-                }
-              }
-            }
+            annotations: buildTradeAnnotation(trade, entryTime, exitTime)
           } : undefined,
           zoom: {
             pan: {
