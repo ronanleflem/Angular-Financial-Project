@@ -48,7 +48,7 @@ export class StrategyCalculationComponent implements OnInit {
       alert('Tous les champs sont requis pour lancer le calcul !');
       return;
     }
-    this.result = this.tradingService
+    this.tradingService
       .getCalculationStrategy(
         this.selectedStrategy,
         this.selectedSymbol,
@@ -58,13 +58,14 @@ export class StrategyCalculationComponent implements OnInit {
         this.endDate
       )
       .subscribe({
-      next: (response) => {
-        console.log('Résultat de la stratégie', response);
-        this.result = response;
-      },
-      error: (error) => {
-        console.error('Erreur lors du calcul de stratégie :', error);
-      }
-    });
+        next: (response) => {
+          console.log('Résultat de la stratégie', response);
+          this.result = response;
+        },
+        error: (error) => {
+          console.error('Erreur lors du calcul de stratégie :', error);
+          this.result = null;
+        }
+      });
   }
 }
