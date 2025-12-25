@@ -18,11 +18,13 @@
   <button (click)="loadData()">Charger</button>
 </div>
 
-<div *ngIf="candles.length > 0; else loading">
+<p *ngIf="errorMessage" class="error-message" role="alert">{{ errorMessage }}</p>
+
+<div *ngIf="!errorMessage && candles.length > 0; else loading">
   <h2>Graphique des Bougies</h2>
   <canvas id="candlestickChart"></canvas>
 </div>
 
 <ng-template #loading>
-  <p>Loading data...</p>
+  <p *ngIf="isLoading">Loading data...</p>
 </ng-template>

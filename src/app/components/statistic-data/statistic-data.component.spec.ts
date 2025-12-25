@@ -1,20 +1,27 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 
 import { buildChartDatasets, StatisticDataComponent } from './statistic-data.component';
 
 describe('StatisticDataComponent', () => {
   let component: StatisticDataComponent;
   let fixture: ComponentFixture<StatisticDataComponent>;
+  let httpMock: HttpTestingController;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [StatisticDataComponent]
+      imports: [HttpClientTestingModule, StatisticDataComponent]
     })
     .compileComponents();
 
     fixture = TestBed.createComponent(StatisticDataComponent);
     component = fixture.componentInstance;
+    httpMock = TestBed.inject(HttpTestingController);
     fixture.detectChanges();
+  });
+
+  afterEach(() => {
+    httpMock.verify();
   });
 
   it('should create', () => {
@@ -52,5 +59,24 @@ describe('StatisticDataComponent', () => {
     expect(result.datasets).toHaveSize(2);
     expect(result.datasets[0].data).toEqual([5, 0, 0]);
     expect(result.datasets[1].data).toEqual([2, 0, 0]);
+  });
+
+  it('shows a fallback message when the statistics request fails', () => {
+    const consoleSpy = spyOn(console, 'error');
+
+    component.selectedSymbol = 'EURUSD';
+    component.selectedAnalysis = 'bullish-bearish-all';
+
+    expect(() => component.loadStatistics()).not.toThrow();
+
+    const req = httpMock.expectOne('http://localhost:8090/filter/bullish-bearish-stats/all?symbol=EURUSD');
+    req.flush('Not Found', { status: 404, statusText: 'Not Found' });
+
+    fixture.detectChanges();
+    const errorMessage = fixture.nativeElement.querySelector('.error-message');
+
+    expect(consoleSpy).toHaveBeenCalled();
+    expect(component.isLoading).toBeFalse();
+    expect(errorMessage?.textContent).toContain('Impossible de charger les statistiques');
   });
 });

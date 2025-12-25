@@ -23,6 +23,8 @@ import { mapCandlesToOhlc } from '../candlestick-chart.utils';
 export class HistoricalDataComponent implements OnInit, AfterViewInit {
   chart: any;
   candles: any[] = [];
+  errorMessage: string | null = null;
+  isLoading = false;
   trades = [
     {
       entryDate: new Date('2024-02-08T14:15:00'),
@@ -65,13 +67,22 @@ export class HistoricalDataComponent implements OnInit, AfterViewInit {
   }
 
   ngOnInit() {
-        this.tradingService.getSymbols().subscribe(list => {
+        this.isLoading = true;
+        this.errorMessage = null;
+        this.tradingService.getSymbols().subscribe({
+          next: (list) => {
             this.symbols = list ?? [];
-              if (!this.selectedSymbol && this.symbols.length) {
-                this.selectedSymbol = this.symbols[0].symbol;
-              }
-              this.loadData();
-          });
+            if (!this.selectedSymbol && this.symbols.length) {
+              this.selectedSymbol = this.symbols[0].symbol;
+            }
+            this.loadData();
+          },
+          error: (err) => {
+            console.error(err);
+            this.errorMessage = 'Impossible de charger les symboles.';
+            this.isLoading = false;
+          }
+        });
     }
 
 
@@ -92,20 +103,31 @@ export class HistoricalDataComponent implements OnInit, AfterViewInit {
   }
 
   loadData() {
-    this.tradingService.getHistoricalCandlesTimeframeCME(this.selectedSymbol, this.selectedTimeframe, this.startDate, this.endDate).subscribe(data => {
-      console.log('Données reçues loadData :', data);
-      this.candles = data;
-      //console.log("Données utilisées :", this.candles.map(c => new Date(c.date).toUTCString()));
-      //console.log("Données utilisées :", this.candles.map(c => new Date(c.date).toISOString()));
+    this.isLoading = true;
+    this.errorMessage = null;
+    this.tradingService.getHistoricalCandlesTimeframeCME(this.selectedSymbol, this.selectedTimeframe, this.startDate, this.endDate).subscribe({
+      next: (data) => {
+        console.log('Données reçues loadData :', data);
+        this.candles = data;
+        //console.log("Données utilisées :", this.candles.map(c => new Date(c.date).toUTCString()));
+        //console.log("Données utilisées :", this.candles.map(c => new Date(c.date).toISOString()));
 
-      /*
-      this.candles = this.candles.filter(c => {
-        const date = new Date(c.date);
-        const day = date.getUTCDay();
-        return day !== 0 && day !== 6; // ✅ Exclut samedi et dimanche
-      });*/
-      console.log('Données filtrées loadData :', this.candles);
-      setTimeout(() => this.createChart(), 0); // ✅ Attendre que le DOM soit prêt
+        /*
+        this.candles = this.candles.filter(c => {
+          const date = new Date(c.date);
+          const day = date.getUTCDay();
+          return day !== 0 && day !== 6; // ✅ Exclut samedi et dimanche
+        });*/
+        console.log('Données filtrées loadData :', this.candles);
+        this.isLoading = false;
+        setTimeout(() => this.createChart(), 0); // ✅ Attendre que le DOM soit prêt
+      },
+      error: (err) => {
+        console.error(err);
+        this.candles = [];
+        this.errorMessage = 'Impossible de charger les données historiques.';
+        this.isLoading = false;
+      }
     });
   }
   getAnnotations(): Record<string, LineAnnotationOptions> {
@@ -246,4 +268,3 @@ export class HistoricalDataComponent implements OnInit, AfterViewInit {
     });
   }
 }
-
