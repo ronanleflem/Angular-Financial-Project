@@ -1,20 +1,27 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 
 import { buildChartDatasets, StatisticDataComponent } from './statistic-data.component';
 
 describe('StatisticDataComponent', () => {
   let component: StatisticDataComponent;
   let fixture: ComponentFixture<StatisticDataComponent>;
+  let httpMock: HttpTestingController;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [StatisticDataComponent]
+      imports: [HttpClientTestingModule, StatisticDataComponent]
     })
     .compileComponents();
 
     fixture = TestBed.createComponent(StatisticDataComponent);
     component = fixture.componentInstance;
+    httpMock = TestBed.inject(HttpTestingController);
     fixture.detectChanges();
+  });
+
+  afterEach(() => {
+    httpMock.verify();
   });
 
   it('should create', () => {
@@ -52,5 +59,42 @@ describe('StatisticDataComponent', () => {
     expect(result.datasets).toHaveSize(2);
     expect(result.datasets[0].data).toEqual([5, 0, 0]);
     expect(result.datasets[1].data).toEqual([2, 0, 0]);
+  });
+
+  it('loads statistics, builds datasets, and renders table rows', () => {
+    spyOn(component, 'renderChart');
+    component.selectedAnalysis = 'bullish-bearish-multi';
+    component.selectedSymbol = 'EURUSD';
+    component.selectedTimeframes = ['1h', '4h'];
+
+    component.loadStatistics();
+
+    const req = httpMock.expectOne((request) =>
+      request.url === 'http://localhost:8090/filter/bullish-bearish-stats/multi-timeframes'
+      && request.params.get('symbol') === 'EURUSD'
+      && request.params.get('timeframes') === '1h,4h'
+    );
+    expect(req.request.method).toBe('GET');
+
+    req.flush({
+      '1h': { bullish: 12, bearish: 4 },
+      '4h': { bullish: 8, bearish: 6 }
+    });
+
+    fixture.detectChanges();
+
+    const datasetPayload = buildChartDatasets(
+      component.statistics,
+      component.statisticFields,
+      component.selectedTimeframes
+    );
+
+    expect(datasetPayload.labels).toEqual(['bullish', 'bearish']);
+    expect(datasetPayload.datasets).toHaveSize(2);
+    expect(datasetPayload.datasets[0].data).toEqual([12, 4]);
+    expect(datasetPayload.datasets[1].data).toEqual([8, 6]);
+
+    const rows = fixture.nativeElement.querySelectorAll('tbody tr');
+    expect(rows.length).toBe(2);
   });
 });
