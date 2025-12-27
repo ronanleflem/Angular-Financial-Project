@@ -53,6 +53,7 @@ export class StatisticDataComponent {
   chart: Chart | undefined;
 
   isLoading = false;
+  errorMessage = '';
   statistics: any;
   rawResponse: any;
   statisticFields: string[] = [];
@@ -101,6 +102,7 @@ export class StatisticDataComponent {
 
   loadStatistics(): void {
     this.isLoading = true;
+    this.errorMessage = '';
     this.statistics = null;
     this.rawResponse = null;
 
@@ -211,6 +213,8 @@ export class StatisticDataComponent {
       error: (err) => {
         console.error(err);
         this.isLoading = false;
+        this.statistics = null;
+        this.errorMessage = 'Erreur lors du chargement des statistiques.';
       }
     });
   }

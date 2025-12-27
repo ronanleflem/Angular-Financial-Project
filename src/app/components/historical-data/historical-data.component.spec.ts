@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { HttpClientTestingModule } from '@angular/common/http/testing';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
 
 import { HistoricalDataComponent } from './historical-data.component';
 import { TradingDataService } from '../../services/trading-data.service';
@@ -95,4 +96,21 @@ describe('HistoricalDataComponent', () => {
       c: updatedCandles[0].close
     }));
   }));
+
+  it('should show an error message when candles request fails', () => {
+    tradingServiceSpy.getSymbols.and.returnValue(of([
+      { id: '1', symbol: 'EURUSD', name: 'Euro Dollar', market: 'FX' }
+    ]));
+    tradingServiceSpy.getHistoricalCandlesTimeframeCME.and.returnValue(
+      throwError(() => new HttpErrorResponse({ status: 500, statusText: 'Server Error' }))
+    );
+
+    fixture = TestBed.createComponent(HistoricalDataComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+
+    const errorMessage = fixture.nativeElement.querySelector('.error');
+    expect(component.errorMessage).toBe('Erreur lors du chargement des données.');
+    expect(errorMessage?.textContent).toContain('Erreur lors du chargement des données.');
+  });
 });

@@ -97,4 +97,25 @@ describe('StatisticDataComponent', () => {
     const rows = fixture.nativeElement.querySelectorAll('tbody tr');
     expect(rows.length).toBe(2);
   });
+
+  it('shows fallback message when statistics request fails', () => {
+    component.selectedAnalysis = 'bullish-bearish-multi';
+    component.selectedSymbol = 'EURUSD';
+    component.selectedTimeframes = ['1h'];
+
+    component.loadStatistics();
+
+    const req = httpMock.expectOne((request) =>
+      request.url === 'http://localhost:8090/filter/bullish-bearish-stats/multi-timeframes'
+      && request.params.get('symbol') === 'EURUSD'
+      && request.params.get('timeframes') === '1h'
+    );
+
+    req.flush('Not found', { status: 404, statusText: 'Not Found' });
+    fixture.detectChanges();
+
+    const errorMessage = fixture.nativeElement.querySelector('.error');
+    expect(component.errorMessage).toBe('Erreur lors du chargement des statistiques.');
+    expect(errorMessage?.textContent).toContain('Erreur lors du chargement des statistiques.');
+  });
 });
