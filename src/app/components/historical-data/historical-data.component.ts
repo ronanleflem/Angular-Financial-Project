@@ -53,6 +53,8 @@ export class HistoricalDataComponent implements OnInit, AfterViewInit {
 
   startDate: string = '';
   endDate: string = '';
+  isLoading = false;
+  errorMessage = '';
 
   // Symbol et timeframe sélectionnés
   selectedSymbol = '';
@@ -65,13 +67,21 @@ export class HistoricalDataComponent implements OnInit, AfterViewInit {
   }
 
   ngOnInit() {
-        this.tradingService.getSymbols().subscribe(list => {
+        this.isLoading = true;
+        this.errorMessage = '';
+        this.tradingService.getSymbols().subscribe({
+          next: (list) => {
             this.symbols = list ?? [];
-              if (!this.selectedSymbol && this.symbols.length) {
-                this.selectedSymbol = this.symbols[0].symbol;
-              }
-              this.loadData();
-          });
+            if (!this.selectedSymbol && this.symbols.length) {
+              this.selectedSymbol = this.symbols[0].symbol;
+            }
+            this.loadData();
+          },
+          error: () => {
+            this.isLoading = false;
+            this.errorMessage = 'Erreur lors du chargement des symboles.';
+          }
+        });
     }
 
 
@@ -92,20 +102,30 @@ export class HistoricalDataComponent implements OnInit, AfterViewInit {
   }
 
   loadData() {
-    this.tradingService.getHistoricalCandlesTimeframeCME(this.selectedSymbol, this.selectedTimeframe, this.startDate, this.endDate).subscribe(data => {
-      console.log('Données reçues loadData :', data);
-      this.candles = data;
-      //console.log("Données utilisées :", this.candles.map(c => new Date(c.date).toUTCString()));
-      //console.log("Données utilisées :", this.candles.map(c => new Date(c.date).toISOString()));
+    this.isLoading = true;
+    this.errorMessage = '';
+    this.tradingService.getHistoricalCandlesTimeframeCME(this.selectedSymbol, this.selectedTimeframe, this.startDate, this.endDate).subscribe({
+      next: (data) => {
+        console.log('Données reçues loadData :', data);
+        this.candles = data;
+        //console.log("Données utilisées :", this.candles.map(c => new Date(c.date).toUTCString()));
+        //console.log("Données utilisées :", this.candles.map(c => new Date(c.date).toISOString()));
 
-      /*
-      this.candles = this.candles.filter(c => {
-        const date = new Date(c.date);
-        const day = date.getUTCDay();
-        return day !== 0 && day !== 6; // ✅ Exclut samedi et dimanche
-      });*/
-      console.log('Données filtrées loadData :', this.candles);
-      setTimeout(() => this.createChart(), 0); // ✅ Attendre que le DOM soit prêt
+        /*
+        this.candles = this.candles.filter(c => {
+          const date = new Date(c.date);
+          const day = date.getUTCDay();
+          return day !== 0 && day !== 6; // ✅ Exclut samedi et dimanche
+        });*/
+        console.log('Données filtrées loadData :', this.candles);
+        this.isLoading = false;
+        setTimeout(() => this.createChart(), 0); // ✅ Attendre que le DOM soit prêt
+      },
+      error: () => {
+        this.isLoading = false;
+        this.candles = [];
+        this.errorMessage = 'Erreur lors du chargement des données.';
+      }
     });
   }
   getAnnotations(): Record<string, LineAnnotationOptions> {
@@ -246,4 +266,3 @@ export class HistoricalDataComponent implements OnInit, AfterViewInit {
     });
   }
 }
-
