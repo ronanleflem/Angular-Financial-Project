@@ -290,8 +290,8 @@
     <mat-step [stepControl]="stepTwo" label="Plage">
       <form [formGroup]="stepTwo" class="step-content">
         <mat-form-field appearance="outline">
-          <mat-label>Symbole</mat-label>
-          <input type="text" matInput [matAutocomplete]="symbolStep" formControlName="symbol" required />
+          <mat-label>Symbole / ISIN</mat-label>
+          <input type="text" matInput [matAutocomplete]="symbolStep" formControlName="symbol" placeholder="Symbole ou ISIN" required />
           <mat-autocomplete #symbolStep="matAutocomplete" autoActiveFirstOption>
             <mat-option *ngFor="let symbol of filteredStepSymbols$ | async" [value]="symbol.ticker">
               <div class="symbol-option">
@@ -300,6 +300,11 @@
               </div>
             </mat-option>
           </mat-autocomplete>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" *ngIf="isEtfSelected()">
+          <mat-label>Currency</mat-label>
+          <input matInput formControlName="currency" placeholder="EUR, USD..." required />
         </mat-form-field>
 
         <mat-form-field appearance="outline">
@@ -358,7 +363,8 @@
       <div class="step-content summary-step">
         <h4>Résumé</h4>
         <p><strong>Broker :</strong> {{ stepOne.value.broker }}</p>
-        <p><strong>Symbole :</strong> {{ stepTwo.value.symbol }} — {{ stepTwo.value.timeframe }}</p>
+        <p><strong>Symbole / ISIN :</strong> {{ stepTwo.value.symbol }} — {{ stepTwo.value.timeframe }}</p>
+        <p *ngIf="stepTwo.value.currency"><strong>Currency :</strong> {{ stepTwo.value.currency }}</p>
         <p><strong>Période :</strong> {{ stepTwo.value.start | date: 'short' }} → {{ stepTwo.value.end | date: 'short' }}</p>
         <p><strong>Source :</strong> {{ stepOne.value.source }}</p>
         <mat-checkbox [formControl]="scanAfterSave">Scanner les gaps après sauvegarde</mat-checkbox>

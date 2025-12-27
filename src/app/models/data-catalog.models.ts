@@ -47,6 +47,7 @@ export interface SaveRangeRequest {
   start: string;
   end: string;
   venue?: string;
+  currency?: string;
   timezone?: string;
   conflictPolicy?: ConflictPolicy;
   rollover?: RolloverPolicy;
@@ -67,6 +68,7 @@ export interface DataImportJobRequest {
   endDate: string;
   sourceType: string;
   venue?: string;
+  currency?: string;
   timezone?: string;
   conflictPolicy?: ConflictPolicy;
   rollover?: RolloverPolicy;

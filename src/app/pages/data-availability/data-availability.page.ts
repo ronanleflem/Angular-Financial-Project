@@ -115,6 +115,7 @@ export class DataAvailabilityPageComponent implements OnInit, AfterViewInit {
 
   readonly stepTwo = this.fb.group({
     symbol: ['', Validators.required],
+    currency: [''],
     timeframe: ['', Validators.required],
     start: [null as Date | null, Validators.required],
     end: [null as Date | null, Validators.required],
@@ -243,6 +244,10 @@ export class DataAvailabilityPageComponent implements OnInit, AfterViewInit {
     fetchTriggers.forEach(stream =>
       stream.pipe(debounceTime(250), takeUntilDestroyed(this.destroyRef)).subscribe(() => this.refresh())
     );
+
+    this.stepOne.controls.marketType.valueChanges
+      .pipe(startWith(this.stepOne.controls.marketType.value), takeUntilDestroyed(this.destroyRef))
+      .subscribe(value => this.updateCurrencyRequirement(value));
 
     this.dataSource.filterPredicate = (data, filter) => {
       const normalized = filter.trim().toLowerCase();
@@ -490,6 +495,7 @@ export class DataAvailabilityPageComponent implements OnInit, AfterViewInit {
       start: this.toIsoString(stepTwoValue.start),
       end: this.toIsoString(stepTwoValue.end),
       venue: stepOneValue.venue || undefined,
+      currency: this.normalizeOptionalString(stepTwoValue.currency),
       timezone: stepTwoValue.timezone || undefined,
       conflictPolicy: (stepTwoValue.conflictPolicy || undefined) as SaveRangeRequest['conflictPolicy'],
       rollover: (stepTwoValue.rollover || undefined) as SaveRangeRequest['rollover'],
@@ -518,7 +524,16 @@ export class DataAvailabilityPageComponent implements OnInit, AfterViewInit {
 
   resetForm(): void {
     this.stepOne.reset({ broker: '', marketType: '', venue: '', source: 'API' });
-    this.stepTwo.reset({ symbol: '', timeframe: '', start: null, end: null, timezone: 'UTC', conflictPolicy: 'merge', rollover: 'date' });
+    this.stepTwo.reset({
+      symbol: '',
+      currency: '',
+      timeframe: '',
+      start: null,
+      end: null,
+      timezone: 'UTC',
+      conflictPolicy: 'merge',
+      rollover: 'date',
+    });
     this.scanAfterSave.setValue(true);
   }
 
@@ -573,6 +588,7 @@ export class DataAvailabilityPageComponent implements OnInit, AfterViewInit {
       endDate: payload.end,
       sourceType: payload.source,
       venue: payload.venue || undefined,
+      currency: payload.currency || undefined,
       timezone: payload.timezone || undefined,
       conflictPolicy: payload.conflictPolicy,
       rollover: payload.rollover,
@@ -657,6 +673,26 @@ export class DataAvailabilityPageComponent implements OnInit, AfterViewInit {
     return this.symbols.filter(symbol =>
       symbol.ticker.toLowerCase().includes(search) || (symbol.name ?? '').toLowerCase().includes(search)
     );
+  }
+
+  isEtfSelected(): boolean {
+    return (this.stepOne.controls.marketType.value ?? '').toUpperCase() === 'ETF';
+  }
+
+  private updateCurrencyRequirement(marketType: string | null | undefined): void {
+    const control = this.stepTwo.controls.currency;
+    if ((marketType ?? '').toUpperCase() === 'ETF') {
+      control.setValidators([Validators.required]);
+    } else {
+      control.clearValidators();
+      control.setValue('');
+    }
+    control.updateValueAndValidity({ emitEvent: false });
+  }
+
+  private normalizeOptionalString(value: unknown): string | undefined {
+    const normalized = String(value ?? '').trim();
+    return normalized ? normalized : undefined;
   }
 
   getBrokerClass(broker: string): string {
