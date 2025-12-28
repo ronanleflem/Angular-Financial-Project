@@ -56,7 +56,7 @@ describe('TradingDataService', () => {
       response = value;
     });
 
-    const req = httpMock.expectOne(`${apiUrl}/ibkr/connect/wait`);
+    const req = httpMock.expectOne(request => request.url === `${apiUrl}/ibkr/connect/wait`);
     expect(req.request.method).toBe('POST');
     expect(req.request.params.get('host')).toBe('localhost');
     expect(req.request.params.get('port')).toBe('7000');
@@ -74,7 +74,7 @@ describe('TradingDataService', () => {
       response = value;
     });
 
-    const req = httpMock.expectOne(`${apiUrl}/ibkr/connect/wait`);
+    const req = httpMock.expectOne(request => request.url === `${apiUrl}/ibkr/connect/wait`);
     req.error(new ProgressEvent('Server error'), { status: 500, statusText: 'Server Error' });
 
     expect(response?.status).toBe(500);
@@ -87,7 +87,7 @@ describe('TradingDataService', () => {
       response = value;
     });
 
-    const req = httpMock.expectOne(`${apiUrl}/ibkr/live/bars/start`);
+    const req = httpMock.expectOne(request => request.url === `${apiUrl}/ibkr/live/bars/start`);
     expect(req.request.method).toBe('POST');
     expect(req.request.params.get('pair')).toBe('EURUSD');
     expect(req.request.params.get('duration')).toBe('1 D');
@@ -110,7 +110,7 @@ describe('TradingDataService', () => {
       },
     });
 
-    const req = httpMock.expectOne(`${apiUrl}/ibkr/live/bars/start`);
+    const req = httpMock.expectOne(request => request.url === `${apiUrl}/ibkr/live/bars/start`);
     req.error(new ProgressEvent('Server error'), { status: 500, statusText: 'Server Error' });
 
     expect(error?.status).toBe(500);
@@ -221,7 +221,7 @@ describe('TradingDataService', () => {
       .pipe(take(2))
       .subscribe(value => emissions.push(value));
 
-    const startReq = httpMock.expectOne(`${apiUrl}/ibkr/live/bars/start`);
+    const startReq = httpMock.expectOne(request => request.url === `${apiUrl}/ibkr/live/bars/start`);
     expect(startReq.request.method).toBe('POST');
     expect(startReq.request.params.get('pair')).toBe('EURUSD');
     startReq.flush({ reqId: 77 });
@@ -259,7 +259,7 @@ describe('TradingDataService', () => {
       },
     });
 
-    const req = httpMock.expectOne(`${apiUrl}/ibkr/live/bars/start`);
+    const req = httpMock.expectOne(request => request.url === `${apiUrl}/ibkr/live/bars/start`);
     req.error(new ProgressEvent('Server error'), { status: 500, statusText: 'Server Error' });
     tick();
 
@@ -655,7 +655,9 @@ describe('TradingDataService', () => {
       response = value;
     });
 
-    const req = httpMock.expectOne(`${apiUrl}/filter/bullish-bearish-stats/multi-timeframes`);
+    const req = httpMock.expectOne(request =>
+      request.url === `${apiUrl}/filter/bullish-bearish-stats/multi-timeframes`
+    );
     expect(req.request.method).toBe('GET');
     expect(req.request.params.get('symbol')).toBe('ES');
     expect(req.request.params.get('timeframes')).toBe('1h,4h');
@@ -674,7 +676,9 @@ describe('TradingDataService', () => {
       },
     });
 
-    const req = httpMock.expectOne(`${apiUrl}/filter/bullish-bearish-stats/multi-timeframes`);
+    const req = httpMock.expectOne(request =>
+      request.url === `${apiUrl}/filter/bullish-bearish-stats/multi-timeframes`
+    );
     req.error(new ProgressEvent('Server error'), { status: 500, statusText: 'Server Error' });
 
     expect(error?.status).toBe(500);
@@ -687,7 +691,7 @@ describe('TradingDataService', () => {
       response = value;
     });
 
-    const req = httpMock.expectOne('/api/statistics/historical');
+    const req = httpMock.expectOne(request => request.url === '/api/statistics/historical');
     expect(req.request.method).toBe('GET');
     expect(req.request.params.get('symbol')).toBe('ES');
     expect(req.request.params.get('timeframes')).toBe('1h,4h');
@@ -708,7 +712,7 @@ describe('TradingDataService', () => {
       },
     });
 
-    const req = httpMock.expectOne('/api/statistics/historical');
+    const req = httpMock.expectOne(request => request.url === '/api/statistics/historical');
     req.error(new ProgressEvent('Server error'), { status: 500, statusText: 'Server Error' });
 
     expect(error?.status).toBe(500);

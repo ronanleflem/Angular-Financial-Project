@@ -10,8 +10,8 @@ describe('LiveDataComponent', () => {
   let component: LiveDataComponent;
   let fixture: ComponentFixture<LiveDataComponent>;
   let marketDataService: jasmine.SpyObj<MarketDataService>;
-  let chartStubPrimary: { data: { datasets: Array<{ data: unknown[] }> }; update: jasmine.Spy };
-  let chartStubSecondary: { data: { datasets: Array<{ data: unknown[] }> }; update: jasmine.Spy };
+  let chartStubPrimary: { data: { datasets: Array<{ data: unknown[] }> }; update: jasmine.Spy; destroy: jasmine.Spy };
+  let chartStubSecondary: { data: { datasets: Array<{ data: unknown[] }> }; update: jasmine.Spy; destroy: jasmine.Spy };
 
   beforeEach(async () => {
     marketDataService = jasmine.createSpyObj('MarketDataService', [
@@ -53,8 +53,16 @@ describe('LiveDataComponent', () => {
 
     fixture = TestBed.createComponent(LiveDataComponent);
     component = fixture.componentInstance;
-    chartStubPrimary = { data: { datasets: [{ data: [] }] }, update: jasmine.createSpy('update') };
-    chartStubSecondary = { data: { datasets: [{ data: [] }] }, update: jasmine.createSpy('update') };
+    chartStubPrimary = {
+      data: { datasets: [{ data: [] }] },
+      update: jasmine.createSpy('update'),
+      destroy: jasmine.createSpy('destroy')
+    };
+    chartStubSecondary = {
+      data: { datasets: [{ data: [] }] },
+      update: jasmine.createSpy('update'),
+      destroy: jasmine.createSpy('destroy')
+    };
     (component as any).charts = [chartStubPrimary, chartStubSecondary];
     fixture.detectChanges();
   });

@@ -1,3 +1,4 @@
+import { TestBed } from '@angular/core/testing';
 import { SignalsStore } from './signals.store';
 
 describe('SignalsStore', () => {
@@ -8,7 +9,9 @@ describe('SignalsStore', () => {
   beforeEach(() => {
     getItemSpy = spyOn(localStorage, 'getItem').and.returnValue(null);
     setItemSpy = spyOn(localStorage, 'setItem');
-    store = new SignalsStore();
+    TestBed.configureTestingModule({});
+    store = TestBed.runInInjectionContext(() => new SignalsStore());
+    TestBed.flushEffects();
   });
 
   it('increments/decrements/resets count', () => {
@@ -59,9 +62,11 @@ describe('SignalsStore', () => {
 
   it('persists count changes to localStorage', () => {
     const key = 'signals-demo:count';
+    TestBed.flushEffects();
     expect(getItemSpy).toHaveBeenCalledWith(key);
 
     store.inc();
+    TestBed.flushEffects();
     expect(setItemSpy).toHaveBeenCalledWith(key, '1');
   });
 });

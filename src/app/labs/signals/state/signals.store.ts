@@ -7,6 +7,8 @@ function uid() { return Math.random().toString(36).slice(2, 9); }
 
 @Injectable({ providedIn: 'root' })
 export class SignalsStore {
+  private readonly storageKey = 'signals-demo:count';
+
   // Counter
   readonly count = signal<number>(0);
 
@@ -19,19 +21,17 @@ export class SignalsStore {
   });
 
   // Persist to localStorage
-  private readonly persistEffect = effect(onCleanup => {
-    const key = 'signals-demo:count';
-    // load once
-    const stored = localStorage.getItem(key);
+  private readonly persistEffect = effect(() => {
+    localStorage.setItem(this.storageKey, String(this.count()));
+  });
+
+  constructor() {
+    const stored = localStorage.getItem(this.storageKey);
     if (stored !== null) {
       const parsed = Number(stored);
       if (!Number.isNaN(parsed)) this.count.set(parsed);
     }
-    const unsub = effect(() => {
-      localStorage.setItem(key, String(this.count()));
-    });
-    onCleanup(() => unsub.destroy());
-  });
+  }
 
   inc() { this.count.update(c => c + 1); }
   dec() { this.count.update(c => c - 1); }

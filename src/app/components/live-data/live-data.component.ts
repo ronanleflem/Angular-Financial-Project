@@ -511,7 +511,11 @@ export class LiveDataComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private destroyCharts(): void {
-    this.charts.forEach(chart => chart.destroy());
+    this.charts.forEach(chart => {
+      if (chart && typeof (chart as { destroy?: () => void }).destroy === 'function') {
+        chart.destroy();
+      }
+    });
     this.charts = [];
   }
 
