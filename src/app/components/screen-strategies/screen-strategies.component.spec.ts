@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { RouterTestingModule } from '@angular/router/testing';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 
 import { TradingDataService } from '../../services/trading-data.service';
 import { ScreenStrategiesComponent } from './screen-strategies.component';
@@ -51,5 +51,50 @@ describe('ScreenStrategiesComponent', () => {
       ['/strategy-detail', 'Breakout 1', 'run-123', 'EUR/USD', 'none'],
       { state: { strategy: component.strategies[0] } }
     );
+  });
+
+  it('renders the strategies table after loading strategies', () => {
+    tradingDataServiceSpy.getAllCalculatedStrategies.and.returnValue(of([
+      {
+        runId: 'run-456',
+        name: 'Backend Strategy',
+        symbol: 'EUR/USD',
+        winCount: 4,
+        lossCount: 1
+      }
+    ]));
+
+    component.selectedSymbol = 'EUR/USD';
+    component.loadStrategies();
+    fixture.detectChanges();
+
+    const rows = fixture.nativeElement.querySelectorAll('table.strategy-table tbody tr');
+    expect(rows.length).toBeGreaterThan(0);
+  });
+
+  it('filters strategies by the selected symbol', () => {
+    component.selectedSymbol = 'NAS100';
+    component.loadStrategies();
+    fixture.detectChanges();
+
+    const symbolCells = Array.from(
+      fixture.nativeElement.querySelectorAll('table.strategy-table tbody tr td:nth-child(3)')
+    ).map((cell: Element) => cell.textContent?.trim());
+
+    expect(symbolCells.length).toBeGreaterThan(0);
+    expect(symbolCells.every(symbol => symbol === 'NAS100')).toBeTrue();
+  });
+
+  it('shows an error message when the service fails', () => {
+    tradingDataServiceSpy.getAllCalculatedStrategies.and.returnValue(
+      throwError(() => new Error('Service error'))
+    );
+
+    component.selectedSymbol = 'EUR/USD';
+    component.loadStrategies();
+    fixture.detectChanges();
+
+    const errorMessage = fixture.nativeElement.querySelector('.error-message');
+    expect(errorMessage?.textContent).toContain('Erreur lors du chargement des stratégies.');
   });
 });
