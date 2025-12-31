@@ -8,6 +8,7 @@
 </div>
 
 <div *ngIf="isLoading">Chargement des stratégies...</div>
+<div *ngIf="errorMessage" class="error-message">{{ errorMessage }}</div>
 
 <<table *ngIf="strategies.length > 0" class="strategy-table">
   <thead>

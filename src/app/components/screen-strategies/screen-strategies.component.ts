@@ -46,6 +46,7 @@ export class ScreenStrategiesComponent implements OnInit {
     averageNetTrade?: number
   }[] = [];
   isLoading: boolean = false;
+  errorMessage: string | null = null;
 
   constructor(private router: Router, private tradingService: TradingDataService
     // private strategyService: StrategyService (à injecter pour le backend)
@@ -73,6 +74,7 @@ export class ScreenStrategiesComponent implements OnInit {
     if (!this.selectedSymbol) return;
 
     this.isLoading = true;
+    this.errorMessage = null;
 
     const mockData = [
       {
@@ -141,14 +143,15 @@ export class ScreenStrategiesComponent implements OnInit {
 
         this.strategies = [...mockData, ...mapped];
         this.isLoading = false;
+        this.errorMessage = null;
         console.log(this.strategies);
       },
       error: (err) => {
         console.error('Erreur stratégie', err);
         this.strategies = [...mockData];
         this.isLoading = false;
+        this.errorMessage = 'Erreur lors du chargement des stratégies.';
       }
     });
   }
 }
-
