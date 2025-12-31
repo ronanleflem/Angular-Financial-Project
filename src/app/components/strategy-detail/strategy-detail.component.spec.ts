@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router } from '@angular/router';
 import { RouterTestingModule } from '@angular/router/testing';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 
 import { TradingDataService } from '../../services/trading-data.service';
 import { StrategyDetailComponent } from './strategy-detail.component';
@@ -79,5 +79,35 @@ describe('StrategyDetailComponent', () => {
         comparedSymbol: 'GBP/USD'
       })
     );
+  });
+
+  it('uses fallback strategy data when no strategy is found', () => {
+    const router = TestBed.inject(Router);
+    spyOn(router, 'getCurrentNavigation').and.returnValue(null as never);
+    tradingDataServiceSpy.getAllCalculatedStrategies.and.returnValue(of([]));
+
+    component.loadStrategy();
+
+    expect(component.strategy).toEqual({
+      name: 'Breakout 1',
+      symbol: 'EUR/USD',
+      comparedSymbol: 'GBP/USD'
+    });
+    expect(component.trades.length).toBe(0);
+  });
+
+  it('falls back to mock trades when trades loading fails', () => {
+    const router = TestBed.inject(Router);
+    spyOn(router, 'getCurrentNavigation').and.returnValue(null as never);
+    tradingDataServiceSpy.getTradesByStrategyName.and.returnValue(
+      throwError(() => new Error('Service failure'))
+    );
+    const mockTradesSpy = spyOn(component, 'getMockTrades').and.callThrough();
+
+    component.loadStrategy();
+
+    expect(mockTradesSpy).toHaveBeenCalled();
+    expect(component.trades.length).toBe(3);
+    expect(component.trades[0].id).toBe(1);
   });
 });
