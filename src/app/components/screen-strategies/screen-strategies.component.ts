@@ -116,10 +116,19 @@ export class ScreenStrategiesComponent implements OnInit {
           const end = s.endStrategy
             ? new Date(s.endStrategy)
             : (s.EndStrategie ? new Date(s.EndStrategie) : undefined);
+          const winCount = s.winCount;
+          const lossCount = s.lossCount;
+          const totalTrades = (winCount ?? 0) + (lossCount ?? 0);
+          const winRate = typeof s.winRate === 'number'
+            ? s.winRate
+            : (totalTrades > 0 && typeof winCount === 'number'
+              ? (winCount / totalTrades) * 100
+              : undefined);
+
           return {
             runId: s.runId,
             name: s.name,
-            winRate: (s.winCount * s.lossCount / 100) * 100,
+            winRate: winRate,
             winningTrades: s.winCount,
             losingTrades: s.lossCount,
             totalReturn: s.totalReturn,
@@ -127,7 +136,7 @@ export class ScreenStrategiesComponent implements OnInit {
             averageTrade: s.averageTrade,
             averageSL: s.averageSL,
             averageTP: s.averageTP,
-            tradeCount: s.lossCount + s.winCount,
+            tradeCount: totalTrades || undefined,
             symbol: s.symbol,
             timeframe: s.timeframe,
             comparedSymbol: s.comparedSymbol,

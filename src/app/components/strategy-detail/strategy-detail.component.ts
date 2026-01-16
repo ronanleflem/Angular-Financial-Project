@@ -61,18 +61,27 @@ export class StrategyDetailComponent implements OnInit {
             const end = match.endStrategy
               ? new Date(match.endStrategy * 1000)
               : (match.EndStrategie ? new Date(match.EndStrategie) : undefined);
+            const winCount = match.winCount;
+            const lossCount = match.lossCount;
+            const totalTrades = (winCount ?? 0) + (lossCount ?? 0);
+            const winRate = typeof match.winRate === 'number'
+              ? match.winRate
+              : (totalTrades > 0 && typeof winCount === 'number'
+                ? (winCount / totalTrades) * 100
+                : undefined);
+
             this.strategy = {
               runId: match.runId,
               name: match.name,
-              winRate: (match.winRate * match.lossRate / 100) * 100,
-              winningTrades: match.winRate,
-              losingTrades: match.lossRate,
+              winRate: winRate,
+              winningTrades: match.winCount,
+              losingTrades: match.lossCount,
               totalReturn: match.totalReturn,
               maxDrawdown: match.maxDrawdown,
               averageTrade: match.averageTrade,
               averageSL: match.averageSL,
               averageTP: match.averageTP,
-              tradeCount: match.lossRate + match.winRate,
+              tradeCount: totalTrades || undefined,
               symbol: match.symbol,
               comparedSymbol: match.comparedSymbol,
               startDate: start,

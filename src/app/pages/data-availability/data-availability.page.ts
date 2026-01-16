@@ -668,11 +668,13 @@ export class DataAvailabilityPageComponent implements OnInit, AfterViewInit {
   }
 
   private filterSymbols(value: string): SymbolRef[] {
-    const search = value.toLowerCase();
+    const search = (value ?? '').toLowerCase();
     console.log("Value : "+value);
-    return this.symbols.filter(symbol =>
-      symbol.ticker.toLowerCase().includes(search) || (symbol.name ?? '').toLowerCase().includes(search)
-    );
+    return this.symbols.filter(symbol => {
+      const ticker = (symbol.ticker ?? '').toLowerCase();
+      const name = (symbol.name ?? '').toLowerCase();
+      return ticker.includes(search) || name.includes(search);
+    });
   }
 
   isEtfSelected(): boolean {
