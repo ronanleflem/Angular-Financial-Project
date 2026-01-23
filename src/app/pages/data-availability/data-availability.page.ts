@@ -108,6 +108,7 @@ export class DataAvailabilityPageComponent implements OnInit, AfterViewInit {
 
   readonly stepOne = this.fb.nonNullable.group({
     broker: ['', Validators.required],
+    assetClass: ['', Validators.required],
     marketType: [''],
     venue: [''],
     source: ['API' as SaveRangeRequest['source'], Validators.required],
@@ -154,10 +155,10 @@ export class DataAvailabilityPageComponent implements OnInit, AfterViewInit {
   }, {});
 
   readonly timeframePresets = ['1m', '5m', '15m', '1h', '4h', '1d', '1w'];
-  readonly brokers = ['Binance', 'MEXC', 'IBKR', 'Databento CSV', 'CSV TradingView', 'Autre'];
+  readonly brokers = ['Binance', 'MEXC', 'IBKR', 'DUKASCOPY', 'Databento CSV', 'CSV TradingView', 'Autre'];
   readonly marketTypes = ['FX', 'Crypto', 'Equity', 'ETF', 'Futures'];
   readonly universeBrokers = ['IBKR', 'BINANCE', 'MEXC', 'BYBIT', 'KUCOIN'];
-  readonly assetClassOptions = ['STOCK', 'FOREX', 'FUTURE', 'OPTION', 'INDEX', 'CFD'];
+  readonly assetClassOptions = ['STOCK', 'FOREX', 'FUTURE', 'OPTION', 'INDEX','CRYPTO'];
 
   symbols: SymbolRef[] = [];
   filteredSymbols$!: Observable<SymbolRef[]>;
@@ -490,6 +491,7 @@ export class DataAvailabilityPageComponent implements OnInit, AfterViewInit {
     const payload: SaveRangeRequest = {
       broker: stepOneValue.broker,
       source: stepOneValue.source,
+      assetClass: stepOneValue.assetClass,
       symbol: stepTwoValue.symbol!,
       timeframe: stepTwoValue.timeframe!,
       start: this.toIsoString(stepTwoValue.start),
@@ -523,7 +525,7 @@ export class DataAvailabilityPageComponent implements OnInit, AfterViewInit {
   }
 
   resetForm(): void {
-    this.stepOne.reset({ broker: '', marketType: '', venue: '', source: 'API' });
+    this.stepOne.reset({ broker: '', assetClass: '', marketType: '', venue: '', source: 'API' });
     this.stepTwo.reset({
       symbol: '',
       currency: '',
@@ -582,6 +584,7 @@ export class DataAvailabilityPageComponent implements OnInit, AfterViewInit {
   private buildJobRequest(payload: SaveRangeRequest): DataImportJobRequest {
     return {
       broker: payload.broker,
+      assetClass: payload.assetClass,
       symbol: payload.symbol,
       timeframe: payload.timeframe,
       startDate: payload.start,

@@ -269,6 +269,13 @@
         </mat-form-field>
 
         <mat-form-field appearance="outline">
+          <mat-label>Asset class</mat-label>
+          <mat-select formControlName="assetClass" required>
+            <mat-option *ngFor="let asset of assetClassOptions" [value]="asset">{{ asset }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
           <mat-label>Venue</mat-label>
           <input matInput formControlName="venue" placeholder="NYSE, BINANCEUS..." />
         </mat-form-field>
@@ -363,6 +370,7 @@
       <div class="step-content summary-step">
         <h4>Résumé</h4>
         <p><strong>Broker :</strong> {{ stepOne.value.broker }}</p>
+        <p><strong>Asset class :</strong> {{ stepOne.value.assetClass }}</p>
         <p><strong>Symbole / ISIN :</strong> {{ stepTwo.value.symbol }} — {{ stepTwo.value.timeframe }}</p>
         <p *ngIf="stepTwo.value.currency"><strong>Currency :</strong> {{ stepTwo.value.currency }}</p>
         <p><strong>Période :</strong> {{ stepTwo.value.start | date: 'short' }} → {{ stepTwo.value.end | date: 'short' }}</p>

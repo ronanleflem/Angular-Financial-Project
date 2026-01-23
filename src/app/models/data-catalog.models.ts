@@ -42,6 +42,7 @@ export interface CoverageInfo {
 export interface SaveRangeRequest {
   broker: string;
   source: Extract<DataSourceType, 'API' | 'CSV'>;
+  assetClass: string;
   symbol: string;
   timeframe: string;
   start: string;
@@ -62,6 +63,7 @@ export interface SymbolRef {
 
 export interface DataImportJobRequest {
   broker: string;
+  assetClass: string;
   symbol: string;
   timeframe: string;
   startDate: string;
