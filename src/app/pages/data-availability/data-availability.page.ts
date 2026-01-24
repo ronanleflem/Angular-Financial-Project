@@ -157,7 +157,7 @@ export class DataAvailabilityPageComponent implements OnInit, AfterViewInit {
   readonly timeframePresets = ['1m', '5m', '15m', '1h', '4h', '1d', '1w'];
   readonly brokers = ['Binance', 'MEXC', 'IBKR', 'DUKASCOPY', 'Databento CSV', 'CSV TradingView', 'Autre'];
   readonly marketTypes = ['FX', 'Crypto', 'Equity', 'ETF', 'Futures'];
-  readonly universeBrokers = ['IBKR', 'BINANCE', 'MEXC', 'BYBIT', 'KUCOIN'];
+  readonly universeBrokers = ['IBKR', 'BINANCE', 'MEXC', 'BYBIT', 'KUCOIN', 'DUKASCOPY'];
   readonly assetClassOptions = ['STOCK', 'FOREX', 'FUTURE', 'OPTION', 'INDEX','CRYPTO'];
 
   symbols: SymbolRef[] = [];
