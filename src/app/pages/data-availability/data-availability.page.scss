@@ -24,7 +24,7 @@
 :host ::ng-deep .mat-mdc-select-panel {
   background: #ffffff !important;
   color: #0f172a !important;
-  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.22) !important;
+  box-shadow: none !important;
   border-radius: 12px !important;
   font-size: 0.95rem !important;
 }
@@ -69,13 +69,13 @@
   background: #ffffff;
   border-radius: 16px;
   overflow: hidden;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  box-shadow: 0 14px 36px rgba(15, 23, 42, 0.1);
+  border: 1px solid #e2e8f0;
+  box-shadow: none;
   padding-bottom: 1rem;
 }
 
 .table-wrapper.loading {
-  opacity: 0.55;
+  opacity: 1;
 }
 
 .table-wrapper table {
@@ -95,11 +95,11 @@ th {
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: #475569;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.35);
+  border-bottom: 1px solid #e2e8f0;
 }
 
 tbody tr:not(:last-child) td {
-  border-bottom: 1px solid rgba(226, 232, 240, 0.75);
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .cell-main {
@@ -114,7 +114,7 @@ tbody tr:not(:last-child) td {
 }
 
 .mock-badge {
-  background: rgba(250, 204, 21, 0.22);
+  background: #fde68a;
   color: #854d0e;
   padding: 0.2rem 0.55rem;
   border-radius: 999px;
@@ -133,32 +133,32 @@ tbody tr:not(:last-child) td {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  background: rgba(15, 23, 42, 0.08);
+  background: #e2e8f0;
   color: #0f172a;
 }
 
 .broker-binance {
-  background: rgba(250, 204, 21, 0.22);
+  background: #fde68a;
   color: #854d0e;
 }
 
 .broker-mexc {
-  background: rgba(16, 185, 129, 0.18);
+  background: #a7f3d0;
   color: #047857;
 }
 
 .broker-ibkr {
-  background: rgba(37, 99, 235, 0.18);
+  background: #bfdbfe;
   color: #1d4ed8;
 }
 
 .broker-csv {
-  background: rgba(100, 116, 139, 0.22);
+  background: #e2e8f0;
   color: #334155;
 }
 
 .broker-generic {
-  background: rgba(148, 163, 184, 0.28);
+  background: #e2e8f0;
   color: #1e293b;
 }
 
@@ -167,7 +167,7 @@ tbody tr:not(:last-child) td {
   align-items: center;
   padding: 0.2rem 0.6rem;
   border-radius: 999px;
-  background: rgba(15, 23, 42, 0.08);
+  background: #e2e8f0;
   font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -176,7 +176,7 @@ tbody tr:not(:last-child) td {
 }
 
 .source-chip.source-mock {
-  background: rgba(239, 68, 68, 0.18);
+  background: #fecaca;
   color: #b91c1c;
 }
 
@@ -194,20 +194,20 @@ tbody tr:not(:last-child) td {
 .drawer-loading {
   position: absolute;
   inset: 0;
-  background: rgba(255, 255, 255, 0.72);
+  background: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
-  backdrop-filter: blur(2px);
+  backdrop-filter: none;
 }
 
 .mat-mdc-paginator {
   margin-top: 0.75rem;
   padding: 0.35rem 1.5rem;
   background: #ffffff;
-  border: 1px solid rgba(148, 163, 184, 0.25);
+  border: 1px solid #e2e8f0;
   border-radius: 14px;
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+  box-shadow: none;
 
   .mat-mdc-paginator-outer-container {
     min-height: 60px;
@@ -251,7 +251,7 @@ tbody tr:not(:last-child) td {
   flex-direction: column;
   gap: 1.25rem;
   background: #ffffff;
-  border-left: 1px solid rgba(15, 23, 42, 0.08);
+  border-left: 1px solid #e2e8f0;
 }
 
 .drawer-header {
@@ -298,7 +298,7 @@ tbody tr:not(:last-child) td {
     gap: 0.25rem;
     padding: 0.75rem 1rem;
     border-radius: 12px;
-    background: rgba(37, 99, 235, 0.08);
+    background: #e0e7ff;
 
     .label {
       font-size: 0.8rem;
@@ -338,7 +338,7 @@ tbody tr:not(:last-child) td {
   .hist-bar {
     position: relative;
     width: 100%;
-    background: linear-gradient(180deg, rgba(37, 99, 235, 0.9), rgba(14, 165, 233, 0.9));
+    background: linear-gradient(180deg, #2563eb, #0ea5e9);
     border-radius: 6px;
 
     .tooltip {
@@ -346,19 +346,19 @@ tbody tr:not(:last-child) td {
       bottom: 100%;
       left: 50%;
       transform: translate(-50%, -8px);
-      background: rgba(15, 23, 42, 0.92);
+      background: #0f172a;
       color: #ffffff;
       padding: 0.2rem 0.45rem;
       border-radius: 4px;
       font-size: 0.7rem;
       white-space: nowrap;
-      opacity: 0;
-      transition: opacity 0.2s ease;
+      visibility: hidden;
+      transition: none;
       pointer-events: none;
     }
 
     &:hover .tooltip {
-      opacity: 1;
+      visibility: visible;
     }
   }
 }
@@ -385,7 +385,7 @@ tbody tr:not(:last-child) td {
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
-    background: rgba(148, 163, 184, 0.15);
+    background: #e2e8f0;
     border-radius: 12px;
     padding: 0.75rem 1rem;
 
@@ -410,16 +410,16 @@ tbody tr:not(:last-child) td {
   margin: 2rem 0 0;
   padding: 1.5rem 1.75rem 2.25rem;
   border-radius: 16px;
-  box-shadow: 0 16px 32px rgba(15, 23, 42, 0.12);
-  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: none;
+  border: 1px solid #e2e8f0;
 }
 
 .universe-card {
   margin: 2rem 0 0;
   padding: 1.75rem;
   border-radius: 16px;
-  box-shadow: 0 16px 32px rgba(15, 23, 42, 0.12);
-  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: none;
+  border: 1px solid #e2e8f0;
   background: #ffffff;
 }
 
