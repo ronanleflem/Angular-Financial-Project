@@ -1,7 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { AfterViewInit, Component, DestroyRef, OnInit, ViewChild, inject, signal } from '@angular/core';
 import { FormBuilder, FormControl, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
-import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -38,6 +37,8 @@ import { DataImportService } from '../../services/data-import.service';
 import { SymbolService } from '../../services/symbol.service';
 import { UniverseCatalog, UniverseImportRequest, UniverseService } from '../../services/universe.service';
 import { DEFAULT_SYMBOLS } from '../../mocks/data-catalog.mocks';
+import { DataAvailabilityHeaderComponent } from './components/data-availability-header/data-availability-header.component';
+import { DataAvailabilityFiltersComponent } from './components/data-availability-filters/data-availability-filters.component';
 
 interface HistogramBucket {
   day: string;
@@ -57,7 +58,6 @@ interface GapDetail {
     CommonModule,
     FormsModule,
     ReactiveFormsModule,
-    MatToolbarModule,
     MatButtonModule,
     MatButtonToggleModule,
     MatIconModule,
@@ -78,9 +78,14 @@ interface GapDetail {
     MatTooltipModule,
     MatSnackBarModule,
     MatDividerModule,
+    DataAvailabilityHeaderComponent,
+    DataAvailabilityFiltersComponent,
   ],
   templateUrl: './data-availability.page.html',
   styleUrls: ['./data-availability.page.scss'],
+  host: {
+    class: 'data-availability-page',
+  },
 })
 export class DataAvailabilityPageComponent implements OnInit, AfterViewInit {
   private readonly fb = inject(FormBuilder);

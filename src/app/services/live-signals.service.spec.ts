@@ -80,6 +80,11 @@ describe('LiveSignalsService', () => {
 
     service.select(signal);
 
+    if (!selected) {
+      fail('Expected selected signal to be set');
+      return;
+    }
+
     expect(selected).toEqual(signal);
   });
 
@@ -94,7 +99,7 @@ describe('LiveSignalsService', () => {
     expect(instance.close).toHaveBeenCalled();
     expect(service.signals$.value).toEqual([]);
 
-    let selected: LiveSignal | null = undefined;
+    let selected: LiveSignal | null = null;
     service.selected$.pipe(take(1)).subscribe(value => {
       selected = value;
     });

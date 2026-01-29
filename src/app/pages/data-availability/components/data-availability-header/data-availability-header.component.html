@@ -1,0 +1,13 @@
+﻿<mat-toolbar color="primary" class="header-toolbar">
+  <span class="title">Disponibilité des données (Candles)</span>
+  <span class="spacer"></span>
+  <button mat-icon-button aria-label="Rafraîchir" (click)="refresh.emit()" [disabled]="loading">
+    <mat-icon>refresh</mat-icon>
+  </button>
+  <button mat-icon-button aria-label="Exporter" (click)="exportCsv.emit()" [disabled]="!hasData">
+    <mat-icon>download</mat-icon>
+  </button>
+  <button mat-icon-button aria-label="Aide" (click)="showHelp.emit()">
+    <mat-icon>help_outline</mat-icon>
+  </button>
+</mat-toolbar>

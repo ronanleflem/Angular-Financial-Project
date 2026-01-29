@@ -1,1 +1,53 @@
 /* You can add global styles to this file, and also import other style files */
+
+.data-availability-page .filters mat-form-field,
+.data-availability-page .universe-form mat-form-field,
+.data-availability-page .step-content mat-form-field {
+  width: 100%;
+  --mdc-outlined-text-field-container-shape: 14px;
+  --mdc-outlined-text-field-outline-color: rgba(15, 23, 42, 0.16);
+  --mdc-outlined-text-field-hover-outline-color: rgba(37, 99, 235, 0.9);
+  --mdc-outlined-text-field-focus-outline-color: rgba(37, 99, 235, 0.95);
+  --mat-mdc-form-field-label-text-color: rgba(15, 23, 42, 0.72);
+}
+
+.data-availability-page .filters mat-form-field .mat-mdc-form-field-flex,
+.data-availability-page .step-content mat-form-field .mat-mdc-form-field-flex {
+  min-height: 56px;
+  align-items: center;
+}
+
+.data-availability-page .filters mat-form-field .mat-mdc-text-field-wrapper,
+.data-availability-page .step-content mat-form-field .mat-mdc-text-field-wrapper {
+  border-radius: 14px;
+}
+
+.data-availability-page .filters mat-form-field .mat-mdc-form-field-infix,
+.data-availability-page .step-content mat-form-field .mat-mdc-form-field-infix {
+  padding: 0.75rem 0 0.35rem;
+}
+
+.data-availability-page .filters mat-form-field .mat-mdc-select-trigger,
+.data-availability-page .filters mat-form-field .mat-mdc-select-arrow-wrapper,
+.data-availability-page .step-content mat-form-field .mat-mdc-select-trigger,
+.data-availability-page .step-content mat-form-field .mat-mdc-select-arrow-wrapper {
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.data-availability-page .universe-form .date-range-field .mat-mdc-form-field-infix {
+  min-height: 64px;
+}
+
+.data-availability-page .import-mode-toggle .mat-button-toggle-group {
+  border-radius: 999px;
+  overflow: hidden;
+  box-shadow: 0 8px 16px rgba(15, 23, 42, 0.12);
+}
+
+.data-availability-page .import-mode-toggle .mat-button-toggle-button {
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}

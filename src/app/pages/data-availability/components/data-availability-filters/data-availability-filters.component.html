@@ -1,0 +1,64 @@
+﻿<section class="filters" aria-label="Filtres de disponibilité" [formGroup]="filtersForm">
+  <mat-form-field appearance="outline">
+    <mat-label>Broker</mat-label>
+    <mat-select formControlName="broker">
+      <mat-option value="">Tous</mat-option>
+      <mat-option *ngFor="let broker of brokers" [value]="broker">{{ broker }}</mat-option>
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline">
+    <mat-label>Type de marché</mat-label>
+    <mat-select formControlName="marketType">
+      <mat-option value="">Tous</mat-option>
+      <mat-option *ngFor="let type of marketTypes" [value]="type">{{ type }}</mat-option>
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline" class="symbol-field">
+    <mat-label>Symbole</mat-label>
+    <input type="text" matInput [matAutocomplete]="symbolAuto" formControlName="symbol" placeholder="Rechercher un symbole" />
+    <mat-autocomplete #symbolAuto="matAutocomplete" autoActiveFirstOption>
+      <mat-option value="">Tous</mat-option>
+      <mat-option *ngFor="let symbol of filteredSymbols$ | async" [value]="symbol.ticker">
+        <div class="symbol-option">
+          <span class="ticker">{{ symbol.ticker }}</span>
+          <span class="name">{{ symbol.name }}</span>
+        </div>
+      </mat-option>
+    </mat-autocomplete>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline">
+    <mat-label>Timeframe</mat-label>
+    <mat-select formControlName="timeframe">
+      <mat-option value="">Tous</mat-option>
+      <mat-option *ngFor="let tf of timeframePresets" [value]="tf">{{ tf }}</mat-option>
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline" class="range-field">
+    <mat-label>Période</mat-label>
+    <mat-date-range-input [rangePicker]="rangePicker">
+      <input matStartDate placeholder="Début" formControlName="start" />
+      <input matEndDate placeholder="Fin" formControlName="end" />
+    </mat-date-range-input>
+    <mat-datepicker-toggle matIconSuffix [for]="rangePicker"></mat-datepicker-toggle>
+    <mat-date-range-picker #rangePicker></mat-date-range-picker>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline" class="search-field">
+    <mat-label>Recherche</mat-label>
+    <input matInput type="text" placeholder="Symbole, broker, timezone..." formControlName="search" />
+    <mat-icon matSuffix>search</mat-icon>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline" class="columns-field">
+    <mat-label>Colonnes visibles</mat-label>
+    <mat-select multiple formControlName="columns">
+      <mat-option *ngFor="let column of allColumns" [value]="column.key" [disabled]="column.locked">
+        {{ column.label }}
+      </mat-option>
+    </mat-select>
+  </mat-form-field>
+</section>

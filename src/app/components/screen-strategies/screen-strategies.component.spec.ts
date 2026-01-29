@@ -78,8 +78,8 @@ describe('ScreenStrategiesComponent', () => {
     fixture.detectChanges();
 
     const symbolCells = Array.from(
-      fixture.nativeElement.querySelectorAll('table.strategy-table tbody tr td:nth-child(3)')
-    ).map((cell: Element) => cell.textContent?.trim());
+      fixture.nativeElement.querySelectorAll('table.strategy-table tbody tr td:nth-child(3)') as NodeListOf<HTMLElement>
+    ).map(cell => cell.textContent?.trim());
 
     expect(symbolCells.length).toBeGreaterThan(0);
     expect(symbolCells.every(symbol => symbol === 'NAS100')).toBeTrue();
