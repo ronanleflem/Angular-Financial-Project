@@ -32,7 +32,7 @@ describe('FiltersService', () => {
       response = value;
     });
 
-    const req = httpMock.expectOne(`${apiUrl}/filter/bullish-bearish-stats/multi-timeframes`);
+    const req = httpMock.expectOne(request => request.url === `${apiUrl}/filter/bullish-bearish-stats/multi-timeframes`);
     expect(req.request.method).toBe('GET');
     expect(req.request.params.get('symbol')).toBe('EURUSD');
     expect(req.request.params.get('timeframes')).toBe('1h,4h');
@@ -48,7 +48,7 @@ describe('FiltersService', () => {
       response = value;
     });
 
-    const req = httpMock.expectOne(`${apiUrl}/filter/bullish-bearish-stats/multi-timeframes`);
+    const req = httpMock.expectOne(request => request.url === `${apiUrl}/filter/bullish-bearish-stats/multi-timeframes`);
     req.error(new ProgressEvent('Network error'));
 
     expect(response).toEqual({ data: getMockFilters(), isMock: true });
@@ -62,7 +62,7 @@ describe('FiltersService', () => {
       response = value;
     });
 
-    const req = httpMock.expectOne(`${apiUrl}/filter/benford/anomaly`);
+    const req = httpMock.expectOne(request => request.url === `${apiUrl}/filter/benford/anomaly`);
     expect(req.request.method).toBe('GET');
     expect(req.request.params.get('symbol')).toBe('EURUSD');
     expect(req.request.params.get('timeframe')).toBe('1h');
@@ -79,7 +79,7 @@ describe('FiltersService', () => {
       response = value;
     });
 
-    const req = httpMock.expectOne(`${apiUrl}/filter/benford/anomaly`);
+    const req = httpMock.expectOne(request => request.url === `${apiUrl}/filter/benford/anomaly`);
     expect(req.request.method).toBe('GET');
     expect(req.request.params.get('symbol')).toBe('EURUSD');
     expect(req.request.params.get('timeframe')).toBe('1h');
@@ -96,7 +96,7 @@ describe('FiltersService', () => {
       response = value;
     });
 
-    const req = httpMock.expectOne(`${apiUrl}/filter/custom-filter`);
+    const req = httpMock.expectOne(request => request.url === `${apiUrl}/filter/custom-filter`);
     expect(req.request.method).toBe('GET');
     expect(req.request.params.get('symbol')).toBe('EURUSD');
     expect(req.request.params.get('maxCandle')).toBe('50');
@@ -112,7 +112,7 @@ describe('FiltersService', () => {
       response = value;
     });
 
-    const req = httpMock.expectOne(`${apiUrl}/filter/benford`);
+    const req = httpMock.expectOne(request => request.url === `${apiUrl}/filter/benford`);
     req.error(new ProgressEvent('Server error'));
 
     expect(response).toEqual({ data: getMockFilters(card => card.id.includes('benford')), isMock: true });

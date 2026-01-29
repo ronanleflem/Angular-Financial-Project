@@ -79,7 +79,7 @@ export class LiveSignalChartComponent implements AfterViewInit, OnChanges, OnDes
     const container = this.chartContainer.nativeElement;
     const { clientWidth } = container;
 
-    this.chart = createChart(container, {
+    this.chart = this.createChartInstance(container, {
       width: clientWidth || undefined,
       height: container.clientHeight || 400,
       layout: {
@@ -107,6 +107,10 @@ export class LiveSignalChartComponent implements AfterViewInit, OnChanges, OnDes
       borderDownColor: '#dc2626',
       wickDownColor: '#dc2626'
     });
+  }
+
+  protected createChartInstance(container: HTMLDivElement, options: Parameters<typeof createChart>[1]): IChartApi {
+    return createChart(container, options);
   }
 
   private loadSignal(signal: LiveSignal): void {

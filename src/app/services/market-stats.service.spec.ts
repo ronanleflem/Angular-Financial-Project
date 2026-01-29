@@ -33,7 +33,7 @@ describe('MarketStatsService', () => {
       response = value;
     });
 
-    const req = httpMock.expectOne(`${environment.apiUrl}/api/finance/charts/candles`);
+    const req = httpMock.expectOne(request => request.url === `${environment.apiUrl}/api/finance/charts/candles`);
     expect(req.request.method).toBe('GET');
     expect(req.request.params.get('symbol')).toBe('EURUSD');
     expect(req.request.params.get('timeframe')).toBe('1h');
@@ -51,7 +51,7 @@ describe('MarketStatsService', () => {
       response = value;
     });
 
-    const req = httpMock.expectOne(`${environment.apiUrl}/api/finance/charts/candles`);
+    const req = httpMock.expectOne(request => request.url === `${environment.apiUrl}/api/finance/charts/candles`);
     req.error(new ProgressEvent('Network error'));
 
     expect(response).toEqual({ data: getMockCandles('EURUSD'), isMock: true });
@@ -65,7 +65,7 @@ describe('MarketStatsService', () => {
       response = value;
     });
 
-    const req = httpMock.expectOne(`${environment.pyApiUrl}/seasonality/profiles`);
+    const req = httpMock.expectOne(request => request.url === `${environment.pyApiUrl}/seasonality/profiles`);
     expect(req.request.method).toBe('GET');
     expect(req.request.params.get('symbol')).toBe('EURUSD');
     expect(req.request.params.get('timeframe')).toBe('1h');
@@ -81,7 +81,7 @@ describe('MarketStatsService', () => {
       response = value;
     });
 
-    const req = httpMock.expectOne(`${environment.pyApiUrl}/seasonality/profiles`);
+    const req = httpMock.expectOne(request => request.url === `${environment.pyApiUrl}/seasonality/profiles`);
     req.error(new ProgressEvent('Network error'));
 
     expect(response).toEqual({ data: getMockSeasonality('GBPUSD'), isMock: true });
@@ -117,7 +117,7 @@ describe('MarketStatsService', () => {
         response = value;
       });
 
-    const req = httpMock.expectOne(`${environment.pyApiUrl}/stats/summary`);
+    const req = httpMock.expectOne(request => request.url === `${environment.pyApiUrl}/stats/summary`);
     expect(req.request.method).toBe('GET');
     expect(req.request.params.get('symbol')).toBe('EURUSD');
     expect(req.request.params.get('timeframe')).toBe('1h');
@@ -159,7 +159,7 @@ describe('MarketStatsService', () => {
       response = value;
     });
 
-    const req = httpMock.expectOne(`${environment.pyApiUrl}/stats/summary`);
+    const req = httpMock.expectOne(request => request.url === `${environment.pyApiUrl}/stats/summary`);
     req.error(new ProgressEvent('Network error'));
 
     expect(response).toEqual({ data: getMockStatsSummary(), isMock: true });

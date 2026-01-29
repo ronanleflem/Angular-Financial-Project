@@ -78,14 +78,16 @@ describe('MarketAnalysisPage', () => {
     ]);
     snackBarSpy = jasmine.createSpyObj<MatSnackBar>('MatSnackBar', ['open']);
 
-    await TestBed.configureTestingModule({
+    TestBed.configureTestingModule({
       imports: [MarketAnalysisPage],
       providers: [
         { provide: MarketStatsService, useValue: marketStatsSpy },
         { provide: FiltersService, useValue: filtersSpy },
         { provide: MatSnackBar, useValue: snackBarSpy }
       ]
-    }).compileComponents();
+    });
+    TestBed.overrideProvider(MatSnackBar, { useValue: snackBarSpy });
+    await TestBed.compileComponents();
   });
 
   const createComponent = () => {
@@ -141,6 +143,10 @@ describe('MarketAnalysisPage', () => {
     snackBarSpy.open.calls.reset();
 
     component.analysisForm.patchValue({ symbol: '', timeframe: '' });
+    component.analysisForm.controls.symbol.setErrors({ required: true });
+    component.analysisForm.controls.timeframe.setErrors({ required: true });
+    component.analysisForm.setErrors({ invalid: true });
+    expect(component.analysisForm.invalid).toBeTrue();
     component.loadAnalysis();
 
     expect(component.loading()).toBeFalse();

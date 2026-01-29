@@ -1,8 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { SimpleChange } from '@angular/core';
+import { ElementRef, SimpleChange } from '@angular/core';
 import { Observable, of } from 'rxjs';
-import * as lightweightCharts from 'lightweight-charts';
-
 import { LiveSignalChartComponent } from './live-signal-chart.component';
 import { MarketDataService } from '../../services/market-data.service';
 import { LiveSignal } from '../../models/live-signal.model';
@@ -53,7 +51,7 @@ describe('LiveSignalChartComponent', () => {
       })
     };
 
-    spyOn(lightweightCharts, 'createChart').and.returnValue(chartApi as never);
+    spyOn(LiveSignalChartComponent.prototype as any, 'createChartInstance').and.returnValue(chartApi as never);
 
     fixture = TestBed.createComponent(LiveSignalChartComponent);
     component = fixture.componentInstance;
@@ -66,7 +64,7 @@ describe('LiveSignalChartComponent', () => {
 
     fixture.detectChanges();
 
-    expect(lightweightCharts.createChart).toHaveBeenCalled();
+    expect((LiveSignalChartComponent.prototype as any).createChartInstance).toHaveBeenCalled();
     expect(chartApi.addCandlestickSeries).toHaveBeenCalled();
   });
 
@@ -106,8 +104,11 @@ describe('LiveSignalChartComponent', () => {
       })
     );
     component.signal = buildSignal();
-
-    fixture.detectChanges();
+    const container = document.createElement('div');
+    container.style.width = '640px';
+    container.style.height = '320px';
+    component.chartContainer = new ElementRef(container);
+    component.ngAfterViewInit();
 
     component.ngOnDestroy();
 

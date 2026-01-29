@@ -1,22 +1,29 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, of } from 'rxjs';
 
 import { ActiveRobotsComponent } from './active-robots.component';
 import { LiveSignalsService } from '../../services/live-signals.service';
 import { LiveSignal } from '../../models/live-signal.model';
+import { MarketDataService } from '../../services/market-data.service';
 
 describe('ActiveRobotsComponent', () => {
   let component: ActiveRobotsComponent;
   let fixture: ComponentFixture<ActiveRobotsComponent>;
   let liveSignalsService: jasmine.SpyObj<LiveSignalsService>;
+  let marketDataService: jasmine.SpyObj<MarketDataService>;
   let selectedSubject: BehaviorSubject<LiveSignal | null>;
+  let signalsSubject: BehaviorSubject<LiveSignal[]>;
 
   beforeEach(async () => {
     selectedSubject = new BehaviorSubject<LiveSignal | null>(null);
+    signalsSubject = new BehaviorSubject<LiveSignal[]>([]);
     liveSignalsService = jasmine.createSpyObj<LiveSignalsService>('LiveSignalsService', ['connect', 'disconnect'], {
-      selected$: selectedSubject
+      selected$: selectedSubject,
+      signals$: signalsSubject
     });
+    marketDataService = jasmine.createSpyObj<MarketDataService>('MarketDataService', ['getWindow']);
+    marketDataService.getWindow.and.returnValue(of({ bars: [] }));
 
     const queryParamMapSubject = new BehaviorSubject(convertToParamMap({ broker: 'ibkr' }));
 
@@ -24,6 +31,7 @@ describe('ActiveRobotsComponent', () => {
       imports: [ActiveRobotsComponent],
       providers: [
         { provide: LiveSignalsService, useValue: liveSignalsService },
+        { provide: MarketDataService, useValue: marketDataService },
         { provide: ActivatedRoute, useValue: { queryParamMap: queryParamMapSubject.asObservable() } }
       ]
     }).compileComponents();

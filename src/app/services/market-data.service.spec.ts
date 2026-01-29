@@ -48,7 +48,7 @@ describe('MarketDataService', () => {
       },
     });
 
-    const req = httpMock.expectOne(`${baseUrl}/ibkr/connect/wait`);
+    const req = httpMock.expectOne(request => request.url === `${baseUrl}/ibkr/connect/wait`);
     req.error(new ProgressEvent('Server error'), { status: 500, statusText: 'Server Error' });
 
     expect(error?.status).toBe(500);
@@ -104,7 +104,7 @@ describe('MarketDataService', () => {
       },
     });
 
-    const req = httpMock.expectOne(`${baseUrl}/ibkr/live/bars/start`);
+    const req = httpMock.expectOne(request => request.url === `${baseUrl}/ibkr/live/bars/start`);
     req.error(new ProgressEvent('Server error'), { status: 500, statusText: 'Server Error' });
 
     expect(error?.status).toBe(500);
@@ -273,7 +273,7 @@ describe('MarketDataService', () => {
         },
       });
 
-    const req = httpMock.expectOne(`${baseUrl}/marketdata/ohlcv/window`);
+    const req = httpMock.expectOne(request => request.url === `${baseUrl}/marketdata/ohlcv/window`);
     req.error(new ProgressEvent('Server error'), { status: 500, statusText: 'Server Error' });
 
     expect(error?.status).toBe(500);
