@@ -62,6 +62,8 @@ You must output exactly one ticket file in the following format:
 
 FILE: tickets/active/<FILENAME>.md
 <full ticket content here> ```
+The ticket must be created in the repository at `tickets/active/` (not only shown as text).
+
 The ticket must strictly follow the structure defined in TICKET_TEMPLATE.md.
 
 Quality rules
@@ -138,6 +140,8 @@ Always transform a raw JIRA ticket into a complete engineering ticket that:
 is clear
 
 is testable
+
+is in french
 
 is aligned with Angular conventions
 
