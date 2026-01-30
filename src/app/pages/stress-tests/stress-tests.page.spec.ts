@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { of } from 'rxjs';
 
 import { StressTestsPageComponent } from './stress-tests.page';
@@ -12,12 +12,13 @@ describe('StressTestsPageComponent', () => {
   let serviceSpy: jasmine.SpyObj<StressTestsService>;
 
   beforeEach(async () => {
-    serviceSpy = jasmine.createSpyObj('StressTestsService', ['getStressTests']);
+    serviceSpy = jasmine.createSpyObj('StressTestsService', ['getStressTests', 'getRuns']);
     const mockData: StressTestsViewModel = {
       meta: { runId: 'run-123', symbol: 'ES' },
       source: 'summary',
     };
     serviceSpy.getStressTests.and.returnValue(of(mockData));
+    serviceSpy.getRuns.and.returnValue(of([]));
 
     await TestBed.configureTestingModule({
       imports: [StressTestsPageComponent],
@@ -25,6 +26,7 @@ describe('StressTestsPageComponent', () => {
         {
           provide: ActivatedRoute,
           useValue: {
+            paramMap: of(convertToParamMap({ runId: 'run-123' })),
             snapshot: {
               paramMap: {
                 get: (key: string) => (key === 'runId' ? 'run-123' : null)

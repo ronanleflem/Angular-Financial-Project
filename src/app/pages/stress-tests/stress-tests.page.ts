@@ -5,9 +5,12 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatSelectModule } from '@angular/material/select';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Router } from '@angular/router';
 import { StressTestsService } from '../../services/stress-tests.service';
-import { StressTestsViewModel } from '../../models/stress-tests.models';
+import { StressTestRunSummary, StressTestsViewModel } from '../../models/stress-tests.models';
 import { MonteCarloPanelComponent } from './components/monte-carlo-panel/monte-carlo-panel.component';
 import { ScenariosPanelComponent } from './components/scenarios-panel/scenarios-panel.component';
 
@@ -26,6 +29,8 @@ interface StressTestsState {
     MatCardModule,
     MatDividerModule,
     MatProgressSpinnerModule,
+    MatFormFieldModule,
+    MatSelectModule,
     MonteCarloPanelComponent,
     ScenariosPanelComponent,
   ],
@@ -37,20 +42,28 @@ interface StressTestsState {
 })
 export class StressTestsPageComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly service = inject(StressTestsService);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly state = signal<StressTestsState>({ status: 'idle' });
+  readonly runs = signal<StressTestRunSummary[]>([]);
+  readonly runsLoading = signal(false);
+  readonly runsError = signal<string | null>(null);
   runId = '';
 
   ngOnInit(): void {
-    const runId = this.route.snapshot.paramMap.get('runId');
-    if (!runId) {
-      this.state.set({ status: 'error', error: 'runId manquant dans la route.' });
-      return;
-    }
-    this.runId = runId;
-    this.load(runId);
+    this.loadRuns();
+    this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(params => {
+      const runId = params.get('runId');
+      if (!runId) {
+        this.runId = '';
+        this.state.set({ status: 'idle' });
+        return;
+      }
+      this.runId = runId;
+      this.load(runId);
+    });
   }
 
   reload(): void {
@@ -58,6 +71,33 @@ export class StressTestsPageComponent implements OnInit {
       return;
     }
     this.load(this.runId);
+  }
+
+  onRunSelected(runId: string): void {
+    if (!runId || runId === this.runId) {
+      return;
+    }
+    this.router.navigate(['/stress-tests', runId]);
+  }
+
+  private loadRuns(): void {
+    this.runsLoading.set(true);
+    this.runsError.set(null);
+    this.service
+      .getRuns()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: runs => {
+          this.runs.set(Array.isArray(runs) ? runs : []);
+          this.runsLoading.set(false);
+        },
+        error: err => {
+          console.error('Failed to load stress test runs', err);
+          this.runs.set([]);
+          this.runsLoading.set(false);
+          this.runsError.set('Impossible de charger la liste des runs.');
+        },
+      });
   }
 
   private load(runId: string): void {

@@ -63,6 +63,17 @@
   font-size: 0.85rem;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.run-select {
+  min-width: 260px;
+}
+
 @media (max-width: 768px) {
   :host {
     padding: 1.25rem;

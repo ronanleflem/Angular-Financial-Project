@@ -13,6 +13,7 @@ import {
   RawStressTestsResponse,
   ScenarioViewModel,
   ScenariosViewModel,
+  StressTestRunSummary,
   StressTestsMeta,
   StressTestsSummaryResponse,
   StressTestsViewModel,
@@ -34,6 +35,10 @@ export class StressTestsService {
         switchMap(summaryView => (summaryView ? of(summaryView) : this.fetchRaw(runId))),
         catchError(() => this.fetchRaw(runId))
       );
+  }
+
+  getRuns(): Observable<StressTestRunSummary[]> {
+    return this.http.get<StressTestRunSummary[]>(`${this.apiUrl}/api/stress-tests/runs`);
   }
 
   private fetchRaw(runId: string): Observable<StressTestsViewModel> {

@@ -119,3 +119,15 @@ export interface StressTestsViewModel {
   scenarios?: ScenariosViewModel;
   source: 'summary' | 'raw';
 }
+
+export interface StressTestRunSummary {
+  runId: string;
+  createdAt?: string;
+  strategyId?: string;
+  symbol?: string;
+  assetClass?: string;
+  timeframe?: string;
+  status?: string;
+  hasSummary?: boolean;
+  modes?: string[];
+}

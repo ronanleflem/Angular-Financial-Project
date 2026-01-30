@@ -95,4 +95,30 @@ describe('StressTestsService', () => {
     expect(response?.scenarios?.items?.length).toBe(1);
     expect(response?.scenarios?.items?.[0].name).toBe('crash_mid');
   });
+
+  it('loads available stress test runs', () => {
+    let response: any;
+    service.getRuns().subscribe(data => {
+      response = data;
+    });
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/api/stress-tests/runs`);
+    expect(req.request.method).toBe('GET');
+    req.flush([
+      {
+        runId: 'run-2026-01-30-001',
+        createdAt: '2026-01-30T16:20:00',
+        strategyId: 'strat-mean-revert',
+        symbol: 'ES',
+        assetClass: 'Futures',
+        timeframe: '1m',
+        status: 'COMPLETED',
+        hasSummary: true,
+        modes: ['monte_carlo', 'scenarios']
+      }
+    ]);
+
+    expect(response?.length).toBe(1);
+    expect(response?.[0]?.runId).toBe('run-2026-01-30-001');
+  });
 });

@@ -8,9 +8,31 @@
       </span>
     </div>
   </div>
-  <button mat-stroked-button color="primary" (click)="reload()" [disabled]="state().status === 'loading'">
-    Rafraichir
-  </button>
+  <div class="header-actions">
+    <mat-form-field appearance="outline" class="run-select">
+      <mat-label>Run</mat-label>
+      <mat-select
+        [value]="runId"
+        (selectionChange)="onRunSelected($event.value)"
+        [disabled]="runsLoading() || !runs().length"
+      >
+        <mat-option *ngFor="let run of runs()" [value]="run.runId">
+          {{ run.runId }} - {{ run.strategyId || 'N/A' }} - {{ run.symbol || 'N/A' }} {{ run.timeframe || '' }}
+        </mat-option>
+      </mat-select>
+      <mat-hint *ngIf="runsLoading()">Chargement des runs...</mat-hint>
+      <mat-hint *ngIf="runsError()">{{ runsError() }}</mat-hint>
+    </mat-form-field>
+    <button mat-stroked-button color="primary" (click)="reload()" [disabled]="state().status === 'loading' || !runId">
+      Rafraichir
+    </button>
+  </div>
+</section>
+
+<section class="status" *ngIf="state().status === 'idle'">
+  <mat-card>
+    <mat-card-content>Selectionnez un run dans la liste pour afficher les stress tests.</mat-card-content>
+  </mat-card>
 </section>
 
 <section class="status" *ngIf="state().status === 'loading'">
