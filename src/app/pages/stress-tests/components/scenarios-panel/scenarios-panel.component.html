@@ -1,0 +1,68 @@
+<section class="panel">
+  <header class="panel-header">
+    <div>
+      <h2>Scenarios</h2>
+      <p class="subtitle">Synthese par scénario</p>
+    </div>
+  </header>
+
+  <mat-card *ngIf="!items.length" class="empty">
+    <mat-card-content>Aucun scénario disponible.</mat-card-content>
+  </mat-card>
+
+  <div class="scenarios" *ngIf="items.length">
+    <mat-card class="scenario" *ngFor="let item of items">
+      <div class="scenario-header">
+        <div>
+          <h3>{{ item.name }}</h3>
+          <span class="type" *ngIf="item.type">{{ item.type }}</span>
+        </div>
+      </div>
+
+      <div class="scenario-content">
+        <div class="settings" *ngIf="hasSettings(item)">
+          <h4>Parametres</h4>
+          <div class="setting" *ngFor="let entry of item.settings | keyvalue">
+            <span class="key">{{ entry.key }}</span>
+            <span class="value">{{ formatValue(entry.value) }}</span>
+          </div>
+        </div>
+
+        <div class="metrics" *ngIf="hasMetrics(item)">
+          <h4>Metriques</h4>
+          <table>
+            <tbody>
+              <tr *ngFor="let entry of item.metrics | keyvalue">
+                <td>{{ entry.key }}</td>
+                <td>{{ formatValue(entry.value) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <app-equity-curve-chart
+        *ngIf="item.curve?.length"
+        [title]="'Courbe du scénario'"
+        [series]="scenarioSeries(item)"
+        [height]="220"
+        [showLegend]="false"
+        [lazy]="true"
+      ></app-equity-curve-chart>
+
+      <div class="warnings" *ngIf="item.warnings?.length">
+        <h4>Warnings</h4>
+        <ul>
+          <li *ngFor="let warning of item.warnings">{{ warning }}</li>
+        </ul>
+      </div>
+    </mat-card>
+  </div>
+
+  <div class="warnings global" *ngIf="data?.warnings?.length">
+    <h4>Warnings globaux</h4>
+    <ul>
+      <li *ngFor="let warning of data?.warnings">{{ warning }}</li>
+    </ul>
+  </div>
+</section>

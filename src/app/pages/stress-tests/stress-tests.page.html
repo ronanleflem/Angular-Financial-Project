@@ -1,0 +1,35 @@
+<section class="page-header">
+  <div class="page-title">
+    <h1>Stress Tests</h1>
+    <p class="subtitle">Run {{ runId || 'N/A' }}</p>
+    <div class="meta" *ngIf="metaEntries.length">
+      <span class="meta-pill" *ngFor="let entry of metaEntries">
+        <strong>{{ entry.label }}:</strong> {{ entry.value }}
+      </span>
+    </div>
+  </div>
+  <button mat-stroked-button color="primary" (click)="reload()" [disabled]="state().status === 'loading'">
+    Rafraichir
+  </button>
+</section>
+
+<section class="status" *ngIf="state().status === 'loading'">
+  <mat-spinner diameter="36"></mat-spinner>
+  <p>Chargement des stress tests...</p>
+</section>
+
+<section class="status error" *ngIf="state().status === 'error'">
+  <mat-card>
+    <mat-card-title>Erreur</mat-card-title>
+    <mat-card-content>{{ state().error }}</mat-card-content>
+  </mat-card>
+</section>
+
+<section class="content" *ngIf="state().status === 'success' && state().data as data">
+  <app-monte-carlo-panel [data]="data.monteCarlo"></app-monte-carlo-panel>
+  <mat-divider></mat-divider>
+  <app-scenarios-panel [data]="data.scenarios"></app-scenarios-panel>
+  <div class="source-tag" *ngIf="data.source">
+    Source: {{ data.source === 'summary' ? 'front-ready' : 'raw' }}
+  </div>
+</section>

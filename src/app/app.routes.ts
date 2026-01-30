@@ -38,6 +38,10 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/data-availability/data-availability.page').then(m => m.DataAvailabilityPageComponent),
   },
   {
+    path: 'stress-tests/:runId',
+    loadComponent: () => import('./pages/stress-tests/stress-tests.page').then(m => m.StressTestsPageComponent),
+  },
+  {
     path: '_lab/signals',
     loadChildren: () => import('./labs/signals/signals.routes').then(m => m.SIGNALS_ROUTES),
   },

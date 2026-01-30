@@ -1,0 +1,20 @@
+<div class="percentile-table">
+  <h4 *ngIf="title">{{ title }}</h4>
+  <table *ngIf="rows.length; else empty">
+    <thead>
+      <tr>
+        <th>Metrique</th>
+        <th *ngFor="let column of columns">{{ formatColumn(column) }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let row of rows">
+        <td class="metric">{{ row.metric }}</td>
+        <td *ngFor="let column of columns">{{ formatValue(row, column) }}</td>
+      </tr>
+    </tbody>
+  </table>
+  <ng-template #empty>
+    <p class="empty">Aucun percentile disponible</p>
+  </ng-template>
+</div>

@@ -1,0 +1,71 @@
+<section class="panel">
+  <header class="panel-header">
+    <div>
+      <h2>Monte Carlo</h2>
+      <p class="subtitle">KPIs, percentiles et courbes simulees</p>
+    </div>
+  </header>
+
+  <mat-card *ngIf="!hasData" class="empty">
+    <mat-card-content>Aucune donnée Monte Carlo disponible.</mat-card-content>
+  </mat-card>
+
+  <ng-container *ngIf="hasData">
+    <div class="notice" *ngIf="modeNotice">{{ modeNotice }}</div>
+
+    <div class="kpis">
+      <mat-card class="kpi" *ngFor="let kpi of kpis">
+        <div class="kpi-label">{{ kpi.label }}</div>
+        <div class="kpi-value">
+          <ng-container *ngIf="kpi.value !== undefined; else noValue">
+            {{ kpi.value | number: '1.2-2' }}{{ kpi.suffix || '' }}
+          </ng-container>
+          <ng-template #noValue>N/A</ng-template>
+        </div>
+      </mat-card>
+    </div>
+
+    <div class="charts">
+      <app-equity-curve-chart
+        *ngIf="bandSeries.length"
+        [title]="'Bandes percentiles'"
+        [series]="bandSeries"
+        [height]="260"
+        [showLegend]="true"
+        [lazy]="true"
+      ></app-equity-curve-chart>
+
+      <app-equity-curve-chart
+        *ngIf="sampleSeries.length"
+        [title]="'Echantillon de courbes'"
+        [series]="sampleSeries"
+        [height]="260"
+        [showLegend]="showSampleLegend"
+        [lazy]="true"
+      ></app-equity-curve-chart>
+    </div>
+
+    <div class="table-and-params">
+      <app-percentile-table
+        [title]="'Percentiles clés'"
+        [columns]="percentileColumns"
+        [rows]="percentileRows"
+      ></app-percentile-table>
+
+      <div class="params" *ngIf="parameterEntries.length">
+        <h4>Parametres</h4>
+        <div class="param" *ngFor="let entry of parameterEntries">
+          <span class="key">{{ entry.key }}</span>
+          <span class="value">{{ entry.value }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="warnings" *ngIf="data?.warnings?.length">
+      <h4>Warnings</h4>
+      <ul>
+        <li *ngFor="let warning of data?.warnings">{{ warning }}</li>
+      </ul>
+    </div>
+  </ng-container>
+</section>

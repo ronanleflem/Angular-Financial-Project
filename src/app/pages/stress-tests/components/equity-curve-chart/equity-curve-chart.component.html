@@ -1,0 +1,9 @@
+<div class="chart-block">
+  <div class="chart-header" *ngIf="title">
+    <h4>{{ title }}</h4>
+  </div>
+  <div class="chart-wrapper" #wrapper [style.height.px]="height">
+    <canvas #canvas></canvas>
+    <div class="placeholder" *ngIf="!hasData">Aucune courbe disponible</div>
+  </div>
+</div>
