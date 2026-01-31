@@ -2,7 +2,8 @@
   background: #ffffff;
   border-radius: 16px;
   padding: 1rem;
-  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+  border: 1px solid #e2e8f0;
+  box-shadow: none;
 }
 
 .percentile-table h4 {
@@ -21,6 +22,13 @@
   padding: 0.5rem 0.75rem;
   text-align: right;
   border-bottom: 1px solid #e2e8f0;
+}
+
+.percentile-table th {
+  font-size: 0.78rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #475569;
 }
 
 .percentile-table th:first-child,
