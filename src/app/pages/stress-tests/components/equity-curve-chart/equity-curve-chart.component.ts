@@ -33,6 +33,7 @@ export class EquityCurveChartComponent implements AfterViewInit, OnChanges, OnDe
   private observer?: IntersectionObserver;
   private viewReady = false;
   private isVisible = false;
+  private readonly maxPoints = 800;
 
   ngAfterViewInit(): void {
     this.viewReady = true;
@@ -111,7 +112,8 @@ export class EquityCurveChartComponent implements AfterViewInit, OnChanges, OnDe
   }
 
   private buildChartConfig(): ChartConfiguration<'line'> {
-    const datasets: ChartDataset<'line', number[]>[] = this.series.map(item => ({
+    const downsampledSeries = this.downsampleSeries(this.series, this.maxPoints);
+    const datasets: ChartDataset<'line', number[]>[] = downsampledSeries.map(item => ({
       label: item.label,
       data: item.values,
       borderColor: item.color ?? '#2563eb',
@@ -122,7 +124,7 @@ export class EquityCurveChartComponent implements AfterViewInit, OnChanges, OnDe
       fill: item.fillToNext ? '+1' : false,
     }));
 
-    const maxLength = Math.max(...this.series.map(item => item.values.length));
+    const maxLength = Math.max(...downsampledSeries.map(item => item.values.length));
     const labels = Array.from({ length: maxLength }, (_, idx) => idx + 1);
 
     return {
@@ -134,6 +136,9 @@ export class EquityCurveChartComponent implements AfterViewInit, OnChanges, OnDe
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        animation: false,
+        normalized: true,
+        parsing: false,
         plugins: {
           legend: {
             display: this.showLegend,
@@ -170,5 +175,31 @@ export class EquityCurveChartComponent implements AfterViewInit, OnChanges, OnDe
         },
       },
     };
+  }
+
+  private downsampleSeries(series: EquityCurveSeries[], maxPoints: number): EquityCurveSeries[] {
+    if (!series.length) {
+      return [];
+    }
+    const maxLength = Math.max(...series.map(item => item.values?.length ?? 0));
+    if (!maxLength || maxLength <= maxPoints) {
+      return series;
+    }
+    const step = Math.ceil(maxLength / maxPoints);
+    return series.map(item => ({
+      ...item,
+      values: this.downsampleValues(item.values, step),
+    }));
+  }
+
+  private downsampleValues(values: number[], step: number): number[] {
+    if (!Array.isArray(values) || !values.length || step <= 1) {
+      return values;
+    }
+    const sampled: number[] = [];
+    for (let i = 0; i < values.length; i += step) {
+      sampled.push(values[i]);
+    }
+    return sampled;
   }
 }

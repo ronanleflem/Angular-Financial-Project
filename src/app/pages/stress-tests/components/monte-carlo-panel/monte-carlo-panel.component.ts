@@ -199,7 +199,44 @@ export class MonteCarloPanelComponent implements OnChanges {
       .slice(0, 8)
       .map(([key, value]) => ({
         key,
-        value: typeof value === 'string' ? value : JSON.stringify(value) ?? String(value),
+        value: this.formatParameterValue(value),
       }));
+  }
+
+  private formatParameterValue(value: unknown): string {
+    if (value === null || value === undefined) {
+      return 'N/A';
+    }
+    if (typeof value === 'number') {
+      return (Math.round(value * 100) / 100).toString();
+    }
+    if (typeof value === 'boolean') {
+      return value ? 'true' : 'false';
+    }
+    if (typeof value === 'string') {
+      return value;
+    }
+    if (Array.isArray(value)) {
+      if (value.length <= 6) {
+        return value.map(item => this.formatParameterValue(item)).join(', ');
+      }
+      return `[${value.length} valeurs]`;
+    }
+    if (typeof value === 'object') {
+      const record = value as Record<string, unknown>;
+      const keys = Object.keys(record);
+      if (!keys.length) {
+        return '{}';
+      }
+      if (keys.length > 8) {
+        return `{${keys.length} clés}`;
+      }
+      const preview = keys
+        .slice(0, 5)
+        .map(key => `${key}: ${this.formatParameterValue(record[key])}`)
+        .join(', ');
+      return `{ ${preview} }`;
+    }
+    return String(value);
   }
 }
