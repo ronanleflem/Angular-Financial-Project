@@ -11,7 +11,7 @@
   </mat-card>
 
   <div class="scenarios" *ngIf="items.length">
-    <mat-card class="scenario" *ngFor="let item of items">
+    <mat-card class="scenario" *ngFor="let item of items; trackBy: trackByScenario">
       <div class="scenario-header">
         <div>
           <h3>{{ item.name }}</h3>

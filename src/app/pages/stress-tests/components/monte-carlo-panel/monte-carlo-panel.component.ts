@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, Input, OnChanges } from '@angular/core';
+import { ChangeDetectionStrategy, Component, Input, OnChanges } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MonteCarloViewModel } from '../../../../models/stress-tests.models';
 import { EquityCurveChartComponent, EquityCurveSeries } from '../equity-curve-chart/equity-curve-chart.component';
@@ -17,6 +17,7 @@ interface KpiItem {
   imports: [CommonModule, MatCardModule, EquityCurveChartComponent, PercentileTableComponent],
   templateUrl: './monte-carlo-panel.component.html',
   styleUrls: ['./monte-carlo-panel.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MonteCarloPanelComponent implements OnChanges {
   @Input() data?: MonteCarloViewModel;
@@ -113,6 +114,12 @@ export class MonteCarloPanelComponent implements OnChanges {
       borderWidth: 1,
     }));
     this.showSampleLegend = this.sampleSeries.length <= 8;
+
+    if (!this.data.curveSamples?.length) {
+      console.warn('[StressTests] monte carlo samples empty', { runId: this.data?.parameters?.['runId'] });
+    } else if (!this.data.curveSamples[0]?.length) {
+      console.warn('[StressTests] monte carlo samples empty curve', { sampleCount: this.data.curveSamples.length });
+    }
   }
 
   private buildPercentileTable(): void {
@@ -238,5 +245,13 @@ export class MonteCarloPanelComponent implements OnChanges {
       return `{ ${preview} }`;
     }
     return String(value);
+  }
+
+  trackByKpi(_: number, item: KpiItem): string {
+    return item.label;
+  }
+
+  trackByParam(_: number, item: { key: string }): string {
+    return item.key;
   }
 }

@@ -101,6 +101,13 @@ export class StressTestsService {
       hasLegacyMonteCarlo: Boolean(legacy.monte_carlo),
     });
 
+    if (curves) {
+      console.info('[StressTests] summary curves shape', {
+        runId,
+        curves: summarizeCurvesShape(curves),
+      });
+    }
+
     if (sizeEstimate.bytes > 2_000_000 || sizeEstimate.truncated) {
       console.warn('[StressTests] summary payload looks large', {
         runId,
@@ -180,12 +187,15 @@ function mapMonteCarloSummary(summary: MonteCarloSummary, meta: StressTestsMeta)
   const percentileBand = extractPercentileBand(summary);
   const mode = extractMode(meta, summary.parameters);
   let curveSamples = sampleCurves(curves, 50);
+  logCurveSamplesDiagnostics(meta.runId, curveSamples, 'summary');
   const curveStats = computeCurveStats(curveSamples);
   if (curveSamples.length && isCurvePayloadHeavy(curveStats)) {
-    curveSamples = [];
+    const reducedCurves = 20;
+    const reducedPoints = 300;
+    curveSamples = shrinkCurveSamples(curves, reducedCurves, reducedPoints);
     warnings = [
       ...warnings,
-      `Courbes échantillonnées désactivées (payload trop volumineux: ${curveStats.count} courbes, max ${curveStats.maxPoints} points).`,
+      `Courbes échantillonnées réduites (payload volumineux: ${curveStats.count} courbes, max ${curveStats.maxPoints} points). Réduction appliquée: ${reducedCurves} courbes, ${reducedPoints} points max.`,
     ];
   }
 
@@ -215,12 +225,15 @@ function mapRawMonteCarlo(record: RawStressTestRecord, meta: StressTestsMeta): M
   const percentileBand = extractPercentileBand(record);
   const mode = extractMode(meta, record.parameters);
   let curveSamples = sampleCurves(curves, 50);
+  logCurveSamplesDiagnostics(meta.runId, curveSamples, 'raw');
   const curveStats = computeCurveStats(curveSamples);
   if (curveSamples.length && isCurvePayloadHeavy(curveStats)) {
-    curveSamples = [];
+    const reducedCurves = 20;
+    const reducedPoints = 300;
+    curveSamples = shrinkCurveSamples(curves, reducedCurves, reducedPoints);
     warnings = [
       ...warnings,
-      `Courbes échantillonnées désactivées (payload trop volumineux: ${curveStats.count} courbes, max ${curveStats.maxPoints} points).`,
+      `Courbes échantillonnées réduites (payload volumineux: ${curveStats.count} courbes, max ${curveStats.maxPoints} points). Réduction appliquée: ${reducedCurves} courbes, ${reducedPoints} points max.`,
     ];
   }
 
@@ -268,20 +281,40 @@ function extractPercentileBand(record: RawStressTestRecord): PercentileBand | un
 }
 
 function extractEquityCurves(record: RawStressTestRecord): number[][] {
-  if (isNumberArrayArray(record.curves)) {
-    return record.curves;
+  const direct = coerceCurveArray(record.curves);
+  if (direct) {
+    return direct;
   }
   if (record.curves && !Array.isArray(record.curves)) {
-    const curves = record.curves as { equitySample?: unknown; equityCurves?: unknown };
-    if (isNumberArrayArray(curves.equitySample)) {
-      return curves.equitySample;
+    const curves = record.curves as { equitySample?: unknown; equityCurves?: unknown; equity_sample?: unknown; equity_curves?: unknown };
+    const equitySample = coerceCurveArray(curves.equitySample);
+    if (equitySample) {
+      return equitySample;
     }
-    if (isNumberArrayArray(curves.equityCurves)) {
-      return curves.equityCurves;
+    const equityCurves = coerceCurveArray(curves.equityCurves);
+    if (equityCurves) {
+      return equityCurves;
+    }
+    const equitySampleSnake = coerceCurveArray(curves.equity_sample);
+    if (equitySampleSnake) {
+      return equitySampleSnake;
+    }
+    const equityCurvesSnake = coerceCurveArray(curves.equity_curves);
+    if (equityCurvesSnake) {
+      return equityCurvesSnake;
+    }
+    const fallback = pickCurveArrayFromObject(curves as Record<string, unknown>);
+    if (fallback) {
+      return fallback;
     }
   }
-  if (isNumberArrayArray(record.equity_curves)) {
-    return record.equity_curves;
+  const equityCurvesRoot = coerceCurveArray((record as { equityCurves?: unknown }).equityCurves);
+  if (equityCurvesRoot) {
+    return equityCurvesRoot;
+  }
+  const equityCurvesSnakeRoot = coerceCurveArray(record.equity_curves);
+  if (equityCurvesSnakeRoot) {
+    return equityCurvesSnakeRoot;
   }
   return [];
 }
@@ -594,12 +627,118 @@ function estimateSize(value: unknown, maxNodes: number): { bytes: number; nodes:
   return { bytes, nodes, truncated };
 }
 
+function summarizeCurvesShape(value: unknown): Record<string, unknown> {
+  if (Array.isArray(value)) {
+    const first = value[0];
+    const firstInner = Array.isArray(first) ? first[0] : undefined;
+    return {
+      kind: 'array',
+      length: value.length,
+      firstType: typeof first,
+      firstIsArray: Array.isArray(first),
+      firstLength: Array.isArray(first) ? first.length : undefined,
+      firstKeys:
+        first && typeof first === 'object' && !Array.isArray(first)
+          ? Object.keys(first as Record<string, unknown>).slice(0, 8)
+          : undefined,
+      firstNestedKeys:
+        Array.isArray(first) && first[0] && typeof first[0] === 'object' && !Array.isArray(first[0])
+          ? Object.keys(first[0] as Record<string, unknown>).slice(0, 8)
+          : undefined,
+      firstInnerType: typeof firstInner,
+      firstInnerIsArray: Array.isArray(firstInner),
+      firstInnerKeys:
+        firstInner && typeof firstInner === 'object' && !Array.isArray(firstInner)
+          ? Object.keys(firstInner as Record<string, unknown>).slice(0, 8)
+          : undefined,
+      firstInnerPreview: previewValue(firstInner),
+    };
+  }
+  if (!value || typeof value !== 'object') {
+    return { kind: typeof value };
+  }
+  const record = value as Record<string, unknown>;
+  const keys = Object.keys(record);
+  const sample: Record<string, unknown> = {};
+  keys.slice(0, 8).forEach(key => {
+    const entry = record[key];
+    if (Array.isArray(entry)) {
+      const first = entry[0];
+      const firstInner = Array.isArray(first) ? first[0] : undefined;
+      sample[key] = {
+        kind: 'array',
+        length: entry.length,
+        firstType: typeof first,
+        firstIsArray: Array.isArray(first),
+        firstLength: Array.isArray(first) ? first.length : undefined,
+        firstKeys:
+          first && typeof first === 'object' && !Array.isArray(first)
+            ? Object.keys(first as Record<string, unknown>).slice(0, 8)
+            : undefined,
+        firstNestedKeys:
+          Array.isArray(first) && first[0] && typeof first[0] === 'object' && !Array.isArray(first[0])
+            ? Object.keys(first[0] as Record<string, unknown>).slice(0, 8)
+            : undefined,
+        firstInnerType: typeof firstInner,
+        firstInnerIsArray: Array.isArray(firstInner),
+        firstInnerKeys:
+          firstInner && typeof firstInner === 'object' && !Array.isArray(firstInner)
+            ? Object.keys(firstInner as Record<string, unknown>).slice(0, 8)
+            : undefined,
+        firstInnerPreview: previewValue(firstInner),
+      };
+      return;
+    }
+    sample[key] = { kind: typeof entry, preview: previewValue(entry) };
+  });
+  return { kind: 'object', keys, sample };
+}
+
+function previewValue(value: unknown): string | undefined {
+  if (value === null || value === undefined) {
+    return String(value);
+  }
+  if (typeof value === 'string') {
+    return value.length > 120 ? `${value.slice(0, 120)}…` : value;
+  }
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return String(value);
+  }
+  if (Array.isArray(value)) {
+    return `Array(${value.length})`;
+  }
+  if (typeof value === 'object') {
+    const keys = Object.keys(value as Record<string, unknown>);
+    return `{ ${keys.slice(0, 6).join(', ')}${keys.length > 6 ? ', …' : ''} }`;
+  }
+  return undefined;
+}
+
+function logCurveSamplesDiagnostics(runId: string | undefined, curves: number[][], source: 'summary' | 'raw'): void {
+  const count = curves.length;
+  const firstCurve = count ? curves[0] : undefined;
+  const firstPoints = firstCurve ? firstCurve.slice(0, 5) : [];
+  const nonNumeric = firstPoints.filter(point => typeof point !== 'number' || Number.isNaN(point)).length;
+  console.info('[StressTests] curveSamples diagnostics', {
+    runId,
+    source,
+    count,
+    firstCurvePoints: firstCurve?.length ?? 0,
+    firstPoints,
+    nonNumeric,
+  });
+}
+
 function summarizeCurveSet(
-  curves: number[][] | undefined,
+  curves: number[][] | number[] | undefined,
   maxCurves: number
 ): { count: number; maxPoints: number; avgPointsSample: number; sampled: boolean } {
   if (!Array.isArray(curves)) {
     return { count: 0, maxPoints: 0, avgPointsSample: 0, sampled: false };
+  }
+  if (curves.length && typeof curves[0] === 'number') {
+    const points = (curves as number[]).length;
+    return { count: 1, maxPoints: points, avgPointsSample: points, sampled: false };
   }
   const count = curves.length;
   if (!count) {
@@ -609,7 +748,8 @@ function summarizeCurveSet(
   let maxPoints = 0;
   let totalPoints = 0;
   for (let i = 0; i < sampleCount; i += 1) {
-    const points = Array.isArray(curves[i]) ? curves[i].length : 0;
+    const entry = curves[i];
+    const points = Array.isArray(entry) ? entry.length : 0;
     totalPoints += points;
     if (points > maxPoints) {
       maxPoints = points;
@@ -663,6 +803,26 @@ function computeCurveStats(curves: number[][]): { count: number; maxPoints: numb
   return { count: curves.length, maxPoints, totalPoints };
 }
 
+function shrinkCurveSamples(curves: number[][], maxCurves: number, maxPoints: number): number[][] {
+  if (!Array.isArray(curves) || !curves.length) {
+    return [];
+  }
+  const sampled = sampleCurves(curves, maxCurves);
+  return sampled.map(curve => downsampleCurve(curve, maxPoints));
+}
+
+function downsampleCurve(values: number[], maxPoints: number): number[] {
+  if (!Array.isArray(values) || values.length <= maxPoints || maxPoints <= 0) {
+    return values;
+  }
+  const step = Math.ceil(values.length / maxPoints);
+  const sampled: number[] = [];
+  for (let i = 0; i < values.length; i += step) {
+    sampled.push(values[i]);
+  }
+  return sampled;
+}
+
 function computeScenarioCurveStats(items: ScenarioViewModel[]): { curves: number; maxPoints: number; totalPoints: number } {
   let curves = 0;
   let maxPoints = 0;
@@ -710,4 +870,131 @@ function isNumberArray(value: unknown): value is number[] {
 
 function isNumberArrayArray(value: unknown): value is number[][] {
   return Array.isArray(value) && value.every(isNumberArray);
+}
+
+function pickCurveArrayFromObject(obj: Record<string, unknown>): number[][] | undefined {
+  let best: number[][] | undefined;
+  let bestSize = 0;
+  for (const value of Object.values(obj)) {
+    const candidate = coerceCurveArray(value);
+    if (!candidate) {
+      continue;
+    }
+    const size = candidate.reduce((acc, curve) => acc + curve.length, 0);
+    if (size > bestSize) {
+      best = candidate;
+      bestSize = size;
+    }
+  }
+  return best;
+}
+
+function coerceCurveArray(value: unknown): number[][] | undefined {
+  if (isNumberArrayArray(value)) {
+    return value;
+  }
+  if (isNumberArray(value)) {
+    return [value];
+  }
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+  if (!value.length) {
+    return undefined;
+  }
+  if (Array.isArray(value[0])) {
+    const mapped = value
+      .map(entry => coerceCurvePoints(entry))
+      .filter(curve => curve.length > 0);
+    return mapped.length ? mapped : undefined;
+  }
+  const curve = coerceCurvePoints(value);
+  return curve.length ? [curve] : undefined;
+}
+
+function coerceCurvePoints(points: unknown): number[] {
+  if (!Array.isArray(points)) {
+    return [];
+  }
+  const result: number[] = [];
+  for (const entry of points) {
+    const value = coercePoint(entry);
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      result.push(value);
+    }
+  }
+  return result;
+}
+
+function coercePoint(entry: unknown): number | null {
+  if (typeof entry === 'number') {
+    return entry;
+  }
+  if (typeof entry === 'string') {
+    const parsed = parseNumericString(entry);
+    return parsed !== null ? parsed : null;
+  }
+  if (Array.isArray(entry)) {
+    for (let i = entry.length - 1; i >= 0; i -= 1) {
+      const candidate = coercePoint(entry[i]);
+      if (candidate !== null) {
+        return candidate;
+      }
+    }
+    return null;
+  }
+  if (entry && typeof entry === 'object') {
+    const record = entry as Record<string, unknown>;
+    const preferredKeys = [
+      'value',
+      'val',
+      'v',
+      'y',
+      'equity',
+      'equityCurve',
+      'equity_curve',
+      'pnl',
+      'return',
+      'net',
+      'close',
+      'price',
+      'level',
+      'score',
+    ];
+    for (const key of preferredKeys) {
+      const candidate = record[key];
+      const value = coercePoint(candidate);
+      if (value !== null) {
+        return value;
+      }
+    }
+    const numericEntries = Object.values(record).map(coercePoint).filter(val => val !== null) as number[];
+    if (numericEntries.length >= 1) {
+      return numericEntries[numericEntries.length - 1];
+    }
+  }
+  return null;
+}
+
+function parseNumericString(value: string): number | null {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const direct = Number(trimmed);
+  if (Number.isFinite(direct)) {
+    return direct;
+  }
+  const normalized = trimmed.replace(/\s/g, '');
+  if (normalized.includes(',') && normalized.includes('.')) {
+    const cleaned = normalized.replace(/,/g, '');
+    const parsed = Number(cleaned);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  if (normalized.includes(',') && !normalized.includes('.')) {
+    const cleaned = normalized.replace(/,/g, '.');
+    const parsed = Number(cleaned);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
 }

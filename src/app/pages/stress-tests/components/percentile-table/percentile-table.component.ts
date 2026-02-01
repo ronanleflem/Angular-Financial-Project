@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, Input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
 
 export interface PercentileRow {
   metric: string;
@@ -12,6 +12,7 @@ export interface PercentileRow {
   imports: [CommonModule],
   templateUrl: './percentile-table.component.html',
   styleUrls: ['./percentile-table.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PercentileTableComponent {
   @Input() title = 'Percentiles';

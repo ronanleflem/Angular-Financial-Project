@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, Input, OnChanges, OnDestroy, SimpleChanges, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, Input, NgZone, OnChanges, OnDestroy, SimpleChanges, ViewChild, ChangeDetectionStrategy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Chart, ChartConfiguration, ChartDataset, registerables } from 'chart.js';
 
@@ -18,6 +18,7 @@ export interface EquityCurveSeries {
   imports: [CommonModule],
   templateUrl: './equity-curve-chart.component.html',
   styleUrls: ['./equity-curve-chart.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class EquityCurveChartComponent implements AfterViewInit, OnChanges, OnDestroy {
   @Input() title = '';
@@ -31,17 +32,21 @@ export class EquityCurveChartComponent implements AfterViewInit, OnChanges, OnDe
 
   private chart?: Chart<'line'>;
   private observer?: IntersectionObserver;
+  private resizeObserver?: ResizeObserver;
   private viewReady = false;
   private isVisible = false;
   private readonly maxPoints = 800;
+  private renderScheduled = false;
+  private readonly ngZone = inject(NgZone);
 
   ngAfterViewInit(): void {
     this.viewReady = true;
+    this.setupResizeObserver();
     if (this.lazy) {
       this.setupObserver();
     } else {
       this.isVisible = true;
-      this.renderOrUpdate();
+      this.scheduleRender();
     }
   }
 
@@ -50,16 +55,17 @@ export class EquityCurveChartComponent implements AfterViewInit, OnChanges, OnDe
       return;
     }
     if (!this.lazy) {
-      this.renderOrUpdate();
+      this.scheduleRender();
       return;
     }
     if (this.isVisible) {
-      this.renderOrUpdate();
+      this.scheduleRender();
     }
   }
 
   ngOnDestroy(): void {
     this.observer?.disconnect();
+    this.resizeObserver?.disconnect();
     if (this.chart) {
       this.chart.destroy();
       this.chart = undefined;
@@ -79,13 +85,25 @@ export class EquityCurveChartComponent implements AfterViewInit, OnChanges, OnDe
         const isVisible = entries.some(entry => entry.isIntersecting);
         if (isVisible) {
           this.isVisible = true;
-          this.renderOrUpdate();
+          this.scheduleRender();
           this.observer?.disconnect();
         }
       },
       { rootMargin: '200px 0px' }
     );
     this.observer.observe(this.wrapperRef.nativeElement);
+  }
+
+  private setupResizeObserver(): void {
+    if (!this.wrapperRef || typeof ResizeObserver === 'undefined') {
+      return;
+    }
+    this.resizeObserver = new ResizeObserver(() => {
+      if (this.chart) {
+        this.chart.resize();
+      }
+    });
+    this.resizeObserver.observe(this.wrapperRef.nativeElement);
   }
 
   private renderOrUpdate(): void {
@@ -100,7 +118,7 @@ export class EquityCurveChartComponent implements AfterViewInit, OnChanges, OnDe
     if (this.chart) {
       this.chart.data = this.buildChartConfig().data!;
       this.chart.options = this.buildChartConfig().options!;
-      this.chart.update();
+      this.chart.update('none');
       return;
     }
 
@@ -109,6 +127,26 @@ export class EquityCurveChartComponent implements AfterViewInit, OnChanges, OnDe
       return;
     }
     this.chart = new Chart(ctx, this.buildChartConfig());
+    this.chart.resize();
+    this.chart.update('none');
+  }
+
+  private scheduleRender(): void {
+    if (this.renderScheduled) {
+      return;
+    }
+    this.renderScheduled = true;
+    const run = () => {
+      this.renderScheduled = false;
+      this.renderOrUpdate();
+    };
+    this.ngZone.runOutsideAngular(() => {
+      if (typeof requestIdleCallback === 'function') {
+        requestIdleCallback(run, { timeout: 500 });
+        return;
+      }
+      requestAnimationFrame(run);
+    });
   }
 
   private buildChartConfig(): ChartConfiguration<'line'> {
@@ -138,7 +176,6 @@ export class EquityCurveChartComponent implements AfterViewInit, OnChanges, OnDe
         maintainAspectRatio: false,
         animation: false,
         normalized: true,
-        parsing: false,
         plugins: {
           legend: {
             display: this.showLegend,

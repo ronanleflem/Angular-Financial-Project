@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, Input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { EquityCurveChartComponent, EquityCurveSeries } from '../equity-curve-chart/equity-curve-chart.component';
 import { ScenariosViewModel, ScenarioViewModel } from '../../../../models/stress-tests.models';
@@ -10,6 +10,7 @@ import { ScenariosViewModel, ScenarioViewModel } from '../../../../models/stress
   imports: [CommonModule, MatCardModule, EquityCurveChartComponent],
   templateUrl: './scenarios-panel.component.html',
   styleUrls: ['./scenarios-panel.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ScenariosPanelComponent {
   @Input() data?: ScenariosViewModel;
@@ -62,6 +63,10 @@ export class ScenariosPanelComponent {
       return `{ ${preview} }`;
     }
     return String(value);
+  }
+
+  trackByScenario(_: number, item: ScenarioViewModel): string {
+    return item.name;
   }
 
   private formatScalar(value: unknown): string {

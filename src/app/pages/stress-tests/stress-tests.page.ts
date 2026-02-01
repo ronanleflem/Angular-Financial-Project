@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -36,6 +36,7 @@ interface StressTestsState {
   ],
   templateUrl: './stress-tests.page.html',
   styleUrls: ['./stress-tests.page.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     class: 'stress-tests-page',
   },

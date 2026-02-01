@@ -14,7 +14,7 @@
     <div class="notice" *ngIf="modeNotice">{{ modeNotice }}</div>
 
     <div class="kpis">
-      <mat-card class="kpi" *ngFor="let kpi of kpis">
+      <mat-card class="kpi" *ngFor="let kpi of kpis; trackBy: trackByKpi">
         <div class="kpi-label">{{ kpi.label }}</div>
         <div class="kpi-value">
           <ng-container *ngIf="kpi.value !== undefined; else noValue">
@@ -32,7 +32,7 @@
         [series]="bandSeries"
         [height]="260"
         [showLegend]="true"
-        [lazy]="true"
+        [lazy]="false"
       ></app-equity-curve-chart>
 
       <app-equity-curve-chart
@@ -41,7 +41,7 @@
         [series]="sampleSeries"
         [height]="260"
         [showLegend]="showSampleLegend"
-        [lazy]="true"
+        [lazy]="false"
       ></app-equity-curve-chart>
     </div>
 
@@ -54,7 +54,7 @@
 
       <div class="params" *ngIf="parameterEntries.length">
         <h4>Parametres</h4>
-        <div class="param" *ngFor="let entry of parameterEntries">
+        <div class="param" *ngFor="let entry of parameterEntries; trackBy: trackByParam">
           <span class="key">{{ entry.key }}</span>
           <span class="value">{{ entry.value }}</span>
         </div>
