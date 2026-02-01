@@ -10,9 +10,12 @@ export interface StressTestsMeta {
 export interface PercentileMetric {
   p5?: number;
   p10?: number;
+  p25?: number;
   p50?: number;
+  p75?: number;
   p90?: number;
   p95?: number;
+  p99?: number;
   mean?: number;
   std?: number;
   median?: number;

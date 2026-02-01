@@ -131,18 +131,7 @@ export class MonteCarloPanelComponent implements OnChanges {
     const metrics = this.data.metricsByDistribution ?? {};
     const metricKeys = Object.keys(metrics);
     const preferredKeys = this.selectMetricKeys(metricKeys);
-    const hasP10 = metricKeys.some(key => typeof metrics[key]?.p10 === 'number');
-    const hasP90 = metricKeys.some(key => typeof metrics[key]?.p90 === 'number');
-    const hasP5 = metricKeys.some(key => typeof metrics[key]?.p5 === 'number');
-    const hasP95 = metricKeys.some(key => typeof metrics[key]?.p95 === 'number');
-
-    if (hasP10 || hasP90) {
-      this.percentileColumns = ['p10', 'p50', 'p90'];
-    } else if (hasP5 || hasP95) {
-      this.percentileColumns = ['p5', 'p50', 'p95'];
-    } else {
-      this.percentileColumns = ['p50', 'mean', 'std'];
-    }
+    this.percentileColumns = ['p10', 'p25', 'p50', 'p75', 'p90', 'p95', 'p99'];
 
     this.percentileRows = preferredKeys.map(metricName => {
       const row = metrics[metricName] ?? {};
@@ -151,9 +140,12 @@ export class MonteCarloPanelComponent implements OnChanges {
         values: {
           p5: row.p5,
           p10: row.p10,
+          p25: row.p25,
           p50: row.p50 ?? row.median,
+          p75: row.p75,
           p90: row.p90,
           p95: row.p95,
+          p99: row.p99,
           mean: row.mean,
           std: row.std,
         },
