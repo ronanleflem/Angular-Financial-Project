@@ -14,6 +14,10 @@ export const routes: Routes = [
     loadComponent: () => import('./components/strategy-calculation/strategy-calculation.component').then(m => m.StrategyCalculationComponent),
   },
   {
+    path: 'strategy-launcher',
+    loadComponent: () => import('./pages/strategy-launcher/strategy-launcher.page').then(m => m.StrategyLauncherPageComponent),
+  },
+  {
     path: 'screen-strategies',
     loadComponent: () => import('./components/screen-strategies/screen-strategies.component').then(m => m.ScreenStrategiesComponent),
   },

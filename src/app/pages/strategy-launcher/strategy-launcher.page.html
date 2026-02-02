@@ -1,0 +1,461 @@
+<section class="launcher">
+  <header class="page-header">
+    <div class="page-title">
+      <h1>Lancement strategies</h1>
+      <p class="subtitle">
+        Parametres de test pour lancer DCA, backtests, market stats, saisonnalite et stress tests.
+      </p>
+    </div>
+    <div class="header-tags">
+      <span class="tag">Mock</span>
+      <span class="tag">Sans backend</span>
+    </div>
+  </header>
+
+  <div class="cards-grid">
+    <mat-card class="strategy-card">
+      <mat-card-header>
+        <div class="card-heading">
+          <mat-card-title>DCA</mat-card-title>
+          <mat-card-subtitle>Accumulation periodique</mat-card-subtitle>
+        </div>
+        <mat-chip class="mock-chip" appearance="outlined">mock</mat-chip>
+      </mat-card-header>
+      <mat-card-content>
+        <form class="strategy-form" [formGroup]="dcaForm" (ngSubmit)="runDca()">
+          <mat-form-field appearance="outline">
+            <mat-label>Symbole</mat-label>
+            <mat-select formControlName="symbol">
+              <mat-option *ngFor="let symbol of symbols" [value]="symbol">{{ symbol }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Frequence</mat-label>
+            <mat-select formControlName="frequency">
+              <mat-option *ngFor="let freq of dcaFrequencies" [value]="freq.value">{{ freq.label }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Montant par achat</mat-label>
+            <input matInput type="number" formControlName="amount" min="10" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Date debut</mat-label>
+            <input matInput type="date" formControlName="startDate" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Date fin</mat-label>
+            <input matInput type="date" formControlName="endDate" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Frais (%)</mat-label>
+            <input matInput type="number" formControlName="feePct" min="0" step="0.01" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Broker</mat-label>
+            <mat-select formControlName="broker">
+              <mat-option *ngFor="let broker of brokers" [value]="broker">{{ broker }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <div class="checkbox-row">
+            <mat-checkbox formControlName="reinvestDividends">Reinvestir dividendes</mat-checkbox>
+          </div>
+
+          <div class="strategy-actions">
+            <button mat-flat-button color="primary" type="submit" [disabled]="dcaForm.invalid">Lancer DCA</button>
+            <button mat-stroked-button type="button" (click)="resetDca()">Reset</button>
+          </div>
+        </form>
+
+        <mat-divider></mat-divider>
+
+        <section class="result-panel" *ngIf="dcaResult() as result">
+          <div class="result-header">
+            <div>
+              <h4>Dernier run</h4>
+              <p>{{ result.runId }} | {{ result.executedAt | date: 'short' }}</p>
+              <p class="result-summary">{{ result.summary }}</p>
+            </div>
+            <span class="status-pill" [class.ok]="result.status === 'OK'" [class.warn]="result.status === 'Watch'">
+              {{ result.status }}
+            </span>
+          </div>
+          <div class="tag-row">
+            <span class="tag" *ngFor="let tag of result.tags">{{ tag }}</span>
+          </div>
+          <div class="result-grid">
+            <div class="metric" *ngFor="let metric of result.metrics">
+              <span>{{ metric.label }}</span>
+              <strong [class.positive]="metric.tone === 'positive'" [class.negative]="metric.tone === 'negative'">
+                {{ metric.value }}
+              </strong>
+            </div>
+          </div>
+        </section>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="strategy-card">
+      <mat-card-header>
+        <div class="card-heading">
+          <mat-card-title>Backtests classiques</mat-card-title>
+          <mat-card-subtitle>Simulateur historique</mat-card-subtitle>
+        </div>
+        <mat-chip class="mock-chip" appearance="outlined">mock</mat-chip>
+      </mat-card-header>
+      <mat-card-content>
+        <form class="strategy-form" [formGroup]="backtestForm" (ngSubmit)="runBacktest()">
+          <mat-form-field appearance="outline">
+            <mat-label>Strategie</mat-label>
+            <mat-select formControlName="strategy">
+              <mat-option *ngFor="let option of backtestStrategies" [value]="option">{{ option }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Symbole</mat-label>
+            <mat-select formControlName="symbol">
+              <mat-option *ngFor="let symbol of symbols" [value]="symbol">{{ symbol }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Timeframe</mat-label>
+            <mat-select formControlName="timeframe">
+              <mat-option *ngFor="let tf of timeframes" [value]="tf">{{ tf }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Date debut</mat-label>
+            <input matInput type="date" formControlName="startDate" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Date fin</mat-label>
+            <input matInput type="date" formControlName="endDate" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Capital initial</mat-label>
+            <input matInput type="number" formControlName="capital" min="1000" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Risque par trade (%)</mat-label>
+            <input matInput type="number" formControlName="riskPct" min="0" step="0.1" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Stop loss (%)</mat-label>
+            <input matInput type="number" formControlName="stopLoss" min="0" step="0.1" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Take profit (%)</mat-label>
+            <input matInput type="number" formControlName="takeProfit" min="0" step="0.1" />
+          </mat-form-field>
+
+          <div class="checkbox-row">
+            <mat-checkbox formControlName="trailingStop">Trailing stop</mat-checkbox>
+          </div>
+
+          <div class="strategy-actions">
+            <button mat-flat-button color="primary" type="submit" [disabled]="backtestForm.invalid">Lancer backtest</button>
+            <button mat-stroked-button type="button" (click)="resetBacktest()">Reset</button>
+          </div>
+        </form>
+
+        <mat-divider></mat-divider>
+
+        <section class="result-panel" *ngIf="backtestResult() as result">
+          <div class="result-header">
+            <div>
+              <h4>Dernier run</h4>
+              <p>{{ result.runId }} | {{ result.executedAt | date: 'short' }}</p>
+              <p class="result-summary">{{ result.summary }}</p>
+            </div>
+            <span class="status-pill" [class.ok]="result.status === 'OK'" [class.warn]="result.status === 'Watch'">
+              {{ result.status }}
+            </span>
+          </div>
+          <div class="tag-row">
+            <span class="tag" *ngFor="let tag of result.tags">{{ tag }}</span>
+          </div>
+          <div class="result-grid">
+            <div class="metric" *ngFor="let metric of result.metrics">
+              <span>{{ metric.label }}</span>
+              <strong [class.positive]="metric.tone === 'positive'" [class.negative]="metric.tone === 'negative'">
+                {{ metric.value }}
+              </strong>
+            </div>
+          </div>
+        </section>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="strategy-card">
+      <mat-card-header>
+        <div class="card-heading">
+          <mat-card-title>Market stats</mat-card-title>
+          <mat-card-subtitle>KPIs et profils de marche</mat-card-subtitle>
+        </div>
+        <mat-chip class="mock-chip" appearance="outlined">mock</mat-chip>
+      </mat-card-header>
+      <mat-card-content>
+        <form class="strategy-form" [formGroup]="marketStatsForm" (ngSubmit)="runMarketStats()">
+          <mat-form-field appearance="outline">
+            <mat-label>Symbole</mat-label>
+            <mat-select formControlName="symbol">
+              <mat-option *ngFor="let symbol of symbols" [value]="symbol">{{ symbol }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Timeframe</mat-label>
+            <mat-select formControlName="timeframe">
+              <mat-option *ngFor="let tf of timeframes" [value]="tf">{{ tf }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Lookback (candles)</mat-label>
+            <input matInput type="number" formControlName="lookback" min="100" max="5000" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Pack stats</mat-label>
+            <mat-select formControlName="statsPack">
+              <mat-option *ngFor="let pack of statsPacks" [value]="pack">{{ pack }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Session</mat-label>
+            <mat-select formControlName="session">
+              <mat-option value="Full">Full</mat-option>
+              <mat-option value="RTH">RTH</mat-option>
+              <mat-option value="Asia">Asia</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <div class="checkbox-row">
+            <mat-checkbox formControlName="includeWeekends">Inclure weekends</mat-checkbox>
+          </div>
+
+          <div class="strategy-actions">
+            <button mat-flat-button color="primary" type="submit" [disabled]="marketStatsForm.invalid">Lancer stats</button>
+            <button mat-stroked-button type="button" (click)="resetMarketStats()">Reset</button>
+          </div>
+        </form>
+
+        <mat-divider></mat-divider>
+
+        <section class="result-panel" *ngIf="marketStatsResult() as result">
+          <div class="result-header">
+            <div>
+              <h4>Dernier run</h4>
+              <p>{{ result.runId }} | {{ result.executedAt | date: 'short' }}</p>
+              <p class="result-summary">{{ result.summary }}</p>
+            </div>
+            <span class="status-pill" [class.info]="result.status === 'INFO'">
+              {{ result.status }}
+            </span>
+          </div>
+          <div class="tag-row">
+            <span class="tag" *ngFor="let tag of result.tags">{{ tag }}</span>
+          </div>
+          <div class="result-grid">
+            <div class="metric" *ngFor="let metric of result.metrics">
+              <span>{{ metric.label }}</span>
+              <strong>{{ metric.value }}</strong>
+            </div>
+          </div>
+        </section>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="strategy-card">
+      <mat-card-header>
+        <div class="card-heading">
+          <mat-card-title>Saisonnalite</mat-card-title>
+          <mat-card-subtitle>Cycles et patterns temporels</mat-card-subtitle>
+        </div>
+        <mat-chip class="mock-chip" appearance="outlined">mock</mat-chip>
+      </mat-card-header>
+      <mat-card-content>
+        <form class="strategy-form" [formGroup]="seasonalityForm" (ngSubmit)="runSeasonality()">
+          <mat-form-field appearance="outline">
+            <mat-label>Symbole</mat-label>
+            <mat-select formControlName="symbol">
+              <mat-option *ngFor="let symbol of symbols" [value]="symbol">{{ symbol }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Timeframe</mat-label>
+            <mat-select formControlName="timeframe">
+              <mat-option *ngFor="let tf of timeframes" [value]="tf">{{ tf }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Fenetre</mat-label>
+            <mat-select formControlName="window">
+              <mat-option *ngFor="let window of seasonalityWindows" [value]="window">{{ window }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Annee debut</mat-label>
+            <input matInput type="number" formControlName="startYear" min="1990" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Annee fin</mat-label>
+            <input matInput type="number" formControlName="endYear" min="1990" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Filtre marche</mat-label>
+            <mat-select formControlName="filter">
+              <mat-option *ngFor="let option of seasonalityFilters" [value]="option">{{ option }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <div class="checkbox-row">
+            <mat-checkbox formControlName="normalize">Normaliser performances</mat-checkbox>
+          </div>
+
+          <div class="strategy-actions">
+            <button mat-flat-button color="primary" type="submit" [disabled]="seasonalityForm.invalid">Lancer saisonnalite</button>
+            <button mat-stroked-button type="button" (click)="resetSeasonality()">Reset</button>
+          </div>
+        </form>
+
+        <mat-divider></mat-divider>
+
+        <section class="result-panel" *ngIf="seasonalityResult() as result">
+          <div class="result-header">
+            <div>
+              <h4>Dernier run</h4>
+              <p>{{ result.runId }} | {{ result.executedAt | date: 'short' }}</p>
+              <p class="result-summary">{{ result.summary }}</p>
+            </div>
+            <span class="status-pill" [class.info]="result.status === 'INFO'">
+              {{ result.status }}
+            </span>
+          </div>
+          <div class="tag-row">
+            <span class="tag" *ngFor="let tag of result.tags">{{ tag }}</span>
+          </div>
+          <div class="result-grid">
+            <div class="metric" *ngFor="let metric of result.metrics">
+              <span>{{ metric.label }}</span>
+              <strong>{{ metric.value }}</strong>
+            </div>
+          </div>
+        </section>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="strategy-card">
+      <mat-card-header>
+        <div class="card-heading">
+          <mat-card-title>Stress tests</mat-card-title>
+          <mat-card-subtitle>Chocs et scenarios extremes</mat-card-subtitle>
+        </div>
+        <mat-chip class="mock-chip" appearance="outlined">mock</mat-chip>
+      </mat-card-header>
+      <mat-card-content>
+        <form class="strategy-form" [formGroup]="stressForm" (ngSubmit)="runStressTests()">
+          <mat-form-field appearance="outline">
+            <mat-label>Strategie</mat-label>
+            <mat-select formControlName="strategy">
+              <mat-option *ngFor="let option of stressStrategies" [value]="option">{{ option }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Symbole</mat-label>
+            <mat-select formControlName="symbol">
+              <mat-option *ngFor="let symbol of symbols" [value]="symbol">{{ symbol }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Timeframe</mat-label>
+            <mat-select formControlName="timeframe">
+              <mat-option *ngFor="let tf of timeframes" [value]="tf">{{ tf }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Scenario</mat-label>
+            <mat-select formControlName="scenario">
+              <mat-option *ngFor="let scenario of stressScenarios" [value]="scenario">{{ scenario }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Capital</mat-label>
+            <input matInput type="number" formControlName="capital" min="1000" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Leverage</mat-label>
+            <input matInput type="number" formControlName="leverage" min="1" step="0.5" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Limite max DD (%)</mat-label>
+            <input matInput type="number" formControlName="maxDdLimit" min="5" step="0.5" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Monte Carlo paths</mat-label>
+            <input matInput type="number" formControlName="mcPaths" min="100" step="50" />
+          </mat-form-field>
+
+          <div class="strategy-actions">
+            <button mat-flat-button color="primary" type="submit" [disabled]="stressForm.invalid">Lancer stress tests</button>
+            <button mat-stroked-button type="button" (click)="resetStressTests()">Reset</button>
+          </div>
+        </form>
+
+        <mat-divider></mat-divider>
+
+        <section class="result-panel" *ngIf="stressResult() as result">
+          <div class="result-header">
+            <div>
+              <h4>Dernier run</h4>
+              <p>{{ result.runId }} | {{ result.executedAt | date: 'short' }}</p>
+              <p class="result-summary">{{ result.summary }}</p>
+            </div>
+            <span class="status-pill" [class.ok]="result.status === 'PASS'" [class.fail]="result.status === 'FAIL'">
+              {{ result.status }}
+            </span>
+          </div>
+          <div class="tag-row">
+            <span class="tag" *ngFor="let tag of result.tags">{{ tag }}</span>
+          </div>
+          <div class="result-grid">
+            <div class="metric" *ngFor="let metric of result.metrics">
+              <span>{{ metric.label }}</span>
+              <strong [class.positive]="metric.tone === 'positive'" [class.negative]="metric.tone === 'negative'">
+                {{ metric.value }}
+              </strong>
+            </div>
+          </div>
+        </section>
+      </mat-card-content>
+    </mat-card>
+  </div>
+</section>
