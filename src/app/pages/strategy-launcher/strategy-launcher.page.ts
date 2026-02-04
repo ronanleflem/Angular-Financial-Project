@@ -1,13 +1,17 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDividerModule } from '@angular/material/divider';
+import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { MatNativeDateModule } from '@angular/material/core';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatSelectModule } from '@angular/material/select';
 
 const NUMBER_FORMAT = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 });
@@ -58,6 +62,7 @@ const FREQUENCY_DAYS: Record<string, number> = {
 };
 
 type MetricTone = 'positive' | 'negative' | 'neutral';
+type RunKey = 'dca' | 'backtests' | 'market-stats' | 'seasonality' | 'stress-tests';
 
 interface StrategyMetric {
   label: string;
@@ -74,6 +79,27 @@ interface StrategyResult {
   metrics: StrategyMetric[];
 }
 
+interface FilterParam {
+  key: string;
+  label: string;
+  type: 'number' | 'text' | 'select';
+  min?: number;
+  max?: number;
+  step?: number;
+  options?: string[];
+}
+
+interface FilterOption {
+  id: string;
+  label: string;
+  params: FilterParam[];
+}
+
+interface FilterRuleOption {
+  id: string;
+  label: string;
+}
+
 @Component({
   selector: 'app-strategy-launcher-page',
   standalone: true,
@@ -85,8 +111,12 @@ interface StrategyResult {
     MatCheckboxModule,
     MatChipsModule,
     MatDividerModule,
+    MatDatepickerModule,
     MatFormFieldModule,
+    MatIconModule,
     MatInputModule,
+    MatNativeDateModule,
+    MatAutocompleteModule,
     MatSelectModule
   ],
   templateUrl: './strategy-launcher.page.html',
@@ -99,6 +129,14 @@ interface StrategyResult {
 export class StrategyLauncherPageComponent {
   private readonly fb = inject(FormBuilder);
 
+  readonly runOptions: Array<{ key: RunKey; label: string; description: string }> = [
+    { key: 'dca', label: 'DCA grid', description: 'Accumulation periodique' },
+    { key: 'backtests', label: 'Backtests', description: 'Simulateur historique' },
+    { key: 'market-stats', label: 'Market stats', description: 'KPIs et profils de marche' },
+    { key: 'seasonality', label: 'Saisonnalite', description: 'Cycles et patterns temporels' },
+    { key: 'stress-tests', label: 'Stress tests', description: 'Chocs et scenarios extremes' }
+  ];
+
   readonly symbols = ['BTCUSD', 'ETHUSD', 'EURUSD', 'AAPL', 'SPY', 'XAUUSD'];
   readonly timeframes = ['15m', '1h', '4h', '1d'];
   readonly brokers = ['BINANCE', 'COINBASE', 'IBKR', 'FXCM'];
@@ -107,6 +145,43 @@ export class StrategyLauncherPageComponent {
     { value: 'weekly', label: 'Hebdo' },
     { value: 'biweekly', label: '2 semaines' },
     { value: 'monthly', label: 'Mensuel' }
+  ];
+
+  readonly signalTypes = ['ema_cross', 'ema_rsi', 'breakout_channel'];
+  readonly dynamicSlModes = ['atr_trailing', 'fixed', 'hybrid'];
+  readonly jitterDistributions = ['gaussian', 'uniform', 'laplace'];
+
+  readonly backtestFilterOptions: FilterOption[] = [
+    {
+      id: 'volatility_guard',
+      label: 'Volatility guard',
+      params: [
+        { key: 'window', label: 'Fenetre', type: 'number', min: 5, max: 200, step: 1 },
+        { key: 'threshold', label: 'Seuil %', type: 'number', min: 1, max: 80, step: 0.5 }
+      ]
+    },
+    {
+      id: 'trend_regime',
+      label: 'Trend regime',
+      params: [
+        { key: 'lookback', label: 'Lookback', type: 'number', min: 20, max: 400, step: 5 },
+        { key: 'min_strength', label: 'Force min', type: 'number', min: 0, max: 100, step: 1 }
+      ]
+    },
+    {
+      id: 'liquidity_spread',
+      label: 'Liquidity / spread',
+      params: [
+        { key: 'max_spread_bps', label: 'Spread max (bps)', type: 'number', min: 1, max: 50, step: 1 },
+        { key: 'min_volume', label: 'Volume min', type: 'number', min: 1000, max: 1000000, step: 1000 }
+      ]
+    }
+  ];
+
+  readonly backtestRuleOptions: FilterRuleOption[] = [
+    { id: 'momentum_alignment', label: 'Momentum alignment' },
+    { id: 'drawdown_guard', label: 'Drawdown guard' },
+    { id: 'macro_filter', label: 'Macro filter' }
   ];
 
   readonly backtestStrategies = ['Breakout', 'Mean Reversion', 'Momentum', 'MA Crossover'];
@@ -118,10 +193,11 @@ export class StrategyLauncherPageComponent {
 
   private readonly dcaDefaults = {
     symbol: 'BTCUSD',
+    timeframe: '1h',
     frequency: 'weekly',
     amount: 200,
-    startDate: '2023-01-01',
-    endDate: '2024-12-31',
+    startDate: new Date(2023, 0, 1),
+    endDate: new Date(2024, 11, 31),
     feePct: 0.1,
     reinvestDividends: true,
     broker: 'BINANCE'
@@ -131,13 +207,53 @@ export class StrategyLauncherPageComponent {
     strategy: 'Mean Reversion',
     symbol: 'EURUSD',
     timeframe: '1h',
-    startDate: '2019-01-01',
-    endDate: '2024-12-31',
+    startDate: new Date(2019, 0, 1),
+    endDate: new Date(2024, 11, 31),
     capital: 10000,
     riskPct: 1.0,
     stopLoss: 2.0,
     takeProfit: 3.5,
-    trailingStop: true
+    trailingStop: true,
+    signalType: 'ema_cross',
+    fast: 12,
+    slow: 26,
+    requireCrossing: true,
+    atrWindow: 14,
+    atrK: 2,
+    rMult: 1.5,
+    slippageBps: 5,
+    feeBps: 2,
+    dynamicSlEnabled: false,
+    dynamicSlMode: 'atr_trailing',
+    dynamicSlAtrMult: 1.3,
+    tpslJitterEnabled: false,
+    tpslJitterDist: 'gaussian',
+    tpslJitterTpBps: 8,
+    tpslJitterSlBps: 6,
+    tpslJitterSeed: 42,
+    filters: ['volatility_guard'],
+    filterRules: ['momentum_alignment'],
+    filterRuleMinScore: 60,
+    filterRuleMinScorePct: 70,
+    screeningEnabled: false,
+    screenWindowStart: null as Date | null,
+    screenWindowEnd: null as Date | null,
+    screenMaxBars: 2500,
+    screenMaxTrades: 200,
+    screenMaxSeconds: 4,
+    riskFreeRate: 2.0,
+    filter_volatility_guard_window: 30,
+    filter_volatility_guard_threshold: 22,
+    filter_trend_regime_lookback: 120,
+    filter_trend_regime_min_strength: 55,
+    filter_liquidity_spread_max_spread_bps: 12,
+    filter_liquidity_spread_min_volume: 20000,
+    rule_momentum_alignment_mode: 'soft',
+    rule_momentum_alignment_weight: 0.6,
+    rule_drawdown_guard_mode: 'hard',
+    rule_drawdown_guard_weight: 0.8,
+    rule_macro_filter_mode: 'soft',
+    rule_macro_filter_weight: 0.4
   } as const;
 
   private readonly statsDefaults = {
@@ -170,32 +286,82 @@ export class StrategyLauncherPageComponent {
     mcPaths: 500
   } as const;
 
-  readonly dcaForm = this.fb.group({
-    symbol: [this.dcaDefaults.symbol, Validators.required],
-    frequency: [this.dcaDefaults.frequency, Validators.required],
-    amount: [this.dcaDefaults.amount, [Validators.required, Validators.min(10)]],
-    startDate: [this.dcaDefaults.startDate, Validators.required],
-    endDate: [this.dcaDefaults.endDate, Validators.required],
-    feePct: [this.dcaDefaults.feePct, [Validators.min(0)]],
-    reinvestDividends: [this.dcaDefaults.reinvestDividends],
-    broker: [this.dcaDefaults.broker]
-  });
+  readonly dcaForm = this.fb.group(
+    {
+      symbol: [this.dcaDefaults.symbol, [Validators.required, symbolListValidator(this.symbols)]],
+      timeframe: [this.dcaDefaults.timeframe, Validators.required],
+      frequency: [this.dcaDefaults.frequency, Validators.required],
+      amount: [this.dcaDefaults.amount, [Validators.required, Validators.min(10)]],
+      startDate: [this.dcaDefaults.startDate, Validators.required],
+      endDate: [this.dcaDefaults.endDate, Validators.required],
+      feePct: [this.dcaDefaults.feePct, [Validators.min(0)]],
+      reinvestDividends: [this.dcaDefaults.reinvestDividends],
+      broker: [this.dcaDefaults.broker]
+    },
+    { validators: dateRangeValidator('startDate', 'endDate') }
+  );
 
-  readonly backtestForm = this.fb.group({
-    strategy: [this.backtestDefaults.strategy, Validators.required],
-    symbol: [this.backtestDefaults.symbol, Validators.required],
-    timeframe: [this.backtestDefaults.timeframe, Validators.required],
-    startDate: [this.backtestDefaults.startDate, Validators.required],
-    endDate: [this.backtestDefaults.endDate, Validators.required],
-    capital: [this.backtestDefaults.capital, [Validators.required, Validators.min(1000)]],
-    riskPct: [this.backtestDefaults.riskPct, [Validators.min(0.1)]],
-    stopLoss: [this.backtestDefaults.stopLoss, [Validators.min(0.1)]],
-    takeProfit: [this.backtestDefaults.takeProfit, [Validators.min(0.1)]],
-    trailingStop: [this.backtestDefaults.trailingStop]
-  });
+  readonly backtestForm = this.fb.group(
+    {
+      strategy: [this.backtestDefaults.strategy, Validators.required],
+      symbol: [this.backtestDefaults.symbol, [Validators.required, symbolListValidator(this.symbols)]],
+      timeframe: [this.backtestDefaults.timeframe, Validators.required],
+      startDate: [this.backtestDefaults.startDate, Validators.required],
+      endDate: [this.backtestDefaults.endDate, Validators.required],
+      capital: [this.backtestDefaults.capital, [Validators.required, Validators.min(1000)]],
+      riskPct: [this.backtestDefaults.riskPct, [Validators.min(0.1)]],
+      stopLoss: [this.backtestDefaults.stopLoss, [Validators.min(0.1)]],
+      takeProfit: [this.backtestDefaults.takeProfit, [Validators.min(0.1)]],
+      trailingStop: [this.backtestDefaults.trailingStop],
+      signalType: [this.backtestDefaults.signalType, Validators.required],
+      fast: [this.backtestDefaults.fast, [Validators.min(1)]],
+      slow: [this.backtestDefaults.slow, [Validators.min(2)]],
+      requireCrossing: [this.backtestDefaults.requireCrossing],
+      atrWindow: [this.backtestDefaults.atrWindow, [Validators.min(2)]],
+      atrK: [this.backtestDefaults.atrK, [Validators.min(0.1)]],
+      rMult: [this.backtestDefaults.rMult, [Validators.min(0.1)]],
+      slippageBps: [this.backtestDefaults.slippageBps, [Validators.min(0)]],
+      feeBps: [this.backtestDefaults.feeBps, [Validators.min(0)]],
+      dynamicSlEnabled: [this.backtestDefaults.dynamicSlEnabled],
+      dynamicSlMode: [this.backtestDefaults.dynamicSlMode],
+      dynamicSlAtrMult: [this.backtestDefaults.dynamicSlAtrMult, [Validators.min(0.1)]],
+      tpslJitterEnabled: [this.backtestDefaults.tpslJitterEnabled],
+      tpslJitterDist: [this.backtestDefaults.tpslJitterDist],
+      tpslJitterTpBps: [this.backtestDefaults.tpslJitterTpBps, [Validators.min(0)]],
+      tpslJitterSlBps: [this.backtestDefaults.tpslJitterSlBps, [Validators.min(0)]],
+      tpslJitterSeed: [this.backtestDefaults.tpslJitterSeed, [Validators.min(0)]],
+      filters: [this.backtestDefaults.filters],
+      filterRules: [this.backtestDefaults.filterRules],
+      filterRuleMinScore: [this.backtestDefaults.filterRuleMinScore, [Validators.min(0)]],
+      filterRuleMinScorePct: [this.backtestDefaults.filterRuleMinScorePct, [Validators.min(0), Validators.max(100)]],
+      screeningEnabled: [this.backtestDefaults.screeningEnabled],
+      screenWindowStart: [this.backtestDefaults.screenWindowStart],
+      screenWindowEnd: [this.backtestDefaults.screenWindowEnd],
+      screenMaxBars: [this.backtestDefaults.screenMaxBars, [Validators.min(0)]],
+      screenMaxTrades: [this.backtestDefaults.screenMaxTrades, [Validators.min(0)]],
+      screenMaxSeconds: [this.backtestDefaults.screenMaxSeconds, [Validators.min(0)]],
+      riskFreeRate: [this.backtestDefaults.riskFreeRate, [Validators.min(0), Validators.max(20)]],
+      filter_volatility_guard_window: [this.backtestDefaults.filter_volatility_guard_window, [Validators.min(1)]],
+      filter_volatility_guard_threshold: [this.backtestDefaults.filter_volatility_guard_threshold, [Validators.min(1)]],
+      filter_trend_regime_lookback: [this.backtestDefaults.filter_trend_regime_lookback, [Validators.min(1)]],
+      filter_trend_regime_min_strength: [this.backtestDefaults.filter_trend_regime_min_strength, [Validators.min(0), Validators.max(100)]],
+      filter_liquidity_spread_max_spread_bps: [
+        this.backtestDefaults.filter_liquidity_spread_max_spread_bps,
+        [Validators.min(0)]
+      ],
+      filter_liquidity_spread_min_volume: [this.backtestDefaults.filter_liquidity_spread_min_volume, [Validators.min(0)]],
+      rule_momentum_alignment_mode: [this.backtestDefaults.rule_momentum_alignment_mode],
+      rule_momentum_alignment_weight: [this.backtestDefaults.rule_momentum_alignment_weight, [Validators.min(0), Validators.max(1)]],
+      rule_drawdown_guard_mode: [this.backtestDefaults.rule_drawdown_guard_mode],
+      rule_drawdown_guard_weight: [this.backtestDefaults.rule_drawdown_guard_weight, [Validators.min(0), Validators.max(1)]],
+      rule_macro_filter_mode: [this.backtestDefaults.rule_macro_filter_mode],
+      rule_macro_filter_weight: [this.backtestDefaults.rule_macro_filter_weight, [Validators.min(0), Validators.max(1)]]
+    },
+    { validators: dateRangeValidator('startDate', 'endDate') }
+  );
 
   readonly marketStatsForm = this.fb.group({
-    symbol: [this.statsDefaults.symbol, Validators.required],
+    symbol: [this.statsDefaults.symbol, [Validators.required, symbolListValidator(this.symbols)]],
     timeframe: [this.statsDefaults.timeframe, Validators.required],
     lookback: [this.statsDefaults.lookback, [Validators.min(100), Validators.max(5000)]],
     statsPack: [this.statsDefaults.statsPack, Validators.required],
@@ -204,7 +370,7 @@ export class StrategyLauncherPageComponent {
   });
 
   readonly seasonalityForm = this.fb.group({
-    symbol: [this.seasonalityDefaults.symbol, Validators.required],
+    symbol: [this.seasonalityDefaults.symbol, [Validators.required, symbolListValidator(this.symbols)]],
     timeframe: [this.seasonalityDefaults.timeframe, Validators.required],
     window: [this.seasonalityDefaults.window, Validators.required],
     startYear: [this.seasonalityDefaults.startYear, [Validators.min(1990)]],
@@ -215,7 +381,7 @@ export class StrategyLauncherPageComponent {
 
   readonly stressForm = this.fb.group({
     strategy: [this.stressDefaults.strategy, Validators.required],
-    symbol: [this.stressDefaults.symbol, Validators.required],
+    symbol: [this.stressDefaults.symbol, [Validators.required, symbolListValidator(this.symbols)]],
     timeframe: [this.stressDefaults.timeframe, Validators.required],
     scenario: [this.stressDefaults.scenario, Validators.required],
     capital: [this.stressDefaults.capital, [Validators.min(1000)]],
@@ -230,16 +396,66 @@ export class StrategyLauncherPageComponent {
   readonly seasonalityResult = signal<StrategyResult | null>(null);
   readonly stressResult = signal<StrategyResult | null>(null);
 
+  readonly selectedRun = signal<RunKey>('dca');
+
   constructor() {
-    this.runAll();
+    this.runForSelection(this.selectedRun());
   }
 
-  runAll(): void {
-    this.runDca();
-    this.runBacktest();
-    this.runMarketStats();
-    this.runSeasonality();
-    this.runStressTests();
+  selectRun(key: RunKey): void {
+    if (this.selectedRun() === key) {
+      return;
+    }
+    this.selectedRun.set(key);
+    this.runForSelection(key);
+  }
+
+  private runForSelection(key: RunKey): void {
+    switch (key) {
+      case 'dca':
+        this.runDca();
+        break;
+      case 'backtests':
+        this.runBacktest();
+        break;
+      case 'market-stats':
+        this.runMarketStats();
+        break;
+      case 'seasonality':
+        this.runSeasonality();
+        break;
+      case 'stress-tests':
+        this.runStressTests();
+        break;
+      default:
+        this.runDca();
+    }
+  }
+
+  backtestSelectedFilters(): string[] {
+    const value = this.backtestForm.get('filters')?.value as ReadonlyArray<string> | null | undefined;
+    return value ? Array.from(value) : [];
+  }
+
+  backtestSelectedRules(): string[] {
+    const value = this.backtestForm.get('filterRules')?.value as ReadonlyArray<string> | null | undefined;
+    return value ? Array.from(value) : [];
+  }
+
+  backtestFilterParams(filterId: string): FilterParam[] {
+    return this.backtestFilterOptions.find(option => option.id === filterId)?.params ?? [];
+  }
+
+  filterParamControlName(filterId: string, paramKey: string): string {
+    return `filter_${filterId}_${paramKey}`;
+  }
+
+  ruleModeControlName(ruleId: string): string {
+    return `rule_${ruleId}_mode`;
+  }
+
+  ruleWeightControlName(ruleId: string): string {
+    return `rule_${ruleId}_weight`;
   }
 
   runDca(): void {
@@ -250,6 +466,7 @@ export class StrategyLauncherPageComponent {
 
     const value = this.dcaForm.getRawValue();
     const symbol = value.symbol ?? this.dcaDefaults.symbol;
+    const timeframe = value.timeframe ?? this.dcaDefaults.timeframe;
     const frequency = value.frequency ?? this.dcaDefaults.frequency;
     const amount = Number(value.amount ?? this.dcaDefaults.amount);
     const startDate = value.startDate ?? this.dcaDefaults.startDate;
@@ -258,7 +475,7 @@ export class StrategyLauncherPageComponent {
 
     const orders = estimateOrders(startDate, endDate, frequency);
     const basePrice = symbolBasePrice(symbol);
-    const seed = hashSeed(symbol, frequency, startDate, endDate);
+    const seed = hashSeed(symbol, timeframe, frequency, startDate, endDate);
     const avgPrice = jitter(basePrice, seed, 0.06);
     const currentPrice = jitter(basePrice, seed + 9, 0.08);
     const invested = orders * amount;
@@ -271,9 +488,9 @@ export class StrategyLauncherPageComponent {
     this.dcaResult.set({
       runId: this.buildRunId('DCA'),
       executedAt: new Date(),
-      summary: `${symbol} | ${frequencyLabel(frequency)} | ${orders} achats`,
+      summary: `${symbol} | ${timeframe} | ${frequencyLabel(frequency)} | ${orders} achats`,
       status: roi >= 0 ? 'OK' : 'Watch',
-      tags: [symbol, frequencyLabel(frequency), value.broker ?? this.dcaDefaults.broker],
+      tags: [symbol, timeframe, frequencyLabel(frequency), value.broker ?? this.dcaDefaults.broker],
       metrics: [
         { label: 'Investi total', value: formatCurrency(invested) },
         { label: 'Nb achats', value: `${orders}` },
@@ -484,6 +701,32 @@ export class StrategyLauncherPageComponent {
   }
 }
 
+function symbolListValidator(symbols: string[]) {
+  return (control: AbstractControl): ValidationErrors | null => {
+    const value = control.value;
+    if (!value) {
+      return null;
+    }
+    return symbols.includes(String(value)) ? null : { symbolUnknown: true };
+  };
+}
+
+function dateRangeValidator(startKey: string, endKey: string) {
+  return (control: AbstractControl): ValidationErrors | null => {
+    const startValue = control.get(startKey)?.value as Date | string | null | undefined;
+    const endValue = control.get(endKey)?.value as Date | string | null | undefined;
+    if (!startValue || !endValue) {
+      return null;
+    }
+    const start = startValue instanceof Date ? startValue : new Date(startValue);
+    const end = endValue instanceof Date ? endValue : new Date(endValue);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      return null;
+    }
+    return start <= end ? null : { dateRange: true };
+  };
+}
+
 function pad2(value: number): string {
   return String(value).padStart(2, '0');
 }
@@ -496,9 +739,17 @@ function formatCurrency(value: number): string {
   return CURRENCY_FORMAT.format(value);
 }
 
-function hashSeed(...parts: Array<string | number | null | undefined>): number {
+function hashSeed(...parts: Array<string | number | Date | null | undefined>): number {
   const text = parts
-    .map(part => (part === null || part === undefined ? '' : String(part)))
+    .map(part => {
+      if (part === null || part === undefined) {
+        return '';
+      }
+      if (part instanceof Date) {
+        return Number.isNaN(part.getTime()) ? '' : part.toISOString();
+      }
+      return String(part);
+    })
     .join('|');
 
   let hash = 7;
@@ -521,9 +772,9 @@ function jitter(base: number, seed: number, pct: number): number {
   return base * (1 + offset * (pct / 0.05));
 }
 
-function estimateOrders(startDate: string, endDate: string, frequency: string): number {
-  const start = new Date(startDate);
-  const end = new Date(endDate);
+function estimateOrders(startDate: string | Date, endDate: string | Date, frequency: string): number {
+  const start = startDate instanceof Date ? startDate : new Date(startDate);
+  const end = endDate instanceof Date ? endDate : new Date(endDate);
   if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
     return 0;
   }
@@ -532,9 +783,9 @@ function estimateOrders(startDate: string, endDate: string, frequency: string): 
   return Math.max(1, Math.floor(days / step) + 1);
 }
 
-function rangeYears(startDate: string, endDate: string): number {
-  const start = new Date(startDate);
-  const end = new Date(endDate);
+function rangeYears(startDate: string | Date, endDate: string | Date): number {
+  const start = startDate instanceof Date ? startDate : new Date(startDate);
+  const end = endDate instanceof Date ? endDate : new Date(endDate);
   if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
     return 0;
   }

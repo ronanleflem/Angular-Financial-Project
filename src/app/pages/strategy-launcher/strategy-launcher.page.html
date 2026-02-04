@@ -3,7 +3,7 @@
     <div class="page-title">
       <h1>Lancement strategies</h1>
       <p class="subtitle">
-        Parametres de test pour lancer DCA, backtests, market stats, saisonnalite et stress tests.
+        Choisissez un run principal, puis configurez les parametres du module selectionne.
       </p>
     </div>
     <div class="header-tags">
@@ -12,8 +12,22 @@
     </div>
   </header>
 
+  <section class="run-selector">
+    <button
+      mat-stroked-button
+      type="button"
+      class="run-button"
+      *ngFor="let run of runOptions"
+      [class.active]="selectedRun() === run.key"
+      (click)="selectRun(run.key)"
+    >
+      <span class="run-label">{{ run.label }}</span>
+      <span class="run-desc">{{ run.description }}</span>
+    </button>
+  </section>
+
   <div class="cards-grid">
-    <mat-card class="strategy-card">
+    <mat-card class="strategy-card" *ngIf="selectedRun() === 'dca'">
       <mat-card-header>
         <div class="card-heading">
           <mat-card-title>DCA</mat-card-title>
@@ -25,8 +39,16 @@
         <form class="strategy-form" [formGroup]="dcaForm" (ngSubmit)="runDca()">
           <mat-form-field appearance="outline">
             <mat-label>Symbole</mat-label>
-            <mat-select formControlName="symbol">
+            <input matInput type="text" [matAutocomplete]="symbolAutoDca" formControlName="symbol" />
+            <mat-autocomplete #symbolAutoDca="matAutocomplete" autoActiveFirstOption>
               <mat-option *ngFor="let symbol of symbols" [value]="symbol">{{ symbol }}</mat-option>
+            </mat-autocomplete>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Timeframe</mat-label>
+            <mat-select formControlName="timeframe">
+              <mat-option *ngFor="let tf of timeframes" [value]="tf">{{ tf }}</mat-option>
             </mat-select>
           </mat-form-field>
 
@@ -42,15 +64,20 @@
             <input matInput type="number" formControlName="amount" min="10" />
           </mat-form-field>
 
-          <mat-form-field appearance="outline">
-            <mat-label>Date debut</mat-label>
-            <input matInput type="date" formControlName="startDate" />
+          <mat-form-field appearance="outline" class="range-field">
+            <mat-label>Periode</mat-label>
+            <mat-date-range-input [rangePicker]="dcaRangePicker">
+              <input matStartDate placeholder="Debut" formControlName="startDate" />
+              <input matEndDate placeholder="Fin" formControlName="endDate" />
+            </mat-date-range-input>
+            <mat-datepicker-toggle matIconSuffix [for]="dcaRangePicker"></mat-datepicker-toggle>
+            <mat-date-range-picker #dcaRangePicker></mat-date-range-picker>
           </mat-form-field>
 
-          <mat-form-field appearance="outline">
-            <mat-label>Date fin</mat-label>
-            <input matInput type="date" formControlName="endDate" />
-          </mat-form-field>
+          <section class="section-block">
+            <div class="section-title">Parametres</div>
+            <p class="section-placeholder">Section reservee pour les parametres.</p>
+          </section>
 
           <mat-form-field appearance="outline">
             <mat-label>Frais (%)</mat-label>
@@ -102,7 +129,7 @@
       </mat-card-content>
     </mat-card>
 
-    <mat-card class="strategy-card">
+    <mat-card class="strategy-card" *ngIf="selectedRun() === 'backtests'">
       <mat-card-header>
         <div class="card-heading">
           <mat-card-title>Backtests classiques</mat-card-title>
@@ -121,9 +148,10 @@
 
           <mat-form-field appearance="outline">
             <mat-label>Symbole</mat-label>
-            <mat-select formControlName="symbol">
+            <input matInput type="text" [matAutocomplete]="symbolAutoBacktest" formControlName="symbol" />
+            <mat-autocomplete #symbolAutoBacktest="matAutocomplete" autoActiveFirstOption>
               <mat-option *ngFor="let symbol of symbols" [value]="symbol">{{ symbol }}</mat-option>
-            </mat-select>
+            </mat-autocomplete>
           </mat-form-field>
 
           <mat-form-field appearance="outline">
@@ -133,39 +161,284 @@
             </mat-select>
           </mat-form-field>
 
-          <mat-form-field appearance="outline">
-            <mat-label>Date debut</mat-label>
-            <input matInput type="date" formControlName="startDate" />
+          <mat-form-field appearance="outline" class="range-field">
+            <mat-label>Periode</mat-label>
+            <mat-date-range-input [rangePicker]="backtestRangePicker">
+              <input matStartDate placeholder="Debut" formControlName="startDate" />
+              <input matEndDate placeholder="Fin" formControlName="endDate" />
+            </mat-date-range-input>
+            <mat-datepicker-toggle matIconSuffix [for]="backtestRangePicker"></mat-datepicker-toggle>
+            <mat-date-range-picker #backtestRangePicker></mat-date-range-picker>
           </mat-form-field>
 
-          <mat-form-field appearance="outline">
-            <mat-label>Date fin</mat-label>
-            <input matInput type="date" formControlName="endDate" />
-          </mat-form-field>
+          <section class="section-block">
+            <div class="section-title">Parametres</div>
 
-          <mat-form-field appearance="outline">
-            <mat-label>Capital initial</mat-label>
-            <input matInput type="number" formControlName="capital" min="1000" />
-          </mat-form-field>
+            <div class="param-section">
+              <div class="param-title">Backtest (signal)</div>
+              <div class="param-grid">
+                <mat-form-field appearance="outline">
+                  <mat-label>Signal type</mat-label>
+                  <mat-select formControlName="signalType">
+                    <mat-option *ngFor="let type of signalTypes" [value]="type">{{ type }}</mat-option>
+                  </mat-select>
+                </mat-form-field>
 
-          <mat-form-field appearance="outline">
-            <mat-label>Risque par trade (%)</mat-label>
-            <input matInput type="number" formControlName="riskPct" min="0" step="0.1" />
-          </mat-form-field>
+                <mat-form-field appearance="outline">
+                  <mat-label>EMA fast</mat-label>
+                  <input matInput type="number" formControlName="fast" min="1" />
+                </mat-form-field>
 
-          <mat-form-field appearance="outline">
-            <mat-label>Stop loss (%)</mat-label>
-            <input matInput type="number" formControlName="stopLoss" min="0" step="0.1" />
-          </mat-form-field>
+                <mat-form-field appearance="outline">
+                  <mat-label>EMA slow</mat-label>
+                  <input matInput type="number" formControlName="slow" min="2" />
+                </mat-form-field>
 
-          <mat-form-field appearance="outline">
-            <mat-label>Take profit (%)</mat-label>
-            <input matInput type="number" formControlName="takeProfit" min="0" step="0.1" />
-          </mat-form-field>
+                <div class="checkbox-row">
+                  <mat-checkbox formControlName="requireCrossing">Require crossing</mat-checkbox>
+                </div>
+              </div>
+            </div>
 
-          <div class="checkbox-row">
-            <mat-checkbox formControlName="trailingStop">Trailing stop</mat-checkbox>
-          </div>
+            <div class="param-section">
+              <div class="param-title">TP / SL</div>
+              <div class="param-grid">
+                <mat-form-field appearance="outline">
+                  <mat-label>ATR window</mat-label>
+                  <input matInput type="number" formControlName="atrWindow" min="2" />
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>ATR k</mat-label>
+                  <input matInput type="number" formControlName="atrK" min="0" step="0.1" />
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>R multiple</mat-label>
+                  <input matInput type="number" formControlName="rMult" min="0" step="0.1" />
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Slippage (bps)</mat-label>
+                  <input matInput type="number" formControlName="slippageBps" min="0" />
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Fee (bps)</mat-label>
+                  <input matInput type="number" formControlName="feeBps" min="0" />
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Stop loss (%)</mat-label>
+                  <input matInput type="number" formControlName="stopLoss" min="0" step="0.1" />
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Take profit (%)</mat-label>
+                  <input matInput type="number" formControlName="takeProfit" min="0" step="0.1" />
+                </mat-form-field>
+
+                <div class="checkbox-row">
+                  <mat-checkbox formControlName="trailingStop">Trailing stop</mat-checkbox>
+                </div>
+              </div>
+            </div>
+
+            <div class="param-section">
+              <div class="param-title">Dynamic SL</div>
+              <div class="param-grid">
+                <div class="checkbox-row">
+                  <mat-checkbox formControlName="dynamicSlEnabled">Activer</mat-checkbox>
+                </div>
+
+                <ng-container *ngIf="backtestForm.get('dynamicSlEnabled')?.value">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Mode</mat-label>
+                    <mat-select formControlName="dynamicSlMode">
+                      <mat-option *ngFor="let mode of dynamicSlModes" [value]="mode">{{ mode }}</mat-option>
+                    </mat-select>
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline">
+                    <mat-label>ATR mult</mat-label>
+                    <input matInput type="number" formControlName="dynamicSlAtrMult" min="0.1" step="0.1" />
+                  </mat-form-field>
+                </ng-container>
+              </div>
+            </div>
+
+            <div class="param-section">
+              <div class="param-title">TP/SL jitter</div>
+              <div class="param-grid">
+                <div class="checkbox-row">
+                  <mat-checkbox formControlName="tpslJitterEnabled">Activer</mat-checkbox>
+                </div>
+
+                <ng-container *ngIf="backtestForm.get('tpslJitterEnabled')?.value">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Distribution</mat-label>
+                    <mat-select formControlName="tpslJitterDist">
+                      <mat-option *ngFor="let dist of jitterDistributions" [value]="dist">{{ dist }}</mat-option>
+                    </mat-select>
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline">
+                    <mat-label>TP (bps)</mat-label>
+                    <input matInput type="number" formControlName="tpslJitterTpBps" min="0" />
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline">
+                    <mat-label>SL (bps)</mat-label>
+                    <input matInput type="number" formControlName="tpslJitterSlBps" min="0" />
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline">
+                    <mat-label>Seed</mat-label>
+                    <input matInput type="number" formControlName="tpslJitterSeed" min="0" />
+                  </mat-form-field>
+                </ng-container>
+              </div>
+            </div>
+
+            <div class="param-section">
+              <div class="param-title">Filtres</div>
+              <div class="param-grid">
+                <mat-form-field appearance="outline">
+                  <mat-label>filters[]</mat-label>
+                  <mat-select multiple formControlName="filters">
+                    <mat-option *ngFor="let filter of backtestFilterOptions" [value]="filter.id">
+                      {{ filter.label }}
+                    </mat-option>
+                  </mat-select>
+                </mat-form-field>
+
+                <div class="param-group" *ngFor="let filterId of backtestSelectedFilters()">
+                  <div class="param-hint">{{ filterId }}</div>
+                  <div class="param-grid">
+                    <ng-container *ngFor="let param of backtestFilterParams(filterId)">
+                      <mat-form-field appearance="outline">
+                        <mat-label>{{ param.label }}</mat-label>
+                        <input
+                          *ngIf="param.type === 'number'"
+                          matInput
+                          type="number"
+                          [attr.min]="param.min"
+                          [attr.max]="param.max"
+                          [attr.step]="param.step"
+                          [formControlName]="filterParamControlName(filterId, param.key)"
+                        />
+                        <input
+                          *ngIf="param.type === 'text'"
+                          matInput
+                          type="text"
+                          [formControlName]="filterParamControlName(filterId, param.key)"
+                        />
+                        <mat-select
+                          *ngIf="param.type === 'select'"
+                          [formControlName]="filterParamControlName(filterId, param.key)"
+                        >
+                          <mat-option *ngFor="let option of param.options ?? []" [value]="option">{{ option }}</mat-option>
+                        </mat-select>
+                      </mat-form-field>
+                    </ng-container>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="param-section">
+              <div class="param-title">Filter rules</div>
+              <div class="param-grid">
+                <mat-form-field appearance="outline">
+                  <mat-label>filter_rules[]</mat-label>
+                  <mat-select multiple formControlName="filterRules">
+                    <mat-option *ngFor="let rule of backtestRuleOptions" [value]="rule.id">{{ rule.label }}</mat-option>
+                  </mat-select>
+                </mat-form-field>
+
+                <div class="param-group" *ngFor="let ruleId of backtestSelectedRules()">
+                  <div class="param-hint">{{ ruleId }}</div>
+                  <div class="param-grid">
+                    <mat-form-field appearance="outline">
+                      <mat-label>Mode</mat-label>
+                      <mat-select [formControlName]="ruleModeControlName(ruleId)">
+                        <mat-option value="soft">soft</mat-option>
+                        <mat-option value="hard">hard</mat-option>
+                      </mat-select>
+                    </mat-form-field>
+                    <mat-form-field appearance="outline">
+                      <mat-label>Poids</mat-label>
+                      <input matInput type="number" [formControlName]="ruleWeightControlName(ruleId)" min="0" max="1" step="0.05" />
+                    </mat-form-field>
+                  </div>
+                </div>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Min score</mat-label>
+                  <input matInput type="number" formControlName="filterRuleMinScore" min="0" />
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Min score (%)</mat-label>
+                  <input matInput type="number" formControlName="filterRuleMinScorePct" min="0" max="100" />
+                </mat-form-field>
+              </div>
+            </div>
+
+            <div class="param-section">
+              <div class="param-title">Screening / pruning</div>
+              <div class="param-grid">
+                <div class="checkbox-row">
+                  <mat-checkbox formControlName="screeningEnabled">Enabled</mat-checkbox>
+                </div>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Window</mat-label>
+                  <mat-date-range-input [rangePicker]="screenRangePicker">
+                    <input matStartDate placeholder="Start" formControlName="screenWindowStart" />
+                    <input matEndDate placeholder="End" formControlName="screenWindowEnd" />
+                  </mat-date-range-input>
+                  <mat-datepicker-toggle matIconSuffix [for]="screenRangePicker"></mat-datepicker-toggle>
+                  <mat-date-range-picker #screenRangePicker></mat-date-range-picker>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Max bars</mat-label>
+                  <input matInput type="number" formControlName="screenMaxBars" min="0" />
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Max trades</mat-label>
+                  <input matInput type="number" formControlName="screenMaxTrades" min="0" />
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Max seconds</mat-label>
+                  <input matInput type="number" formControlName="screenMaxSeconds" min="0" />
+                </mat-form-field>
+              </div>
+            </div>
+
+            <div class="param-section">
+              <div class="param-title">Performance</div>
+              <div class="param-grid">
+                <mat-form-field appearance="outline">
+                  <mat-label>Capital initial</mat-label>
+                  <input matInput type="number" formControlName="capital" min="1000" />
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Risque par trade (%)</mat-label>
+                  <input matInput type="number" formControlName="riskPct" min="0" step="0.1" />
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Risk free rate (%)</mat-label>
+                  <input matInput type="number" formControlName="riskFreeRate" min="0" step="0.1" />
+                </mat-form-field>
+              </div>
+            </div>
+          </section>
 
           <div class="strategy-actions">
             <button mat-flat-button color="primary" type="submit" [disabled]="backtestForm.invalid">Lancer backtest</button>
@@ -201,7 +474,7 @@
       </mat-card-content>
     </mat-card>
 
-    <mat-card class="strategy-card">
+    <mat-card class="strategy-card" *ngIf="selectedRun() === 'market-stats'">
       <mat-card-header>
         <div class="card-heading">
           <mat-card-title>Market stats</mat-card-title>
@@ -213,9 +486,10 @@
         <form class="strategy-form" [formGroup]="marketStatsForm" (ngSubmit)="runMarketStats()">
           <mat-form-field appearance="outline">
             <mat-label>Symbole</mat-label>
-            <mat-select formControlName="symbol">
+            <input matInput type="text" [matAutocomplete]="symbolAutoStats" formControlName="symbol" />
+            <mat-autocomplete #symbolAutoStats="matAutocomplete" autoActiveFirstOption>
               <mat-option *ngFor="let symbol of symbols" [value]="symbol">{{ symbol }}</mat-option>
-            </mat-select>
+            </mat-autocomplete>
           </mat-form-field>
 
           <mat-form-field appearance="outline">
@@ -224,6 +498,11 @@
               <mat-option *ngFor="let tf of timeframes" [value]="tf">{{ tf }}</mat-option>
             </mat-select>
           </mat-form-field>
+
+          <section class="section-block">
+            <div class="section-title">Parametres</div>
+            <p class="section-placeholder">Section reservee pour les parametres.</p>
+          </section>
 
           <mat-form-field appearance="outline">
             <mat-label>Lookback (candles)</mat-label>
@@ -282,7 +561,7 @@
       </mat-card-content>
     </mat-card>
 
-    <mat-card class="strategy-card">
+    <mat-card class="strategy-card" *ngIf="selectedRun() === 'seasonality'">
       <mat-card-header>
         <div class="card-heading">
           <mat-card-title>Saisonnalite</mat-card-title>
@@ -294,9 +573,10 @@
         <form class="strategy-form" [formGroup]="seasonalityForm" (ngSubmit)="runSeasonality()">
           <mat-form-field appearance="outline">
             <mat-label>Symbole</mat-label>
-            <mat-select formControlName="symbol">
+            <input matInput type="text" [matAutocomplete]="symbolAutoSeason" formControlName="symbol" />
+            <mat-autocomplete #symbolAutoSeason="matAutocomplete" autoActiveFirstOption>
               <mat-option *ngFor="let symbol of symbols" [value]="symbol">{{ symbol }}</mat-option>
-            </mat-select>
+            </mat-autocomplete>
           </mat-form-field>
 
           <mat-form-field appearance="outline">
@@ -312,6 +592,11 @@
               <mat-option *ngFor="let window of seasonalityWindows" [value]="window">{{ window }}</mat-option>
             </mat-select>
           </mat-form-field>
+
+          <section class="section-block">
+            <div class="section-title">Parametres</div>
+            <p class="section-placeholder">Section reservee pour les parametres.</p>
+          </section>
 
           <mat-form-field appearance="outline">
             <mat-label>Annee debut</mat-label>
@@ -366,7 +651,7 @@
       </mat-card-content>
     </mat-card>
 
-    <mat-card class="strategy-card">
+    <mat-card class="strategy-card" *ngIf="selectedRun() === 'stress-tests'">
       <mat-card-header>
         <div class="card-heading">
           <mat-card-title>Stress tests</mat-card-title>
@@ -385,9 +670,10 @@
 
           <mat-form-field appearance="outline">
             <mat-label>Symbole</mat-label>
-            <mat-select formControlName="symbol">
+            <input matInput type="text" [matAutocomplete]="symbolAutoStress" formControlName="symbol" />
+            <mat-autocomplete #symbolAutoStress="matAutocomplete" autoActiveFirstOption>
               <mat-option *ngFor="let symbol of symbols" [value]="symbol">{{ symbol }}</mat-option>
-            </mat-select>
+            </mat-autocomplete>
           </mat-form-field>
 
           <mat-form-field appearance="outline">
@@ -403,6 +689,11 @@
               <mat-option *ngFor="let scenario of stressScenarios" [value]="scenario">{{ scenario }}</mat-option>
             </mat-select>
           </mat-form-field>
+
+          <section class="section-block">
+            <div class="section-title">Parametres</div>
+            <p class="section-placeholder">Section reservee pour les parametres.</p>
+          </section>
 
           <mat-form-field appearance="outline">
             <mat-label>Capital</mat-label>
