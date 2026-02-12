@@ -220,6 +220,75 @@
   margin-bottom: 0.4rem;
 }
 
+.preview-panel {
+  margin-top: 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: #ffffff;
+}
+
+.preview-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.preview-item {
+  font-size: 0.85rem;
+  color: #475569;
+  margin-bottom: 0.35rem;
+}
+
+.preview-json {
+  font-size: 0.75rem;
+  background: #f8fafc;
+  border-radius: 10px;
+  padding: 0.6rem 0.75rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.subtabs {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin: 0.7rem 0 1rem;
+}
+
+.subtab-button {
+  border-radius: 999px;
+  padding: 0 1rem;
+  height: 34px;
+  font-weight: 600;
+  text-transform: none;
+}
+
+.subtab-button.active {
+  border-color: rgba(37, 99, 235, 0.9);
+  color: #1d4ed8;
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.16);
+}
+
+.accordion {
+  display: block;
+}
+
+.accordion .mat-expansion-panel {
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  box-shadow: none;
+  background: #ffffff;
+  margin-bottom: 0.75rem;
+}
+
+.accordion .mat-expansion-panel-header {
+  font-weight: 600;
+}
+
 .strategy-form mat-form-field {
   width: 100%;
   min-width: 160px;
@@ -240,6 +309,43 @@
   gap: 0.5rem;
   min-height: 56px;
   grid-column: 1 / -1;
+}
+
+.preset-panel {
+  grid-column: 1 / -1;
+  border-radius: 14px;
+  border: 1px dashed rgba(148, 163, 184, 0.7);
+  background: #f8fafc;
+  padding: 0.85rem 1rem;
+}
+
+.preset-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #475569;
+}
+
+.preset-grid {
+  margin-top: 0.6rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.75rem 1rem;
+  align-items: end;
+}
+
+.preset-actions {
+  margin-top: 0.6rem;
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.preset-note {
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  color: #475569;
 }
 
 .strategy-actions {

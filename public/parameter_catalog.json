@@ -1,0 +1,3286 @@
+{
+  "meta": {
+    "version": "2026-02-02",
+    "generated_by": "codex",
+    "notes": [
+      "All paths are dot-paths relative to the spec root.",
+      "This catalog is machine-readable and intended for UI-driven JSON builders.",
+      "Filter param details live in docs/filters.md; this file lists filter types and common container shapes."
+    ],
+    "source_files": [
+      "README.md",
+      "docs/filters.md",
+      "src/quant_engine/backtest/runner.py",
+      "src/quant_engine/strategies/runner.py",
+      "src/quant_engine/performance/stress_tests.py",
+      "src/quant_engine/stats/events.py",
+      "src/quant_engine/stats/conditions.py",
+      "src/quant_engine/stats/targets.py",
+      "src/quant_engine/api/schemas.py"
+    ]
+  },
+  "enums": {
+    "strategy.types": [
+      "dca_equity",
+      "dca_etf",
+      "crypto_grid"
+    ],
+    "signal.types": [
+      "ema_cross"
+    ],
+    "filter.types": [
+      "adx",
+      "atr",
+      "ema_slope",
+      "volume_surge",
+      "vwap_side",
+      "poc_distance",
+      "liquidity_sweep",
+      "bos",
+      "mss",
+      "session_time",
+      "day_of_week",
+      "day_of_month",
+      "month_of_year",
+      "intraday_time",
+      "k_consecutive",
+      "seasonality_bin",
+      "hurst_regime",
+      "entropy_window",
+      "daily_loss_cap",
+      "daily_trades_cap",
+      "cooldown_bars",
+      "atr_risk_gate",
+      "equity_dd_lockout",
+      "benford_law",
+      "cycles",
+      "donchian_channels",
+      "liquidity_cmf",
+      "statistical_arbitrage",
+      "psychologic_ulcer",
+      "stationarity",
+      "volatility",
+      "ema_structure",
+      "rsi_entry",
+      "macd_entry",
+      "volume_above_average",
+      "fractal_analysis",
+      "mean_reversion",
+      "contradictory_signals",
+      "linear_regression_macd_cross",
+      "atr_rising",
+      "market_regime",
+      "trend",
+      "biais_institutional",
+      "stats_gate",
+      "mtf_anomaly",
+      "market_manipulation",
+      "htf_poi",
+      "orderflow_delta",
+      "macro_cot_oi",
+      "lower_timeframe_confluence",
+      "psychologic_and_news",
+      "ict_poi"
+    ],
+    "filter.rule.modes": [
+      "hard",
+      "soft"
+    ],
+    "seasonality.signal.dims": [
+      "hour",
+      "dow",
+      "month",
+      "month_of_year",
+      "session",
+      "is_month_start",
+      "is_month_end",
+      "is_news_hour",
+      "is_rollover_day",
+      "is_third_friday",
+      "week_in_month",
+      "day_in_month",
+      "quarter",
+      "last_1",
+      "last_2",
+      "last_3",
+      "last_4",
+      "last_5",
+      "is_january",
+      "is_february",
+      "is_march",
+      "is_april",
+      "is_may",
+      "is_june",
+      "is_july",
+      "is_august",
+      "is_september",
+      "is_october",
+      "is_november",
+      "is_december"
+    ],
+    "monte_carlo.method": [
+      "bootstrap",
+      "iid",
+      "shuffle",
+      "block",
+      "block_bootstrap"
+    ],
+    "monte_carlo.source": [
+      "equity",
+      "returns",
+      "trades"
+    ],
+    "scenario.types": [
+      "crash",
+      "gap",
+      "volatility",
+      "volatility_spike",
+      "drawdown",
+      "prolonged_drawdown"
+    ],
+    "stats.events": [
+      "k_consecutive",
+      "shock_atr",
+      "breakout_hhll",
+      "bullish_candle",
+      "bearish_candle",
+      "bullish_engulfing",
+      "bearish_engulfing",
+      "bullish_streak",
+      "bearish_streak",
+      "gap_up",
+      "gap_down",
+      "always_true"
+    ],
+    "stats.conditions": [
+      "htf_trend",
+      "vol_tertile",
+      "session",
+      "hour_bin",
+      "day_of_week",
+      "month_of_year",
+      "session_from_ts",
+      "in_zone_level",
+      "distance_to_level",
+      "touched_level_since"
+    ],
+    "stats.targets": [
+      "up_next_bar",
+      "continuation_n",
+      "time_to_reversal",
+      "is_bullish",
+      "is_bearish",
+      "next_bullish",
+      "next_bearish",
+      "body_ratio",
+      "upper_wick_ratio",
+      "lower_wick_ratio",
+      "candle_std",
+      "candle_zscore",
+      "breakout_high_first",
+      "breakout_low_first",
+      "retracement_probability"
+    ]
+  },
+  "schemas": {
+    "OutputSpec": {
+      "type": "object",
+      "fields": [
+        {
+          "name": "path",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "format",
+          "type": "string",
+          "enum": [
+            "json",
+            "csv"
+          ],
+          "required": false
+        }
+      ],
+      "additional_fields": false
+    },
+    "MySQLDataSpec": {
+      "type": "object",
+      "fields": [
+        {
+          "name": "connection_url",
+          "type": "string"
+        },
+        {
+          "name": "env_var",
+          "type": "string",
+          "default": "QE_MARKETDATA_MYSQL_URL"
+        },
+        {
+          "name": "schema",
+          "type": "string"
+        },
+        {
+          "name": "table",
+          "type": "string"
+        },
+        {
+          "name": "symbol_col",
+          "type": "string"
+        },
+        {
+          "name": "ts_col",
+          "type": "string"
+        },
+        {
+          "name": "open_col",
+          "type": "string"
+        },
+        {
+          "name": "high_col",
+          "type": "string"
+        },
+        {
+          "name": "low_col",
+          "type": "string"
+        },
+        {
+          "name": "close_col",
+          "type": "string"
+        },
+        {
+          "name": "volume_col",
+          "type": "string"
+        },
+        {
+          "name": "timeframe_col",
+          "type": "string"
+        },
+        {
+          "name": "extra_where",
+          "type": "string"
+        },
+        {
+          "name": "chunk_minutes",
+          "type": "integer"
+        },
+        {
+          "name": "symbol_lookup_table",
+          "type": "string"
+        },
+        {
+          "name": "symbol_lookup_symbol_col",
+          "type": "string"
+        },
+        {
+          "name": "symbol_lookup_id_col",
+          "type": "string"
+        }
+      ],
+      "additional_fields": false
+    },
+    "FilterSpec": {
+      "type": "object",
+      "fields": [
+        {
+          "name": "type",
+          "type": "string",
+          "enum_ref": "filter.types",
+          "required": true
+        },
+        {
+          "name": "params",
+          "type": "object",
+          "additional_fields": true
+        }
+      ],
+      "additional_fields": false
+    },
+    "FilterRuleSpec": {
+      "type": "object",
+      "fields": [
+        {
+          "name": "type",
+          "type": "string",
+          "enum_ref": "filter.types",
+          "required": true
+        },
+        {
+          "name": "params",
+          "type": "object",
+          "additional_fields": true
+        },
+        {
+          "name": "weight",
+          "type": "number",
+          "default": 1.0
+        },
+        {
+          "name": "mode",
+          "type": "string",
+          "enum_ref": "filter.rule.modes",
+          "default": "hard"
+        },
+        {
+          "name": "enabled",
+          "type": "boolean",
+          "default": true
+        }
+      ],
+      "additional_fields": false
+    },
+    "FilterRulesConfig": {
+      "type": "object",
+      "fields": [
+        {
+          "name": "min_score",
+          "type": "number"
+        },
+        {
+          "name": "min_score_pct",
+          "type": "number"
+        }
+      ],
+      "additional_fields": false
+    },
+    "ScreeningSpec": {
+      "type": "object",
+      "fields": [
+        {
+          "name": "enabled",
+          "type": "boolean"
+        },
+        {
+          "name": "window_start",
+          "type": "string"
+        },
+        {
+          "name": "window_end",
+          "type": "string"
+        },
+        {
+          "name": "max_bars",
+          "type": "integer"
+        },
+        {
+          "name": "max_trades",
+          "type": "integer"
+        },
+        {
+          "name": "max_seconds",
+          "type": "number"
+        },
+        {
+          "name": "pruning",
+          "type": "object",
+          "additional_fields": true
+        }
+      ],
+      "additional_fields": true
+    },
+    "TPSLJitterSpec": {
+      "type": "object",
+      "fields": [
+        {
+          "name": "enabled",
+          "type": "boolean",
+          "default": true
+        },
+        {
+          "name": "dist",
+          "type": "string",
+          "enum": [
+            "uniform",
+            "normal"
+          ]
+        },
+        {
+          "name": "tp_bps",
+          "type": "number"
+        },
+        {
+          "name": "sl_bps",
+          "type": "number"
+        },
+        {
+          "name": "seed",
+          "type": "integer"
+        }
+      ],
+      "additional_fields": false
+    },
+    "DynamicSLSpec": {
+      "type": "object",
+      "fields": [
+        {
+          "name": "enabled",
+          "type": "boolean",
+          "default": true
+        },
+        {
+          "name": "mode",
+          "type": "string",
+          "enum": [
+            "trail_atr"
+          ]
+        },
+        {
+          "name": "atr_mult",
+          "type": "number"
+        }
+      ],
+      "additional_fields": false
+    },
+    "StressTestsSpec": {
+      "type": "object",
+      "fields": [
+        {
+          "name": "enabled",
+          "type": "boolean"
+        },
+        {
+          "name": "monte_carlo",
+          "type": "object",
+          "additional_fields": true
+        },
+        {
+          "name": "scenarios",
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        {
+          "name": "scenario_params",
+          "type": "object",
+          "additional_fields": true
+        }
+      ],
+      "additional_fields": true
+    }
+  },
+  "specs": {
+    "backtest_signal": {
+      "required": [
+        "data",
+        "strategy",
+        "signal"
+      ],
+      "fields": [
+        {
+          "path": "strategy.strategy_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "path": "strategy.asset_class",
+          "type": "string"
+        },
+        {
+          "path": "strategy.run_id",
+          "type": "string"
+        },
+        {
+          "path": "data.dataset_path",
+          "type": "string"
+        },
+        {
+          "path": "data.mysql",
+          "type": "object",
+          "schema_ref": "MySQLDataSpec"
+        },
+        {
+          "path": "data.symbols",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        {
+          "path": "data.timeframe",
+          "type": "string"
+        },
+        {
+          "path": "data.start",
+          "type": "string"
+        },
+        {
+          "path": "data.end",
+          "type": "string"
+        },
+        {
+          "path": "signal.type",
+          "type": "string",
+          "enum_ref": "signal.types",
+          "required": true
+        },
+        {
+          "path": "signal.params.fast",
+          "type": "integer"
+        },
+        {
+          "path": "signal.params.slow",
+          "type": "integer"
+        },
+        {
+          "path": "signal.params.ema_fast",
+          "type": "integer"
+        },
+        {
+          "path": "signal.params.ema_slow",
+          "type": "integer"
+        },
+        {
+          "path": "signal.params.require_crossing",
+          "type": "boolean"
+        },
+        {
+          "path": "filters",
+          "type": "array",
+          "items": {
+            "schema_ref": "FilterSpec"
+          }
+        },
+        {
+          "path": "filter_rules",
+          "type": "array",
+          "items": {
+            "schema_ref": "FilterRuleSpec"
+          }
+        },
+        {
+          "path": "filter_rules_config",
+          "type": "object",
+          "schema_ref": "FilterRulesConfig"
+        },
+        {
+          "path": "screening",
+          "type": "object",
+          "schema_ref": "ScreeningSpec"
+        },
+        {
+          "path": "optimization.screening",
+          "type": "object",
+          "schema_ref": "ScreeningSpec"
+        },
+        {
+          "path": "optimization.cache_features",
+          "type": "object",
+          "additional_fields": true
+        },
+        {
+          "path": "tpsl.atr_window",
+          "type": "integer"
+        },
+        {
+          "path": "tpsl.atr_period",
+          "type": "integer"
+        },
+        {
+          "path": "tpsl.atr_k",
+          "type": "number"
+        },
+        {
+          "path": "tpsl.r_mult",
+          "type": "number"
+        },
+        {
+          "path": "tpsl.slippage_bps",
+          "type": "number"
+        },
+        {
+          "path": "tpsl.fee_bps",
+          "type": "number"
+        },
+        {
+          "path": "tpsl.dynamic_sl",
+          "type": "object",
+          "schema_ref": "DynamicSLSpec"
+        },
+        {
+          "path": "tpsl.jitter",
+          "type": "object",
+          "schema_ref": "TPSLJitterSpec"
+        },
+        {
+          "path": "performance.initial_capital",
+          "type": "number"
+        },
+        {
+          "path": "performance.risk_free_rate",
+          "type": "number"
+        },
+        {
+          "path": "performance.risk_free_pct",
+          "type": "number"
+        },
+        {
+          "path": "performance.stress_tests",
+          "type": "object",
+          "schema_ref": "StressTestsSpec"
+        },
+        {
+          "path": "performance.stress_tests_enabled",
+          "type": "boolean"
+        },
+        {
+          "path": "persistence.enabled",
+          "type": "boolean"
+        },
+        {
+          "path": "output",
+          "type": "object",
+          "schema_ref": "OutputSpec"
+        },
+        {
+          "path": "data.mysql_env",
+          "type": "string"
+        },
+        {
+          "path": "data.schema",
+          "type": "string"
+        },
+        {
+          "path": "data.table",
+          "type": "string"
+        },
+        {
+          "path": "data.symbol_col",
+          "type": "string"
+        },
+        {
+          "path": "data.ts_col",
+          "type": "string"
+        },
+        {
+          "path": "data.open_col",
+          "type": "string"
+        },
+        {
+          "path": "data.high_col",
+          "type": "string"
+        },
+        {
+          "path": "data.low_col",
+          "type": "string"
+        },
+        {
+          "path": "data.close_col",
+          "type": "string"
+        },
+        {
+          "path": "data.volume_col",
+          "type": "string"
+        },
+        {
+          "path": "data.timeframe_col",
+          "type": "string"
+        },
+        {
+          "path": "data.delta_base",
+          "type": "string"
+        },
+        {
+          "path": "data.delta_prefix",
+          "type": "string"
+        },
+        {
+          "path": "data.delta_asset_dir",
+          "type": "string"
+        },
+        {
+          "path": "data.delta_exchange",
+          "type": "string"
+        },
+        {
+          "path": "data.delta_market_type",
+          "type": "string"
+        },
+        {
+          "path": "data.delta_quotes",
+          "type": "string"
+        },
+        {
+          "path": "data.delta_min_coverage",
+          "type": "number"
+        },
+        {
+          "path": "data.delta_table",
+          "type": "string"
+        },
+        {
+          "path": "data.delta_symbol",
+          "type": "string"
+        },
+        {
+          "path": "data.delta_calendar",
+          "type": "string"
+        },
+        {
+          "path": "data.delta_broker",
+          "type": "string"
+        },
+        {
+          "path": "data.delta_brokers",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        {
+          "path": "data.java_min_coverage",
+          "type": "number"
+        },
+        {
+          "path": "data.min_coverage",
+          "type": "number"
+        },
+        {
+          "path": "data.coverage_min",
+          "type": "number"
+        },
+        {
+          "path": "data.ohlc_cache",
+          "type": "object",
+          "additional_fields": true
+        },
+        {
+          "path": "data.cache_ohlc",
+          "type": "object",
+          "additional_fields": true
+        },
+        {
+          "path": "data.cache",
+          "type": "object",
+          "additional_fields": true
+        }
+      ]
+    },
+    "strategy_backtest": {
+      "required": [
+        "strategy",
+        "data"
+      ],
+      "fields": [
+        {
+          "path": "strategy.strategy_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "path": "strategy.type",
+          "type": "string",
+          "enum_ref": "strategy.types",
+          "required": true
+        },
+        {
+          "path": "strategy.params",
+          "type": "object",
+          "additional_fields": true
+        },
+        {
+          "path": "strategy.asset_class",
+          "type": "string"
+        },
+        {
+          "path": "strategy.run_id",
+          "type": "string"
+        },
+        {
+          "path": "strategy.filters",
+          "type": "array",
+          "items": {
+            "schema_ref": "FilterSpec"
+          }
+        },
+        {
+          "path": "strategy.filter_rules",
+          "type": "array",
+          "items": {
+            "schema_ref": "FilterRuleSpec"
+          }
+        },
+        {
+          "path": "strategy.filter_rules_config",
+          "type": "object",
+          "schema_ref": "FilterRulesConfig"
+        },
+        {
+          "path": "data.start",
+          "type": "string"
+        },
+        {
+          "path": "data.end",
+          "type": "string"
+        },
+        {
+          "path": "data.timeframe",
+          "type": "string"
+        },
+        {
+          "path": "data.source",
+          "type": "string"
+        },
+        {
+          "path": "data.path",
+          "type": "string"
+        },
+        {
+          "path": "filters",
+          "type": "array",
+          "items": {
+            "schema_ref": "FilterSpec"
+          }
+        },
+        {
+          "path": "filter_rules",
+          "type": "array",
+          "items": {
+            "schema_ref": "FilterRuleSpec"
+          }
+        },
+        {
+          "path": "filter_rules_config",
+          "type": "object",
+          "schema_ref": "FilterRulesConfig"
+        },
+        {
+          "path": "screening",
+          "type": "object",
+          "schema_ref": "ScreeningSpec"
+        },
+        {
+          "path": "optimization.screening",
+          "type": "object",
+          "schema_ref": "ScreeningSpec"
+        },
+        {
+          "path": "optimization.cache_features",
+          "type": "object",
+          "additional_fields": true
+        },
+        {
+          "path": "universe",
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        {
+          "path": "universe_label",
+          "type": "string"
+        },
+        {
+          "path": "scans",
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        {
+          "path": "performance.initial_capital",
+          "type": "number"
+        },
+        {
+          "path": "performance.capital_per_unit",
+          "type": "number"
+        },
+        {
+          "path": "performance.max_capital_per_trade",
+          "type": "number"
+        },
+        {
+          "path": "performance.stress_tests",
+          "type": "object",
+          "schema_ref": "StressTestsSpec"
+        },
+        {
+          "path": "performance.stress_tests_enabled",
+          "type": "boolean"
+        },
+        {
+          "path": "output",
+          "type": "object",
+          "schema_ref": "OutputSpec"
+        },
+        {
+          "path": "data.mysql_env",
+          "type": "string"
+        },
+        {
+          "path": "data.schema",
+          "type": "string"
+        },
+        {
+          "path": "data.table",
+          "type": "string"
+        },
+        {
+          "path": "data.symbol_col",
+          "type": "string"
+        },
+        {
+          "path": "data.ts_col",
+          "type": "string"
+        },
+        {
+          "path": "data.open_col",
+          "type": "string"
+        },
+        {
+          "path": "data.high_col",
+          "type": "string"
+        },
+        {
+          "path": "data.low_col",
+          "type": "string"
+        },
+        {
+          "path": "data.close_col",
+          "type": "string"
+        },
+        {
+          "path": "data.volume_col",
+          "type": "string"
+        },
+        {
+          "path": "data.timeframe_col",
+          "type": "string"
+        },
+        {
+          "path": "data.delta_base",
+          "type": "string"
+        },
+        {
+          "path": "data.delta_prefix",
+          "type": "string"
+        },
+        {
+          "path": "data.delta_asset_dir",
+          "type": "string"
+        },
+        {
+          "path": "data.delta_exchange",
+          "type": "string"
+        },
+        {
+          "path": "data.delta_market_type",
+          "type": "string"
+        },
+        {
+          "path": "data.delta_quotes",
+          "type": "string"
+        },
+        {
+          "path": "data.delta_min_coverage",
+          "type": "number"
+        },
+        {
+          "path": "data.delta_table",
+          "type": "string"
+        },
+        {
+          "path": "data.delta_symbol",
+          "type": "string"
+        },
+        {
+          "path": "data.delta_calendar",
+          "type": "string"
+        },
+        {
+          "path": "data.delta_broker",
+          "type": "string"
+        },
+        {
+          "path": "data.delta_brokers",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        {
+          "path": "data.java_min_coverage",
+          "type": "number"
+        },
+        {
+          "path": "data.min_coverage",
+          "type": "number"
+        },
+        {
+          "path": "data.coverage_min",
+          "type": "number"
+        },
+        {
+          "path": "data.ohlc_cache",
+          "type": "object",
+          "additional_fields": true
+        },
+        {
+          "path": "data.cache_ohlc",
+          "type": "object",
+          "additional_fields": true
+        },
+        {
+          "path": "data.cache",
+          "type": "object",
+          "additional_fields": true
+        }
+      ]
+    },
+    "market_stats": {
+      "required": [
+        "data"
+      ],
+      "fields": [
+        {
+          "path": "data.dataset_path",
+          "type": "string"
+        },
+        {
+          "path": "data.mysql",
+          "type": "object",
+          "schema_ref": "MySQLDataSpec"
+        },
+        {
+          "path": "data.symbols",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        {
+          "path": "data.timeframe",
+          "type": "string"
+        },
+        {
+          "path": "data.start",
+          "type": "string"
+        },
+        {
+          "path": "data.end",
+          "type": "string"
+        },
+        {
+          "path": "events",
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        {
+          "path": "conditions",
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        {
+          "path": "targets",
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        {
+          "path": "validation",
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        {
+          "path": "artifacts.out_dir",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        {
+          "path": "persistence.enabled",
+          "type": "boolean"
+        },
+        {
+          "path": "persistence.spec_id",
+          "type": "string"
+        },
+        {
+          "path": "persistence.dataset_id",
+          "type": "string"
+        }
+      ]
+    },
+    "seasonality": {
+      "required": [
+        "data"
+      ],
+      "fields": [
+        {
+          "path": "data.dataset_path",
+          "type": "string"
+        },
+        {
+          "path": "data.mysql",
+          "type": "object",
+          "schema_ref": "MySQLDataSpec"
+        },
+        {
+          "path": "data.symbols",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        {
+          "path": "data.timeframe",
+          "type": "string"
+        },
+        {
+          "path": "data.start",
+          "type": "string"
+        },
+        {
+          "path": "data.end",
+          "type": "string"
+        },
+        {
+          "path": "profile",
+          "type": "object",
+          "additional_fields": true
+        },
+        {
+          "path": "signal",
+          "type": "object",
+          "additional_fields": true
+        },
+        {
+          "path": "compute",
+          "type": "object",
+          "additional_fields": true
+        },
+        {
+          "path": "execution",
+          "type": "object",
+          "additional_fields": true
+        },
+        {
+          "path": "risk",
+          "type": "object",
+          "additional_fields": true
+        },
+        {
+          "path": "tp_sl",
+          "type": "object",
+          "additional_fields": true
+        },
+        {
+          "path": "validation",
+          "type": "object",
+          "additional_fields": true
+        },
+        {
+          "path": "artifacts.out_dir",
+          "type": "string"
+        },
+        {
+          "path": "persistence.enabled",
+          "type": "boolean"
+        },
+        {
+          "path": "persistence.spec_id",
+          "type": "string"
+        },
+        {
+          "path": "persistence.dataset_id",
+          "type": "string"
+        }
+      ]
+    }
+  },
+  "filters_expanded": {
+    "description": "Expanded filter parameter catalog.",
+    "items": {
+      "adx": {
+        "summary": "ADX above threshold (trend strength).",
+        "params": [
+          {
+            "name": "window",
+            "type": "int"
+          },
+          {
+            "name": "thresh",
+            "type": "float"
+          }
+        ],
+        "requires": {
+          "columns": [
+            "high",
+            "low",
+            "close"
+          ]
+        },
+        "availability": {
+          "backtest": true,
+          "dca": true
+        },
+        "source": "docs/filters.md"
+      },
+      "atr": {
+        "summary": "ATR/close within a min/max band.",
+        "params": [
+          {
+            "name": "window",
+            "type": "int"
+          },
+          {
+            "name": "min_mult",
+            "type": "float"
+          },
+          {
+            "name": "max_mult",
+            "type": "float"
+          }
+        ],
+        "requires": {
+          "columns": [
+            "high",
+            "low",
+            "close"
+          ]
+        },
+        "availability": {
+          "backtest": true,
+          "dca": true
+        },
+        "source": "docs/filters.md"
+      },
+      "ema_slope": {
+        "summary": "EMA slope above threshold.",
+        "params": [
+          {
+            "name": "window",
+            "type": "int"
+          },
+          {
+            "name": "slope_thresh",
+            "type": "float"
+          }
+        ],
+        "requires": {
+          "columns": [
+            "close"
+          ]
+        },
+        "availability": {
+          "backtest": true,
+          "dca": true
+        },
+        "source": "docs/filters.md"
+      },
+      "volume_surge": {
+        "summary": "Detect volume spikes by z-score or ratio.",
+        "params": [
+          {
+            "name": "window",
+            "type": "int"
+          },
+          {
+            "name": "mode",
+            "type": "string",
+            "enum": [
+              "z",
+              "ratio"
+            ]
+          },
+          {
+            "name": "z_thresh",
+            "type": "float"
+          },
+          {
+            "name": "ratio_thresh",
+            "type": "float"
+          }
+        ],
+        "requires": {
+          "columns": [
+            "volume"
+          ]
+        },
+        "availability": {
+          "backtest": true,
+          "dca": true
+        },
+        "source": "docs/filters.md"
+      },
+      "vwap_side": {
+        "summary": "Price above/below anchored VWAP.",
+        "params": [
+          {
+            "name": "anchor",
+            "type": "string",
+            "enum": [
+              "day",
+              "session"
+            ]
+          },
+          {
+            "name": "side",
+            "type": "string",
+            "enum": [
+              "above",
+              "below"
+            ]
+          },
+          {
+            "name": "from_levels",
+            "type": "bool"
+          },
+          {
+            "name": "symbol",
+            "type": "string"
+          }
+        ],
+        "requires": {
+          "columns": [
+            "close"
+          ],
+          "levels_optional": true
+        },
+        "availability": {
+          "backtest": true,
+          "dca": true
+        },
+        "source": "docs/filters.md"
+      },
+      "poc_distance": {
+        "summary": "Price within distance of active POC.",
+        "params": [
+          {
+            "name": "max_distance",
+            "type": "float"
+          },
+          {
+            "name": "unit",
+            "type": "string",
+            "enum": [
+              "abs",
+              "pct"
+            ]
+          },
+          {
+            "name": "symbol",
+            "type": "string"
+          },
+          {
+            "name": "level_type",
+            "type": "string",
+            "default": "POC"
+          }
+        ],
+        "requires": {
+          "columns": [
+            "close"
+          ],
+          "levels_required": true
+        },
+        "availability": {
+          "backtest": true,
+          "dca": true
+        },
+        "source": "docs/filters.md"
+      },
+      "liquidity_sweep": {
+        "summary": "Sweep recent highs/lows (ICT).",
+        "params": [
+          {
+            "name": "side",
+            "type": "string",
+            "enum": [
+              "high",
+              "low"
+            ]
+          },
+          {
+            "name": "lookback",
+            "type": "int"
+          },
+          {
+            "name": "require_close_back_in",
+            "type": "bool",
+            "default": true
+          },
+          {
+            "name": "tolerance_ticks",
+            "type": "float"
+          },
+          {
+            "name": "price_increment",
+            "type": "float"
+          }
+        ],
+        "requires": {
+          "columns": [
+            "high",
+            "low",
+            "close"
+          ]
+        },
+        "availability": {
+          "backtest": true,
+          "dca": true
+        },
+        "source": "docs/filters.md"
+      },
+      "bos": {
+        "summary": "Break of structure up/down.",
+        "params": [
+          {
+            "name": "direction",
+            "type": "string",
+            "enum": [
+              "up",
+              "down"
+            ]
+          },
+          {
+            "name": "left",
+            "type": "int"
+          },
+          {
+            "name": "right",
+            "type": "int"
+          },
+          {
+            "name": "use_levels",
+            "type": "bool"
+          },
+          {
+            "name": "symbol",
+            "type": "string"
+          }
+        ],
+        "requires": {
+          "columns": [
+            "high",
+            "low",
+            "close"
+          ],
+          "levels_optional": true
+        },
+        "availability": {
+          "backtest": true,
+          "dca": true
+        },
+        "source": "docs/filters.md"
+      },
+      "mss": {
+        "summary": "Market structure shift (BOS flip).",
+        "params": [
+          {
+            "name": "left",
+            "type": "int"
+          },
+          {
+            "name": "right",
+            "type": "int"
+          },
+          {
+            "name": "window",
+            "type": "int"
+          },
+          {
+            "name": "use_levels",
+            "type": "bool"
+          },
+          {
+            "name": "symbol",
+            "type": "string"
+          }
+        ],
+        "requires": {
+          "columns": [
+            "high",
+            "low",
+            "close"
+          ],
+          "levels_optional": true
+        },
+        "availability": {
+          "backtest": true,
+          "dca": true
+        },
+        "source": "docs/filters.md"
+      },
+      "session_time": {
+        "summary": "Allow trades in a session window.",
+        "params": [
+          {
+            "name": "session",
+            "type": "string",
+            "enum": [
+              "asia",
+              "london",
+              "newyork"
+            ]
+          },
+          {
+            "name": "tz",
+            "type": "string"
+          }
+        ],
+        "requires": {
+          "datetime_index": true
+        },
+        "availability": {
+          "backtest": true,
+          "dca": true
+        },
+        "source": "docs/filters.md"
+      },
+      "day_of_week": {
+        "summary": "Allow/deny specific weekdays.",
+        "params": [
+          {
+            "name": "allowed_days",
+            "type": "int[]"
+          },
+          {
+            "name": "blocked_days",
+            "type": "int[]"
+          }
+        ],
+        "requires": {
+          "datetime_index": true
+        },
+        "availability": {
+          "backtest": true,
+          "dca": true
+        },
+        "source": "docs/filters.md"
+      },
+      "day_of_month": {
+        "summary": "Allow first/last N days of month.",
+        "params": [
+          {
+            "name": "mode",
+            "type": "string",
+            "enum": [
+              "first",
+              "last"
+            ]
+          },
+          {
+            "name": "n",
+            "type": "int"
+          }
+        ],
+        "requires": {
+          "datetime_index": true
+        },
+        "availability": {
+          "backtest": true,
+          "dca": true
+        },
+        "source": "docs/filters.md"
+      },
+      "month_of_year": {
+        "summary": "Allow/deny specific months.",
+        "params": [
+          {
+            "name": "allowed_months",
+            "type": "int[]"
+          },
+          {
+            "name": "blocked_months",
+            "type": "int[]"
+          }
+        ],
+        "requires": {
+          "datetime_index": true
+        },
+        "availability": {
+          "backtest": true,
+          "dca": true
+        },
+        "source": "docs/filters.md"
+      },
+      "intraday_time": {
+        "summary": "Allow trades in a time-of-day window.",
+        "params": [
+          {
+            "name": "start",
+            "type": "string",
+            "format": "HH:MM"
+          },
+          {
+            "name": "end",
+            "type": "string",
+            "format": "HH:MM"
+          },
+          {
+            "name": "tz",
+            "type": "string"
+          }
+        ],
+        "requires": {
+          "datetime_index": true
+        },
+        "availability": {
+          "backtest": true,
+          "dca": true
+        },
+        "source": "docs/filters.md"
+      },
+      "k_consecutive": {
+        "summary": "K consecutive candles in same direction.",
+        "params": [
+          {
+            "name": "k",
+            "type": "int"
+          },
+          {
+            "name": "direction",
+            "type": "string",
+            "enum": [
+              "up",
+              "down"
+            ]
+          },
+          {
+            "name": "use_body",
+            "type": "bool"
+          }
+        ],
+        "requires": {
+          "columns": [
+            "close"
+          ],
+          "columns_if_use_body": [
+            "open"
+          ]
+        },
+        "availability": {
+          "backtest": true,
+          "dca": true
+        },
+        "source": "docs/filters.md"
+      },
+      "seasonality_bin": {
+        "summary": "Allow specific seasonal bins.",
+        "params": [
+          {
+            "name": "allowed",
+            "type": "int[]"
+          },
+          {
+            "name": "blocked",
+            "type": "int[]"
+          },
+          {
+            "name": "min_winrate",
+            "type": "float"
+          },
+          {
+            "name": "symbol",
+            "type": "string"
+          },
+          {
+            "name": "mode",
+            "type": "string",
+            "enum": [
+              "hour",
+              "dow",
+              "dom",
+              "month",
+              "session"
+            ]
+          }
+        ],
+        "requires": {
+          "datetime_index": true,
+          "stats_optional": true
+        },
+        "availability": {
+          "backtest": true,
+          "dca": true
+        },
+        "source": "docs/filters.md"
+      },
+      "hurst_regime": {
+        "summary": "Hurst exponent regime filter.",
+        "params": [
+          {
+            "name": "window",
+            "type": "int"
+          },
+          {
+            "name": "min_h",
+            "type": "float"
+          },
+          {
+            "name": "max_h",
+            "type": "float"
+          }
+        ],
+        "requires": {
+          "columns": [
+            "close"
+          ]
+        },
+        "availability": {
+          "backtest": true,
+          "dca": true
+        },
+        "source": "docs/filters.md"
+      },
+      "entropy_window": {
+        "summary": "Directional entropy window filter.",
+        "params": [
+          {
+            "name": "window",
+            "type": "int"
+          },
+          {
+            "name": "max_entropy",
+            "type": "float"
+          },
+          {
+            "name": "min_entropy",
+            "type": "float"
+          },
+          {
+            "name": "use_body",
+            "type": "bool"
+          }
+        ],
+        "requires": {
+          "columns": [
+            "close"
+          ],
+          "columns_if_use_body": [
+            "open"
+          ]
+        },
+        "availability": {
+          "backtest": true,
+          "dca": true
+        },
+        "source": "docs/filters.md"
+      },
+      "daily_loss_cap": {
+        "summary": "Lockout after daily loss cap.",
+        "params": [
+          {
+            "name": "loss_cap",
+            "type": "float"
+          },
+          {
+            "name": "mode",
+            "type": "string",
+            "enum": [
+              "pnl",
+              "equity",
+              "ret_notional"
+            ]
+          },
+          {
+            "name": "pnl_col",
+            "type": "string"
+          },
+          {
+            "name": "equity_col",
+            "type": "string"
+          },
+          {
+            "name": "ret_col",
+            "type": "string"
+          },
+          {
+            "name": "notional",
+            "type": "float"
+          }
+        ],
+        "requires": {
+          "datetime_index": true
+        },
+        "availability": {
+          "backtest": true,
+          "dca": true
+        },
+        "source": "docs/filters.md"
+      },
+      "daily_trades_cap": {
+        "summary": "Limit number of entries per day.",
+        "params": [
+          {
+            "name": "signal_col",
+            "type": "string"
+          },
+          {
+            "name": "max_trades_per_day",
+            "type": "int"
+          }
+        ],
+        "requires": {
+          "datetime_index": true,
+          "columns": [
+            "signal_col"
+          ]
+        },
+        "availability": {
+          "backtest": true,
+          "dca": true
+        },
+        "source": "docs/filters.md"
+      },
+      "cooldown_bars": {
+        "summary": "Cooldown after each signal.",
+        "params": [
+          {
+            "name": "signal_col",
+            "type": "string"
+          },
+          {
+            "name": "cooldown_bars",
+            "type": "int"
+          }
+        ],
+        "requires": {
+          "columns": [
+            "signal_col"
+          ]
+        },
+        "availability": {
+          "backtest": true,
+          "dca": true
+        },
+        "source": "docs/filters.md"
+      },
+      "atr_risk_gate": {
+        "summary": "Block when ATR/close too high.",
+        "params": [
+          {
+            "name": "atr_window",
+            "type": "int"
+          },
+          {
+            "name": "max_atr_pct",
+            "type": "float"
+          }
+        ],
+        "requires": {
+          "columns": [
+            "high",
+            "low",
+            "close"
+          ]
+        },
+        "availability": {
+          "backtest": true,
+          "dca": true
+        },
+        "source": "docs/filters.md"
+      },
+      "equity_dd_lockout": {
+        "summary": "Lockout after equity drawdown.",
+        "params": [
+          {
+            "name": "equity_col",
+            "type": "string"
+          },
+          {
+            "name": "max_dd_pct",
+            "type": "float"
+          }
+        ],
+        "requires": {
+          "columns": [
+            "equity_col"
+          ]
+        },
+        "availability": {
+          "backtest": true,
+          "dca": true
+        },
+        "source": "docs/filters.md"
+      },
+      "benford_law": {
+        "summary": "Benford MSE below threshold.",
+        "params": [
+          {
+            "name": "window",
+            "type": "int"
+          },
+          {
+            "name": "series_type",
+            "type": "string"
+          },
+          {
+            "name": "metric",
+            "type": "string",
+            "enum": [
+              "mad",
+              "chi2",
+              "both"
+            ]
+          },
+          {
+            "name": "mad_threshold",
+            "type": "float"
+          },
+          {
+            "name": "chi2_threshold",
+            "type": "float"
+          },
+          {
+            "name": "atr_window",
+            "type": "int"
+          },
+          {
+            "name": "price_col",
+            "type": "string"
+          },
+          {
+            "name": "open_col",
+            "type": "string"
+          },
+          {
+            "name": "high_col",
+            "type": "string"
+          },
+          {
+            "name": "low_col",
+            "type": "string"
+          },
+          {
+            "name": "volume_col",
+            "type": "string"
+          }
+        ],
+        "requires": {
+          "columns": [
+            "close"
+          ]
+        },
+        "availability": {
+          "backtest": true,
+          "dca": true
+        },
+        "source": "docs/filters.md"
+      },
+      "cycles": {
+        "summary": "Low dominant autocorrelation (cycles).",
+        "params": [
+          {
+            "name": "window",
+            "type": "int"
+          },
+          {
+            "name": "max_lag",
+            "type": "int"
+          },
+          {
+            "name": "max_r2",
+            "type": "float"
+          },
+          {
+            "name": "price_col",
+            "type": "string"
+          }
+        ],
+        "requires": {
+          "columns": [
+            "close"
+          ]
+        },
+        "availability": {
+          "backtest": true,
+          "dca": true
+        },
+        "source": "docs/filters.md"
+      },
+      "donchian_channels": {
+        "summary": "Donchian breakout filter.",
+        "params": [
+          {
+            "name": "window",
+            "type": "int"
+          },
+          {
+            "name": "direction",
+            "type": "string",
+            "enum": [
+              "up",
+              "down"
+            ]
+          },
+          {
+            "name": "high_col",
+            "type": "string"
+          },
+          {
+            "name": "low_col",
+            "type": "string"
+          },
+          {
+            "name": "close_col",
+            "type": "string"
+          }
+        ],
+        "requires": {
+          "columns": [
+            "high",
+            "low",
+            "close"
+          ]
+        },
+        "availability": {
+          "backtest": true,
+          "dca": true
+        },
+        "source": "docs/filters.md"
+      },
+      "liquidity_cmf": {
+        "summary": "Chaikin Money Flow threshold.",
+        "params": [
+          {
+            "name": "window",
+            "type": "int"
+          },
+          {
+            "name": "threshold",
+            "type": "float"
+          },
+          {
+            "name": "high_col",
+            "type": "string"
+          },
+          {
+            "name": "low_col",
+            "type": "string"
+          },
+          {
+            "name": "close_col",
+            "type": "string"
+          },
+          {
+            "name": "volume_col",
+            "type": "string"
+          }
+        ],
+        "requires": {
+          "columns": [
+            "high",
+            "low",
+            "close",
+            "volume"
+          ]
+        },
+        "availability": {
+          "backtest": true,
+          "dca": true
+        },
+        "source": "docs/filters.md"
+      },
+      "statistical_arbitrage": {
+        "summary": "Omega/Info ratio threshold.",
+        "params": [
+          {
+            "name": "window",
+            "type": "int"
+          },
+          {
+            "name": "omega_thresh",
+            "type": "float"
+          },
+          {
+            "name": "info_thresh",
+            "type": "float"
+          },
+          {
+            "name": "price_col",
+            "type": "string"
+          },
+          {
+            "name": "require_info",
+            "type": "bool"
+          }
+        ],
+        "requires": {
+          "columns": [
+            "close"
+          ]
+        },
+        "availability": {
+          "backtest": true,
+          "dca": true
+        },
+        "source": "docs/filters.md"
+      },
+      "psychologic_ulcer": {
+        "summary": "Ulcer index below threshold.",
+        "params": [
+          {
+            "name": "window",
+            "type": "int"
+          },
+          {
+            "name": "max_ulcer",
+            "type": "float"
+          },
+          {
+            "name": "price_col",
+            "type": "string"
+          }
+        ],
+        "requires": {
+          "columns": [
+            "close"
+          ]
+        },
+        "availability": {
+          "backtest": true,
+          "dca": true
+        },
+        "source": "docs/filters.md"
+      },
+      "stationarity": {
+        "summary": "Low lag-1 autocorrelation.",
+        "params": [
+          {
+            "name": "window",
+            "type": "int"
+          },
+          {
+            "name": "max_abs_autocorr",
+            "type": "float"
+          },
+          {
+            "name": "price_col",
+            "type": "string"
+          },
+          {
+            "name": "method",
+            "type": "string",
+            "enum": [
+              "acf",
+              "adf",
+              "kpss",
+              "both"
+            ]
+          },
+          {
+            "name": "adf_pvalue",
+            "type": "float"
+          },
+          {
+            "name": "kpss_pvalue",
+            "type": "float"
+          },
+          {
+            "name": "allow_if_missing",
+            "type": "bool"
+          }
+        ],
+        "requires": {
+          "columns": [
+            "close"
+          ]
+        },
+        "availability": {
+          "backtest": true,
+          "dca": true
+        },
+        "source": "docs/filters.md"
+      },
+      "volatility": {
+        "summary": "Entropy (and optional ATR) threshold.",
+        "params": [
+          {
+            "name": "window",
+            "type": "int"
+          },
+          {
+            "name": "max_entropy",
+            "type": "float"
+          },
+          {
+            "name": "atr_window",
+            "type": "int"
+          },
+          {
+            "name": "max_atr_pct",
+            "type": "float"
+          },
+          {
+            "name": "bb_window",
+            "type": "int"
+          },
+          {
+            "name": "bb_max_width",
+            "type": "float"
+          },
+          {
+            "name": "hv_window",
+            "type": "int"
+          },
+          {
+            "name": "max_hv",
+            "type": "float"
+          },
+          {
+            "name": "vix_window",
+            "type": "int"
+          },
+          {
+            "name": "max_vix",
+            "type": "float"
+          }
+        ],
+        "requires": {
+          "columns": [
+            "high",
+            "low",
+            "close"
+          ]
+        },
+        "availability": {
+          "backtest": true,
+          "dca": true
+        },
+        "source": "docs/filters.md"
+      },
+      "ema_structure": {
+        "summary": "EMA stack and trend validation.",
+        "params": [
+          {
+            "name": "ema_fast",
+            "type": "int"
+          },
+          {
+            "name": "ema_slow",
+            "type": "int"
+          },
+          {
+            "name": "ema_long",
+            "type": "int"
+          },
+          {
+            "name": "require_close_above_slow",
+            "type": "bool"
+          },
+          {
+            "name": "require_fast_rising",
+            "type": "bool"
+          }
+        ],
+        "requires": {
+          "columns": [
+            "close"
+          ]
+        },
+        "availability": {
+          "backtest": true,
+          "dca": true
+        },
+        "source": "docs/filters.md"
+      },
+      "rsi_entry": {
+        "summary": "RSI threshold filter.",
+        "params": [
+          {
+            "name": "window",
+            "type": "int"
+          },
+          {
+            "name": "threshold",
+            "type": "float"
+          },
+          {
+            "name": "direction",
+            "type": "string"
+          }
+        ],
+        "requires": {
+          "columns": [
+            "close"
+          ]
+        },
+        "availability": {
+          "backtest": true,
+          "dca": true
+        },
+        "source": "docs/filters.md"
+      },
+      "macd_entry": {
+        "summary": "MACD cross filter.",
+        "params": [
+          {
+            "name": "fast",
+            "type": "int"
+          },
+          {
+            "name": "slow",
+            "type": "int"
+          },
+          {
+            "name": "signal",
+            "type": "int"
+          },
+          {
+            "name": "direction",
+            "type": "string"
+          }
+        ],
+        "requires": {
+          "columns": [
+            "close"
+          ]
+        },
+        "availability": {
+          "backtest": true,
+          "dca": true
+        },
+        "source": "docs/filters.md"
+      },
+      "volume_above_average": {
+        "summary": "Volume above its rolling average.",
+        "params": [
+          {
+            "name": "window",
+            "type": "int"
+          },
+          {
+            "name": "multiplier",
+            "type": "float"
+          },
+          {
+            "name": "volume_col",
+            "type": "string"
+          }
+        ],
+        "requires": {
+          "columns": [
+            "volume"
+          ]
+        },
+        "availability": {
+          "backtest": true,
+          "dca": true
+        },
+        "source": "docs/filters.md"
+      },
+      "fractal_analysis": {
+        "summary": "Hurst + skew/kurtosis bounds.",
+        "params": [
+          {
+            "name": "window",
+            "type": "int"
+          },
+          {
+            "name": "min_h",
+            "type": "float"
+          },
+          {
+            "name": "max_h",
+            "type": "float"
+          },
+          {
+            "name": "max_abs_skew",
+            "type": "float"
+          },
+          {
+            "name": "max_kurtosis",
+            "type": "float"
+          }
+        ],
+        "requires": {
+          "columns": [
+            "close"
+          ]
+        },
+        "availability": {
+          "backtest": true,
+          "dca": true
+        },
+        "source": "docs/filters.md"
+      },
+      "mean_reversion": {
+        "summary": "BB + Keltner mean-reversion trigger.",
+        "params": [
+          {
+            "name": "window",
+            "type": "int"
+          },
+          {
+            "name": "bb_mult",
+            "type": "float"
+          },
+          {
+            "name": "keltner_mult",
+            "type": "float"
+          },
+          {
+            "name": "atr_window",
+            "type": "int"
+          },
+          {
+            "name": "direction",
+            "type": "string"
+          }
+        ],
+        "requires": {
+          "columns": [
+            "high",
+            "low",
+            "close"
+          ]
+        },
+        "availability": {
+          "backtest": true,
+          "dca": true
+        },
+        "source": "docs/filters.md"
+      },
+      "contradictory_signals": {
+        "summary": "Block conflicting indicator signals.",
+        "params": [
+          {
+            "name": "rsi_window",
+            "type": "int"
+          },
+          {
+            "name": "stoch_window",
+            "type": "int"
+          },
+          {
+            "name": "williams_window",
+            "type": "int"
+          },
+          {
+            "name": "z_window",
+            "type": "int"
+          },
+          {
+            "name": "ema_fast",
+            "type": "int"
+          },
+          {
+            "name": "ema_slow",
+            "type": "int"
+          },
+          {
+            "name": "max_conflicts",
+            "type": "int"
+          }
+        ],
+        "requires": {
+          "columns": [
+            "high",
+            "low",
+            "close"
+          ]
+        },
+        "availability": {
+          "backtest": true,
+          "dca": true
+        },
+        "source": "docs/filters.md"
+      },
+      "linear_regression_macd_cross": {
+        "summary": "Predict MACD cross via regression.",
+        "params": [
+          {
+            "name": "fast",
+            "type": "int"
+          },
+          {
+            "name": "slow",
+            "type": "int"
+          },
+          {
+            "name": "signal",
+            "type": "int"
+          },
+          {
+            "name": "lookback",
+            "type": "int"
+          },
+          {
+            "name": "direction",
+            "type": "string"
+          }
+        ],
+        "requires": {
+          "columns": [
+            "close"
+          ]
+        },
+        "availability": {
+          "backtest": true,
+          "dca": true
+        },
+        "source": "docs/filters.md"
+      },
+      "atr_rising": {
+        "summary": "ATR rising vs previous bar/lookback.",
+        "params": [
+          {
+            "name": "window",
+            "type": "int"
+          },
+          {
+            "name": "lookback",
+            "type": "int"
+          }
+        ],
+        "requires": {
+          "columns": [
+            "high",
+            "low",
+            "close"
+          ]
+        },
+        "availability": {
+          "backtest": true,
+          "dca": true
+        },
+        "source": "docs/filters.md"
+      },
+      "market_regime": {
+        "summary": "Detect trend/range/compression regimes.",
+        "params": [
+          {
+            "name": "regime",
+            "type": "string"
+          },
+          {
+            "name": "adx_window",
+            "type": "int"
+          },
+          {
+            "name": "adx_thresh",
+            "type": "float"
+          },
+          {
+            "name": "atr_window",
+            "type": "int"
+          },
+          {
+            "name": "max_atr_pct",
+            "type": "float"
+          },
+          {
+            "name": "bb_window",
+            "type": "int"
+          },
+          {
+            "name": "bb_width_thresh",
+            "type": "float"
+          }
+        ],
+        "requires": {
+          "columns": [
+            "high",
+            "low",
+            "close"
+          ]
+        },
+        "availability": {
+          "backtest": true,
+          "dca": true
+        },
+        "source": "docs/filters.md"
+      },
+      "trend": {
+        "summary": "Trend direction via HH/HL or EMA.",
+        "params": [
+          {
+            "name": "direction",
+            "type": "string"
+          },
+          {
+            "name": "lookback",
+            "type": "int"
+          },
+          {
+            "name": "method",
+            "type": "string"
+          },
+          {
+            "name": "ema_fast",
+            "type": "int"
+          },
+          {
+            "name": "ema_slow",
+            "type": "int"
+          }
+        ],
+        "requires": {
+          "columns": [
+            "high",
+            "low",
+            "close"
+          ]
+        },
+        "availability": {
+          "backtest": true,
+          "dca": true
+        },
+        "source": "docs/filters.md"
+      },
+      "biais_institutional": {
+        "summary": "EMA/VWAP + optional macro filters.",
+        "params": [
+          {
+            "name": "ema_fast",
+            "type": "int"
+          },
+          {
+            "name": "ema_slow",
+            "type": "int"
+          },
+          {
+            "name": "price_col",
+            "type": "string"
+          },
+          {
+            "name": "volume_col",
+            "type": "string"
+          },
+          {
+            "name": "vwap_side",
+            "type": "string"
+          },
+          {
+            "name": "cot_col",
+            "type": "string"
+          },
+          {
+            "name": "oi_col",
+            "type": "string"
+          },
+          {
+            "name": "cot_bias_threshold",
+            "type": "float"
+          },
+          {
+            "name": "oi_min_change",
+            "type": "float"
+          }
+        ],
+        "requires": {
+          "columns": [
+            "close"
+          ]
+        },
+        "availability": {
+          "backtest": true,
+          "dca": true
+        },
+        "source": "docs/filters.md"
+      },
+      "stats_gate": {
+        "summary": "Gate using persisted market stats.",
+        "params": [
+          {
+            "name": "event",
+            "type": "string"
+          },
+          {
+            "name": "target",
+            "type": "string"
+          },
+          {
+            "name": "threshold",
+            "type": "float"
+          },
+          {
+            "name": "metric",
+            "type": "string"
+          },
+          {
+            "name": "comparator",
+            "type": "string"
+          },
+          {
+            "name": "split",
+            "type": "string"
+          },
+          {
+            "name": "condition_name",
+            "type": "string"
+          },
+          {
+            "name": "condition_params",
+            "type": "object"
+          },
+          {
+            "name": "condition_value",
+            "type": "string|number|bool"
+          },
+          {
+            "name": "min_samples",
+            "type": "int"
+          },
+          {
+            "name": "symbol",
+            "type": "string"
+          },
+          {
+            "name": "timeframe",
+            "type": "string"
+          },
+          {
+            "name": "allow_if_missing",
+            "type": "bool"
+          },
+          {
+            "name": "allow_if_insufficient",
+            "type": "bool"
+          }
+        ],
+        "requires": {
+          "stats_repo": true
+        },
+        "availability": {
+          "backtest": true,
+          "dca": true
+        },
+        "source": "docs/filters.md"
+      },
+      "mtf_anomaly": {
+        "summary": "Block when anomalies appear on both timeframes.",
+        "params": [
+          {
+            "name": "higher_timeframe",
+            "type": "string"
+          },
+          {
+            "name": "base_window",
+            "type": "int"
+          },
+          {
+            "name": "higher_window",
+            "type": "int"
+          },
+          {
+            "name": "metric",
+            "type": "string",
+            "enum": [
+              "benford_mad",
+              "entropy"
+            ]
+          },
+          {
+            "name": "series_type",
+            "type": "string"
+          },
+          {
+            "name": "mad_threshold",
+            "type": "float"
+          },
+          {
+            "name": "entropy_threshold",
+            "type": "float"
+          },
+          {
+            "name": "atr_window",
+            "type": "int"
+          },
+          {
+            "name": "require_both",
+            "type": "bool"
+          }
+        ],
+        "requires": {
+          "columns": [
+            "high",
+            "low",
+            "close"
+          ]
+        },
+        "availability": {
+          "backtest": true,
+          "dca": true
+        },
+        "source": "docs/filters.md"
+      },
+      "market_manipulation": {
+        "summary": "Block when entropy/kurtosis/volatility indicate anomalies.",
+        "params": [
+          {
+            "name": "window",
+            "type": "int"
+          },
+          {
+            "name": "entropy_threshold",
+            "type": "float"
+          },
+          {
+            "name": "kurtosis_threshold",
+            "type": "float"
+          },
+          {
+            "name": "atr_window",
+            "type": "int"
+          },
+          {
+            "name": "atr_mult",
+            "type": "float"
+          },
+          {
+            "name": "require_all",
+            "type": "bool"
+          },
+          {
+            "name": "high_col",
+            "type": "string"
+          },
+          {
+            "name": "low_col",
+            "type": "string"
+          },
+          {
+            "name": "close_col",
+            "type": "string"
+          }
+        ],
+        "requires": {
+          "columns": [
+            "high",
+            "low",
+            "close"
+          ]
+        },
+        "availability": {
+          "backtest": true,
+          "dca": true
+        },
+        "source": "docs/filters.md"
+      },
+      "htf_poi": {
+        "summary": "Price interacts with active HTF zones/POI levels.",
+        "params": [
+          {
+            "name": "level_types",
+            "type": "string[]"
+          },
+          {
+            "name": "symbol",
+            "type": "string"
+          },
+          {
+            "name": "mode",
+            "type": "string",
+            "enum": [
+              "in_zone",
+              "distance"
+            ]
+          },
+          {
+            "name": "tolerance",
+            "type": "float"
+          },
+          {
+            "name": "max_distance",
+            "type": "float"
+          },
+          {
+            "name": "distance_unit",
+            "type": "string"
+          },
+          {
+            "name": "require_all",
+            "type": "bool"
+          },
+          {
+            "name": "allow_if_missing",
+            "type": "bool"
+          },
+          {
+            "name": "allow_if_empty",
+            "type": "bool"
+          },
+          {
+            "name": "close_col",
+            "type": "string"
+          }
+        ],
+        "requires": {
+          "columns": [
+            "close"
+          ],
+          "levels_optional": true
+        },
+        "availability": {
+          "backtest": true,
+          "dca": true
+        },
+        "source": "docs/filters.md"
+      },
+      "orderflow_delta": {
+        "summary": "Orderflow delta/ratio filter (buy vs sell volume).",
+        "params": [
+          {
+            "name": "delta_col",
+            "type": "string"
+          },
+          {
+            "name": "buy_col",
+            "type": "string"
+          },
+          {
+            "name": "sell_col",
+            "type": "string"
+          },
+          {
+            "name": "volume_col",
+            "type": "string"
+          },
+          {
+            "name": "mode",
+            "type": "string",
+            "enum": [
+              "delta",
+              "ratio"
+            ]
+          },
+          {
+            "name": "window",
+            "type": "int"
+          },
+          {
+            "name": "min_delta",
+            "type": "float"
+          },
+          {
+            "name": "min_ratio",
+            "type": "float"
+          },
+          {
+            "name": "zscore_thresh",
+            "type": "float"
+          },
+          {
+            "name": "side",
+            "type": "string"
+          },
+          {
+            "name": "allow_if_missing",
+            "type": "bool"
+          },
+          {
+            "name": "require_positive",
+            "type": "bool"
+          }
+        ],
+        "requires": {
+          "columns": [
+            "buy_volume",
+            "sell_volume"
+          ],
+          "columns_optional": [
+            "delta"
+          ]
+        },
+        "availability": {
+          "backtest": true,
+          "dca": true
+        },
+        "source": "docs/filters.md"
+      },
+      "macro_cot_oi": {
+        "summary": "Macro COT/OI alignment filter.",
+        "params": [
+          {
+            "name": "cot_col",
+            "type": "string"
+          },
+          {
+            "name": "oi_col",
+            "type": "string"
+          },
+          {
+            "name": "cot_bias_threshold",
+            "type": "float"
+          },
+          {
+            "name": "oi_change_threshold",
+            "type": "float"
+          },
+          {
+            "name": "side",
+            "type": "string"
+          },
+          {
+            "name": "require_all",
+            "type": "bool"
+          },
+          {
+            "name": "allow_if_missing",
+            "type": "bool"
+          }
+        ],
+        "requires": {
+          "columns_optional": [
+            "cot_bias",
+            "oi_change"
+          ]
+        },
+        "availability": {
+          "backtest": true,
+          "dca": true
+        },
+        "source": "docs/filters.md"
+      },
+      "lower_timeframe_confluence": {
+        "summary": "Confluence score across momentum/ADX/VWAP/delta/EMA.",
+        "params": [
+          {
+            "name": "side",
+            "type": "string"
+          },
+          {
+            "name": "momentum_period",
+            "type": "int"
+          },
+          {
+            "name": "min_momentum",
+            "type": "float"
+          },
+          {
+            "name": "adx_window",
+            "type": "int"
+          },
+          {
+            "name": "adx_thresh",
+            "type": "float"
+          },
+          {
+            "name": "vwap_max_dev",
+            "type": "float"
+          },
+          {
+            "name": "vwap_side",
+            "type": "string"
+          },
+          {
+            "name": "vwap_price_col",
+            "type": "string"
+          },
+          {
+            "name": "vwap_volume_col",
+            "type": "string"
+          },
+          {
+            "name": "ema_fast",
+            "type": "int"
+          },
+          {
+            "name": "ema_slow",
+            "type": "int"
+          },
+          {
+            "name": "ema_long",
+            "type": "int"
+          },
+          {
+            "name": "delta_col",
+            "type": "string"
+          },
+          {
+            "name": "buy_col",
+            "type": "string"
+          },
+          {
+            "name": "sell_col",
+            "type": "string"
+          },
+          {
+            "name": "volume_col",
+            "type": "string"
+          },
+          {
+            "name": "delta_min",
+            "type": "float"
+          },
+          {
+            "name": "delta_ratio",
+            "type": "float"
+          },
+          {
+            "name": "min_score",
+            "type": "float"
+          },
+          {
+            "name": "min_score_pct",
+            "type": "float"
+          },
+          {
+            "name": "require_all",
+            "type": "bool"
+          },
+          {
+            "name": "allow_if_missing",
+            "type": "bool"
+          },
+          {
+            "name": "close_col",
+            "type": "string"
+          },
+          {
+            "name": "high_col",
+            "type": "string"
+          },
+          {
+            "name": "low_col",
+            "type": "string"
+          }
+        ],
+        "requires": {
+          "columns": [
+            "close",
+            "high",
+            "low"
+          ],
+          "columns_optional": [
+            "volume"
+          ]
+        },
+        "availability": {
+          "backtest": true,
+          "dca": true
+        },
+        "source": "docs/filters.md"
+      },
+      "psychologic_and_news": {
+        "summary": "News/psychologic blackout windows.",
+        "params": [
+          {
+            "name": "news_times",
+            "type": "string[]"
+          },
+          {
+            "name": "news_col",
+            "type": "string"
+          },
+          {
+            "name": "pre_minutes",
+            "type": "int"
+          },
+          {
+            "name": "post_minutes",
+            "type": "int"
+          },
+          {
+            "name": "allow_if_missing",
+            "type": "bool"
+          }
+        ],
+        "requires": {
+          "datetime_index": true
+        },
+        "availability": {
+          "backtest": true,
+          "dca": true
+        },
+        "source": "docs/filters.md"
+      },
+      "ict_poi": {
+        "summary": "ICT POI confluence (levels/IFVG/fib).",
+        "params": [
+          {
+            "name": "level_types",
+            "type": "string[]"
+          },
+          {
+            "name": "symbol",
+            "type": "string"
+          },
+          {
+            "name": "mode",
+            "type": "string"
+          },
+          {
+            "name": "tolerance",
+            "type": "float"
+          },
+          {
+            "name": "max_distance",
+            "type": "float"
+          },
+          {
+            "name": "distance_unit",
+            "type": "string"
+          },
+          {
+            "name": "include_ifvg",
+            "type": "bool"
+          },
+          {
+            "name": "ifvg_lookback",
+            "type": "int"
+          },
+          {
+            "name": "ifvg_invalidate_on_fill",
+            "type": "bool"
+          },
+          {
+            "name": "ifvg_fill_threshold",
+            "type": "float"
+          },
+          {
+            "name": "ifvg_fill_count",
+            "type": "int"
+          },
+          {
+            "name": "include_fib",
+            "type": "bool"
+          },
+          {
+            "name": "fib_lookback",
+            "type": "int"
+          },
+          {
+            "name": "fib_levels",
+            "type": "float[]"
+          },
+          {
+            "name": "fib_tolerance",
+            "type": "float"
+          },
+          {
+            "name": "allow_if_missing",
+            "type": "bool"
+          },
+          {
+            "name": "allow_if_empty",
+            "type": "bool"
+          },
+          {
+            "name": "close_col",
+            "type": "string"
+          },
+          {
+            "name": "high_col",
+            "type": "string"
+          },
+          {
+            "name": "low_col",
+            "type": "string"
+          }
+        ],
+        "requires": {
+          "columns": [
+            "close"
+          ],
+          "levels_optional": true
+        },
+        "availability": {
+          "backtest": true,
+          "dca": true
+        },
+        "source": "docs/filters.md"
+      }
+    }
+  }
+}

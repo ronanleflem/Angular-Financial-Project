@@ -18,6 +18,10 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/strategy-launcher/strategy-launcher.page').then(m => m.StrategyLauncherPageComponent),
   },
   {
+    path: 'runs/:requestId',
+    loadComponent: () => import('./pages/run-status/run-status.page').then(m => m.RunStatusPageComponent),
+  },
+  {
     path: 'screen-strategies',
     loadComponent: () => import('./components/screen-strategies/screen-strategies.component').then(m => m.ScreenStrategiesComponent),
   },

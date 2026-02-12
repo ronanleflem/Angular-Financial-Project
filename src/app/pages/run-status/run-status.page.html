@@ -1,0 +1,43 @@
+<section class="status-wrap">
+  <mat-card class="status-card">
+    <mat-card-header>
+      <mat-card-title>Run status</mat-card-title>
+      <mat-card-subtitle>Soumission en cours</mat-card-subtitle>
+    </mat-card-header>
+    <mat-card-content>
+      <div class="status-row">
+        <span class="label">requestId</span>
+        <span class="value">{{ requestId || 'N/A' }}</span>
+      </div>
+      <div class="status-row">
+        <span class="label">status</span>
+        <span class="status-pill" [class.pending]="status()?.status === 'PENDING'"
+          [class.running]="status()?.status === 'RUNNING'"
+          [class.done]="status()?.status === 'DONE'"
+          [class.failed]="status()?.status === 'FAILED'">
+          {{ status()?.status || (loading() ? 'LOADING' : 'UNKNOWN') }}
+        </span>
+        <span class="polling-indicator" *ngIf="polling()">Polling...</span>
+      </div>
+      <div class="status-row" *ngIf="status()?.updatedAt">
+        <span class="label">updated</span>
+        <span class="value">{{ status()?.updatedAt }}</span>
+      </div>
+      <div class="status-row" *ngIf="status()?.message">
+        <span class="label">message</span>
+        <span class="value">{{ status()?.message }}</span>
+      </div>
+      <div class="error-panel" *ngIf="errorMessage()">
+        <div class="error-title">Erreur</div>
+        <div class="error-body">{{ errorMessage() }}</div>
+      </div>
+      <p class="hint">Le backend publiera prochainement le statut detaille.</p>
+      <div class="actions">
+        <button mat-stroked-button type="button" (click)="goBack()">Retour</button>
+        <button mat-flat-button color="primary" type="button" (click)="refreshStatus()" [disabled]="loading()">
+          Recharger
+        </button>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</section>
