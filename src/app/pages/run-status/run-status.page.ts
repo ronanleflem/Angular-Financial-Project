@@ -36,6 +36,7 @@ export class RunStatusPageComponent implements OnInit {
   readonly result = signal<RunResultResponse | null>(null);
   readonly resultLoading = signal(false);
   readonly resultError = signal<string | null>(null);
+  readonly terminalMessage = signal<string | null>(null);
   readonly canceling = signal(false);
   private resultForRequestId: string | null = null;
 
@@ -139,6 +140,11 @@ export class RunStatusPageComponent implements OnInit {
       .cancelRun(this.requestId)
       .pipe(
         catchError(err => {
+          if (err?.status === 409) {
+            this.errorMessage.set('Run deja termine, statut actualise.');
+            this.refreshStatus();
+            return of(null);
+          }
           const status = err?.status ? `HTTP ${err.status}` : 'HTTP error';
           const message = err?.message ?? 'Erreur inconnue';
           this.errorMessage.set(`[${status}] ${message}`);
@@ -169,7 +175,9 @@ export class RunStatusPageComponent implements OnInit {
 
   private applyStatus(response: RunStatusResponse): void {
     this.status.set(response);
-    this.uiStatus.set(normalizeRunStatus(response.status));
+    const uiStatus = normalizeRunStatus(response.status);
+    this.uiStatus.set(uiStatus);
+    this.terminalMessage.set(this.terminalStatusMessage(uiStatus, response));
   }
 
   private checkTerminalAndLoadResult(): boolean {
@@ -177,9 +185,7 @@ export class RunStatusPageComponent implements OnInit {
     if (!isTerminalStatus(status)) {
       return false;
     }
-    if (status === 'succeeded') {
-      this.loadResult(this.requestId);
-    }
+    this.loadResult(this.requestId);
     return true;
   }
 
@@ -216,5 +222,25 @@ export class RunStatusPageComponent implements OnInit {
     this.resultError.set(null);
     this.resultLoading.set(false);
     this.resultForRequestId = null;
+    this.terminalMessage.set(null);
+  }
+
+  private terminalStatusMessage(status: UiRunStatus, response?: RunStatusResponse | null): string | null {
+    if (!isTerminalStatus(status)) {
+      return null;
+    }
+    if (response?.message) {
+      return response.message;
+    }
+    switch (status) {
+      case 'succeeded':
+        return 'Run termine avec succes.';
+      case 'failed':
+        return 'Run echoue.';
+      case 'canceled':
+        return 'Run annule.';
+      default:
+        return null;
+    }
   }
 }

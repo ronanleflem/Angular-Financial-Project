@@ -34,6 +34,7 @@ import { PresetsService, RunPreset } from '../../services/presets.service';
 import { RunsService } from '../../services/runs.service';
 import { ParameterCatalogService } from '../../services/parameter-catalog.service';
 import { finalize } from 'rxjs';
+import { mapRunRequestToCanonical, CanonicalRunRequest } from '../../services/run-request-adapter';
 import {
   BackendMappingContext,
   BackendValidationError,
@@ -913,6 +914,8 @@ export class StrategyLauncherPageComponent {
   readonly submitLoading = signal(false);
   readonly payloadPreview = signal<RunRequestInput | null>(null);
   readonly payloadPreviewPaths = signal<string[]>([]);
+  readonly payloadCanonicalPreview = signal<CanonicalRunRequest | null>(null);
+  readonly payloadCanonicalPaths = signal<string[]>([]);
   readonly presets = signal<RunPreset[]>([]);
   readonly catalogReady = signal(false);
   readonly presetMessages = signal<Record<RunKey, string | null>>({
@@ -1293,7 +1296,7 @@ export class StrategyLauncherPageComponent {
     this.setPayloadPreview(payload);
   }
 
-  copyPayload(): void {
+  copyPayloadUi(): void {
     const payload = this.payloadPreview();
     if (!payload) {
       return;
@@ -1306,7 +1309,20 @@ export class StrategyLauncherPageComponent {
     }
   }
 
-  exportPayload(): void {
+  copyPayloadCanonical(): void {
+    const payload = this.payloadCanonicalPreview();
+    if (!payload) {
+      return;
+    }
+    const text = JSON.stringify(payload, null, 2);
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(text).catch(err => {
+        console.error('[StrategyLauncher] Clipboard write failed', err);
+      });
+    }
+  }
+
+  exportPayloadUi(): void {
     const payload = this.payloadPreview();
     if (!payload) {
       return;
@@ -1315,7 +1331,21 @@ export class StrategyLauncherPageComponent {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `payload-${payload.runType}.json`;
+    link.download = `payload-ui-${payload.runType}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  exportPayloadCanonical(): void {
+    const payload = this.payloadCanonicalPreview();
+    if (!payload) {
+      return;
+    }
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `payload-canonical-${payload.spec_type}.json`;
     link.click();
     URL.revokeObjectURL(url);
   }
@@ -1323,6 +1353,9 @@ export class StrategyLauncherPageComponent {
   private setPayloadPreview(payload: RunRequestInput): void {
     this.payloadPreview.set(payload);
     this.payloadPreviewPaths.set(collectPaths(payload));
+    const canonical = mapRunRequestToCanonical(payload, { catalogVersion: this.catalogVersion });
+    this.payloadCanonicalPreview.set(canonical);
+    this.payloadCanonicalPaths.set(collectPaths(canonical));
   }
 
   formatValidationLabel(error: UiValidationError): string {

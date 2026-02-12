@@ -422,7 +422,7 @@
             <button mat-stroked-button type="button" (click)="previewSpec()" [disabled]="previewLoading()">
               Previsualiser (API)
             </button>
-            <button mat-stroked-button type="button" (click)="showPayloadPreview()">Voir payload (local)</button>
+            <button mat-stroked-button type="button" (click)="showPayloadPreview()">Voir payload (local/expert)</button>
           </div>
 
           <section class="preview-panel" *ngIf="previewErrors().length">
@@ -910,7 +910,7 @@
             <button mat-stroked-button type="button" (click)="previewSpec()" [disabled]="previewLoading()">
               Previsualiser (API)
             </button>
-            <button mat-stroked-button type="button" (click)="showPayloadPreview()">Voir payload (local)</button>
+            <button mat-stroked-button type="button" (click)="showPayloadPreview()">Voir payload (local/expert)</button>
           </div>
 
           <section class="preview-panel" *ngIf="previewErrors().length">
@@ -1263,7 +1263,7 @@
             <button mat-stroked-button type="button" (click)="previewSpec()" [disabled]="previewLoading()">
               Previsualiser (API)
             </button>
-            <button mat-stroked-button type="button" (click)="showPayloadPreview()">Voir payload (local)</button>
+            <button mat-stroked-button type="button" (click)="showPayloadPreview()">Voir payload (local/expert)</button>
           </div>
 
           <section class="preview-panel" *ngIf="previewErrors().length">
@@ -1623,7 +1623,7 @@
             <button mat-stroked-button type="button" (click)="previewSpec()" [disabled]="previewLoading()">
               Previsualiser (API)
             </button>
-            <button mat-stroked-button type="button" (click)="showPayloadPreview()">Voir payload (local)</button>
+            <button mat-stroked-button type="button" (click)="showPayloadPreview()">Voir payload (local/expert)</button>
           </div>
 
           <section class="preview-panel" *ngIf="previewErrors().length">
@@ -2002,7 +2002,7 @@
             <button mat-stroked-button type="button" (click)="previewSpec()" [disabled]="previewLoading()">
               Previsualiser (API)
             </button>
-            <button mat-stroked-button type="button" (click)="showPayloadPreview()">Voir payload (local)</button>
+            <button mat-stroked-button type="button" (click)="showPayloadPreview()">Voir payload (local/expert)</button>
           </div>
 
           <section class="preview-panel" *ngIf="previewErrors().length">
@@ -2054,23 +2054,39 @@
 <section class="payload-screen" *ngIf="payloadPreview() as payload">
   <header class="payload-header">
     <div>
-      <h2>Payload (local)</h2>
-      <p class="payload-subtitle">Angular -> Java</p>
-    </div>
-    <div class="payload-actions">
-      <button mat-stroked-button type="button" (click)="copyPayload()">Copy</button>
-      <button mat-stroked-button type="button" (click)="exportPayload()">Export</button>
+      <h2>Payloads (local/expert + canonical)</h2>
+      <p class="payload-subtitle">UI -> API</p>
     </div>
   </header>
   <div class="payload-grid">
     <section class="payload-panel">
-      <div class="preview-title">Payload JSON (readonly)</div>
+      <div class="preview-title">Payload metier (UI)</div>
+      <div class="payload-actions">
+        <button mat-stroked-button type="button" (click)="copyPayloadUi()">Copy</button>
+        <button mat-stroked-button type="button" (click)="exportPayloadUi()">Export</button>
+      </div>
       <pre class="preview-json">{{ payload | json }}</pre>
     </section>
     <section class="payload-panel">
-      <div class="preview-title">Paths</div>
+      <div class="preview-title">Payload canonical (API)</div>
+      <div class="payload-actions">
+        <button mat-stroked-button type="button" (click)="copyPayloadCanonical()">Copy</button>
+        <button mat-stroked-button type="button" (click)="exportPayloadCanonical()">Export</button>
+      </div>
+      <pre class="preview-json">{{ payloadCanonicalPreview() | json }}</pre>
+    </section>
+  </div>
+  <div class="payload-grid" *ngIf="payloadPreviewPaths().length || payloadCanonicalPaths().length">
+    <section class="payload-panel">
+      <div class="preview-title">Paths UI</div>
       <div class="payload-paths">
         <div class="preview-item" *ngFor="let path of payloadPreviewPaths()">{{ path }}</div>
+      </div>
+    </section>
+    <section class="payload-panel">
+      <div class="preview-title">Paths canonical</div>
+      <div class="payload-paths">
+        <div class="preview-item" *ngFor="let path of payloadCanonicalPaths()">{{ path }}</div>
       </div>
     </section>
   </div>

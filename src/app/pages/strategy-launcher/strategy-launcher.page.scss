@@ -252,6 +252,40 @@
   word-break: break-word;
 }
 
+.payload-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.payload-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.payload-panel {
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: #ffffff;
+  padding: 0.85rem 1rem 1rem;
+}
+
+.payload-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.6rem;
+}
+
+.payload-subtitle {
+  margin: 0.2rem 0 0;
+  color: #64748b;
+}
+
 .subtabs {
   display: flex;
   gap: 0.6rem;

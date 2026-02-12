@@ -31,6 +31,10 @@
         <span class="label">message</span>
         <span class="value">{{ status()?.message }}</span>
       </div>
+      <div class="status-row" *ngIf="terminalMessage()">
+        <span class="label">etat</span>
+        <span class="value">{{ terminalMessage() }}</span>
+      </div>
       <div class="error-panel" *ngIf="errorMessage()">
         <div class="error-title">Erreur</div>
         <div class="error-body">{{ errorMessage() }}</div>
@@ -39,6 +43,9 @@
         <div class="result-title">Resultat</div>
         <div class="result-body" *ngIf="resultLoading()">Chargement du resultat...</div>
         <div class="result-body" *ngIf="resultError()">{{ resultError() }}</div>
+        <div class="result-body" *ngIf="!result() && !resultLoading() && !resultError()">
+          Aucun resultat disponible pour ce statut terminal.
+        </div>
         <pre class="result-json" *ngIf="result()">{{ result() | json }}</pre>
       </div>
       <p class="hint">Le backend publiera prochainement le statut detaille.</p>
