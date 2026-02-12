@@ -947,25 +947,10 @@ export class StrategyLauncherPageComponent {
   }
 
   private runForSelection(key: RunKey): void {
-    switch (key) {
-      case 'dca':
-        this.runDca();
-        break;
-      case 'backtests':
-        this.runBacktest();
-        break;
-      case 'market-stats':
-        this.runMarketStats();
-        break;
-      case 'seasonality':
-        this.runSeasonality();
-        break;
-      case 'stress-tests':
-        this.runStressTests();
-        break;
-      default:
-        this.runDca();
-    }
+    const payload = this.buildRequestForTheme(key);
+    this.previewErrors.set([]);
+    this.previewResult.set(null);
+    this.setPayloadPreview(payload);
   }
 
   isFilterSupported(id: string): boolean {
@@ -2007,7 +1992,7 @@ export class StrategyLauncherPageComponent {
 
   resetDca(): void {
     this.dcaForm.reset(this.dcaDefaults);
-    this.runDca();
+    this.runForSelection('dca');
   }
 
   runBacktest(): void {
@@ -2020,7 +2005,7 @@ export class StrategyLauncherPageComponent {
 
   resetBacktest(): void {
     this.backtestForm.reset(this.backtestDefaults);
-    this.runBacktest();
+    this.runForSelection('backtests');
   }
 
   runMarketStats(): void {
@@ -2033,7 +2018,7 @@ export class StrategyLauncherPageComponent {
 
   resetMarketStats(): void {
     this.marketStatsForm.reset(this.statsDefaults);
-    this.runMarketStats();
+    this.runForSelection('market-stats');
   }
 
   runSeasonality(): void {
@@ -2046,7 +2031,7 @@ export class StrategyLauncherPageComponent {
 
   resetSeasonality(): void {
     this.seasonalityForm.reset(this.seasonalityDefaults);
-    this.runSeasonality();
+    this.runForSelection('seasonality');
   }
 
   runStressTests(): void {
@@ -2059,7 +2044,7 @@ export class StrategyLauncherPageComponent {
 
   resetStressTests(): void {
     this.stressForm.reset(this.stressDefaults);
-    this.runStressTests();
+    this.runForSelection('stress-tests');
   }
 
   private buildRunId(prefix: string): string {
