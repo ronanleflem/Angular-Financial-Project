@@ -427,7 +427,9 @@
 
           <section class="preview-panel" *ngIf="previewErrors().length">
             <div class="preview-title">Erreurs de validation</div>
-            <div class="preview-item" *ngFor="let err of previewErrors()">{{ err.path }} - {{ err.message }}</div>
+            <div class="preview-item" *ngFor="let err of previewErrors()">
+              {{ formatValidationLabel(err) }} - {{ formatValidationMessage(err) }}
+            </div>
           </section>
 
           <section class="preview-panel" *ngIf="previewResult() as result">
@@ -913,7 +915,9 @@
 
           <section class="preview-panel" *ngIf="previewErrors().length">
             <div class="preview-title">Erreurs de validation</div>
-            <div class="preview-item" *ngFor="let err of previewErrors()">{{ err.path }} - {{ err.message }}</div>
+            <div class="preview-item" *ngFor="let err of previewErrors()">
+              {{ formatValidationLabel(err) }} - {{ formatValidationMessage(err) }}
+            </div>
           </section>
 
           <section class="preview-panel" *ngIf="previewResult() as result">
@@ -1264,7 +1268,9 @@
 
           <section class="preview-panel" *ngIf="previewErrors().length">
             <div class="preview-title">Erreurs de validation</div>
-            <div class="preview-item" *ngFor="let err of previewErrors()">{{ err.path }} - {{ err.message }}</div>
+            <div class="preview-item" *ngFor="let err of previewErrors()">
+              {{ formatValidationLabel(err) }} - {{ formatValidationMessage(err) }}
+            </div>
           </section>
 
           <section class="preview-panel" *ngIf="previewResult() as result">
@@ -1622,7 +1628,9 @@
 
           <section class="preview-panel" *ngIf="previewErrors().length">
             <div class="preview-title">Erreurs de validation</div>
-            <div class="preview-item" *ngFor="let err of previewErrors()">{{ err.path }} - {{ err.message }}</div>
+            <div class="preview-item" *ngFor="let err of previewErrors()">
+              {{ formatValidationLabel(err) }} - {{ formatValidationMessage(err) }}
+            </div>
           </section>
 
           <section class="preview-panel" *ngIf="previewResult() as result">
@@ -1999,7 +2007,9 @@
 
           <section class="preview-panel" *ngIf="previewErrors().length">
             <div class="preview-title">Erreurs de validation</div>
-            <div class="preview-item" *ngFor="let err of previewErrors()">{{ err.path }} - {{ err.message }}</div>
+            <div class="preview-item" *ngFor="let err of previewErrors()">
+              {{ formatValidationLabel(err) }} - {{ formatValidationMessage(err) }}
+            </div>
           </section>
 
           <section class="preview-panel" *ngIf="previewResult() as result">

@@ -11,11 +11,15 @@
       </div>
       <div class="status-row">
         <span class="label">status</span>
-        <span class="status-pill" [class.pending]="status()?.status === 'PENDING'"
-          [class.running]="status()?.status === 'RUNNING'"
-          [class.done]="status()?.status === 'DONE'"
-          [class.failed]="status()?.status === 'FAILED'">
-          {{ status()?.status || (loading() ? 'LOADING' : 'UNKNOWN') }}
+        <span
+          class="status-pill"
+          [class.queued]="uiStatus() === 'queued'"
+          [class.running]="uiStatus() === 'running'"
+          [class.succeeded]="uiStatus() === 'succeeded'"
+          [class.failed]="uiStatus() === 'failed'"
+          [class.canceled]="uiStatus() === 'canceled'"
+        >
+          {{ formatStatusLabel() || (loading() ? 'LOADING' : 'UNKNOWN') }}
         </span>
         <span class="polling-indicator" *ngIf="polling()">Polling...</span>
       </div>
@@ -31,11 +35,26 @@
         <div class="error-title">Erreur</div>
         <div class="error-body">{{ errorMessage() }}</div>
       </div>
+      <div class="result-panel" *ngIf="result() || resultLoading() || resultError()">
+        <div class="result-title">Resultat</div>
+        <div class="result-body" *ngIf="resultLoading()">Chargement du resultat...</div>
+        <div class="result-body" *ngIf="resultError()">{{ resultError() }}</div>
+        <pre class="result-json" *ngIf="result()">{{ result() | json }}</pre>
+      </div>
       <p class="hint">Le backend publiera prochainement le statut detaille.</p>
       <div class="actions">
         <button mat-stroked-button type="button" (click)="goBack()">Retour</button>
         <button mat-flat-button color="primary" type="button" (click)="refreshStatus()" [disabled]="loading()">
           Recharger
+        </button>
+        <button
+          mat-stroked-button
+          color="warn"
+          type="button"
+          (click)="cancelRun()"
+          [disabled]="!canCancel() || canceling()"
+        >
+          Annuler
         </button>
       </div>
     </mat-card-content>

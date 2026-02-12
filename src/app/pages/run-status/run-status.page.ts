@@ -3,10 +3,11 @@ import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, inject, signal 
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
-import { RunsService, RunStatusResponse } from '../../services/runs.service';
+import { RunsService, RunResultResponse, RunStatusResponse } from '../../services/runs.service';
 import { catchError, of, switchMap, timer } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subscription } from 'rxjs';
+import { UiRunStatus, formatRunStatusLabel, isTerminalStatus, normalizeRunStatus } from '../../utils/run-status';
 
 @Component({
   selector: 'app-run-status-page',
@@ -28,9 +29,15 @@ export class RunStatusPageComponent implements OnInit {
   private pollSub?: Subscription;
   requestId = '';
   readonly status = signal<RunStatusResponse | null>(null);
+  readonly uiStatus = signal<UiRunStatus>('unknown');
   readonly loading = signal(false);
   readonly errorMessage = signal<string | null>(null);
   readonly polling = signal(false);
+  readonly result = signal<RunResultResponse | null>(null);
+  readonly resultLoading = signal(false);
+  readonly resultError = signal<string | null>(null);
+  readonly canceling = signal(false);
+  private resultForRequestId: string | null = null;
 
   ngOnInit(): void {
     this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(params => {
@@ -38,9 +45,12 @@ export class RunStatusPageComponent implements OnInit {
       if (!this.requestId) {
         this.stopPolling();
         this.status.set(null);
+        this.uiStatus.set('unknown');
+        this.resetResultState();
         this.errorMessage.set('requestId manquant.');
         return;
       }
+      this.resetResultState();
       this.startPolling(this.requestId);
     });
   }
@@ -71,9 +81,10 @@ export class RunStatusPageComponent implements OnInit {
           this.loading.set(false);
           return;
         }
-        this.status.set(response);
+        this.applyStatus(response);
         this.loading.set(false);
         this.errorMessage.set(null);
+        this.checkTerminalAndLoadResult();
       });
   }
 
@@ -103,11 +114,11 @@ export class RunStatusPageComponent implements OnInit {
           this.loading.set(false);
           return;
         }
-        this.status.set(response);
+        this.applyStatus(response);
         this.loading.set(false);
         this.errorMessage.set(null);
 
-        if (response.status === 'DONE' || response.status === 'FAILED') {
+        if (this.checkTerminalAndLoadResult()) {
           this.stopPolling();
         }
       });
@@ -117,5 +128,93 @@ export class RunStatusPageComponent implements OnInit {
     this.pollSub?.unsubscribe();
     this.pollSub = undefined;
     this.polling.set(false);
+  }
+
+  cancelRun(): void {
+    if (!this.requestId || this.canceling() || isTerminalStatus(this.uiStatus())) {
+      return;
+    }
+    this.canceling.set(true);
+    this.runsService
+      .cancelRun(this.requestId)
+      .pipe(
+        catchError(err => {
+          const status = err?.status ? `HTTP ${err.status}` : 'HTTP error';
+          const message = err?.message ?? 'Erreur inconnue';
+          this.errorMessage.set(`[${status}] ${message}`);
+          console.error('[RunStatus] Cancel failed', { requestId: this.requestId, error: err });
+          return of(null);
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe(response => {
+        this.canceling.set(false);
+        if (!response) {
+          return;
+        }
+        this.applyStatus(response as RunStatusResponse);
+        if (this.checkTerminalAndLoadResult()) {
+          this.stopPolling();
+        }
+      });
+  }
+
+  canCancel(): boolean {
+    return Boolean(this.requestId) && !isTerminalStatus(this.uiStatus());
+  }
+
+  formatStatusLabel(): string {
+    return formatRunStatusLabel(this.uiStatus(), this.status()?.status ?? null);
+  }
+
+  private applyStatus(response: RunStatusResponse): void {
+    this.status.set(response);
+    this.uiStatus.set(normalizeRunStatus(response.status));
+  }
+
+  private checkTerminalAndLoadResult(): boolean {
+    const status = this.uiStatus();
+    if (!isTerminalStatus(status)) {
+      return false;
+    }
+    if (status === 'succeeded') {
+      this.loadResult(this.requestId);
+    }
+    return true;
+  }
+
+  private loadResult(requestId: string): void {
+    if (!requestId || this.resultLoading() || this.resultForRequestId === requestId) {
+      return;
+    }
+    this.resultLoading.set(true);
+    this.resultError.set(null);
+    this.runsService
+      .getRunResult(requestId)
+      .pipe(
+        catchError(err => {
+          const status = err?.status ? `HTTP ${err.status}` : 'HTTP error';
+          const message = err?.message ?? 'Erreur inconnue';
+          this.resultError.set(`[${status}] ${message}`);
+          console.error('[RunStatus] Result fetch failed', { requestId, error: err });
+          return of(null);
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe(response => {
+        this.resultLoading.set(false);
+        if (!response) {
+          return;
+        }
+        this.result.set(response);
+        this.resultForRequestId = requestId;
+      });
+  }
+
+  private resetResultState(): void {
+    this.result.set(null);
+    this.resultError.set(null);
+    this.resultLoading.set(false);
+    this.resultForRequestId = null;
   }
 }

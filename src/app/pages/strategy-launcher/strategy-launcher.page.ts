@@ -34,6 +34,13 @@ import { PresetsService, RunPreset } from '../../services/presets.service';
 import { RunsService } from '../../services/runs.service';
 import { ParameterCatalogService } from '../../services/parameter-catalog.service';
 import { finalize } from 'rxjs';
+import {
+  BackendMappingContext,
+  BackendValidationError,
+  RunTheme,
+  mapBackendFieldToControlName,
+  parseBackendValidationErrors
+} from '../../utils/backend-validation';
 
 const NUMBER_FORMAT = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 });
 const CURRENCY_FORMAT = new Intl.NumberFormat('en-US', {
@@ -87,6 +94,14 @@ type RunKey = 'dca' | 'backtests' | 'market-stats' | 'seasonality' | 'stress-tes
 type DcaStrategyType = 'dca_equity' | 'dca_etf' | 'crypto_grid';
 type DcaParamTab = 'params' | 'stress';
 type BacktestParamTab = 'params' | 'stress';
+
+interface UiValidationError {
+  source: 'local' | 'backend';
+  path?: string;
+  field?: string;
+  code?: string;
+  message: string;
+}
 
 interface StrategyMetric {
   label: string;
@@ -892,7 +907,7 @@ export class StrategyLauncherPageComponent {
   readonly selectedRun = signal<RunKey>('dca');
   readonly selectedDcaTab = signal<DcaParamTab>('params');
   readonly selectedBacktestTab = signal<BacktestParamTab>('params');
-  readonly previewErrors = signal<ValidationError[]>([]);
+  readonly previewErrors = signal<UiValidationError[]>([]);
   readonly previewResult = signal<SpecPreviewResponse | null>(null);
   readonly previewLoading = signal(false);
   readonly submitLoading = signal(false);
@@ -1202,10 +1217,11 @@ export class StrategyLauncherPageComponent {
     if (this.previewLoading()) {
       return;
     }
+    this.clearBackendErrors(this.getFormForTheme(this.selectedRun()));
     const payload = this.buildRunRequest();
     this.setPayloadPreview(payload);
     const errors = validateRunRequest(payload);
-    this.previewErrors.set(errors);
+    this.previewErrors.set(this.mapLocalErrors(errors));
     this.previewResult.set(null);
 
     if (errors.length > 0) {
@@ -1221,8 +1237,13 @@ export class StrategyLauncherPageComponent {
           this.previewResult.set(response);
         },
         error: err => {
+          const backendErrors = parseBackendValidationErrors(err);
+          if (backendErrors.length > 0) {
+            this.applyBackendErrors(backendErrors);
+            return;
+          }
           console.error('[StrategyLauncher] Preview failed', err);
-          this.previewErrors.set([{ path: 'server', message: 'preview failed' }]);
+          this.previewErrors.set([{ source: 'local', path: 'server', message: 'preview failed' }]);
         }
       });
   }
@@ -1231,10 +1252,11 @@ export class StrategyLauncherPageComponent {
     if (this.submitLoading()) {
       return;
     }
+    this.clearBackendErrors(this.getFormForTheme(this.selectedRun()));
     const payload = this.buildRunRequest();
     this.setPayloadPreview(payload);
     const errors = validateRunRequest(payload);
-    this.previewErrors.set(errors);
+    this.previewErrors.set(this.mapLocalErrors(errors));
     this.previewResult.set(null);
 
     if (errors.length > 0) {
@@ -1243,20 +1265,25 @@ export class StrategyLauncherPageComponent {
 
     this.submitLoading.set(true);
     this.runsService
-      .submitRun(payload)
+      .submitRun(payload, { catalogVersion: this.catalogVersion })
       .pipe(finalize(() => this.submitLoading.set(false)))
       .subscribe({
         next: response => {
-          const requestId = response?.requestId;
+          const requestId = response?.requestId ?? response?.runId;
           if (!requestId) {
-            this.previewErrors.set([{ path: 'server', message: 'requestId manquant' }]);
+            this.previewErrors.set([{ source: 'local', path: 'server', message: 'requestId manquant' }]);
             return;
           }
           this.router.navigate(['/runs', requestId]);
         },
         error: err => {
+          const backendErrors = parseBackendValidationErrors(err);
+          if (backendErrors.length > 0) {
+            this.applyBackendErrors(backendErrors);
+            return;
+          }
           console.error('[StrategyLauncher] Run submission failed', err);
-          this.previewErrors.set([{ path: 'server', message: 'soumission echouee' }]);
+          this.previewErrors.set([{ source: 'local', path: 'server', message: 'soumission echouee' }]);
         }
       });
   }
@@ -1296,6 +1323,75 @@ export class StrategyLauncherPageComponent {
   private setPayloadPreview(payload: RunRequestInput): void {
     this.payloadPreview.set(payload);
     this.payloadPreviewPaths.set(collectPaths(payload));
+  }
+
+  formatValidationLabel(error: UiValidationError): string {
+    return error.field ?? error.path ?? 'global';
+  }
+
+  formatValidationMessage(error: UiValidationError): string {
+    if (error.message && error.code && error.message !== error.code) {
+      return `${error.message} (${error.code})`;
+    }
+    return error.message || error.code || 'Erreur de validation';
+  }
+
+  private mapLocalErrors(errors: ValidationError[]): UiValidationError[] {
+    return errors.map(err => ({ source: 'local', path: err.path, message: err.message }));
+  }
+
+  private applyBackendErrors(errors: BackendValidationError[]): void {
+    const runTheme = this.selectedRun() as RunTheme;
+    const form = this.getFormForTheme(this.selectedRun());
+    const context = this.buildBackendMappingContext();
+    const unmapped: UiValidationError[] = [];
+
+    errors.forEach(err => {
+      const controlName = mapBackendFieldToControlName(err.field, runTheme, context);
+      if (!controlName) {
+        unmapped.push(this.toUiBackendError(err));
+        return;
+      }
+      const control = form.get(controlName);
+      if (!control) {
+        unmapped.push(this.toUiBackendError(err));
+        return;
+      }
+      const existing = control.errors ?? {};
+      control.setErrors({ ...existing, backend: { code: err.code, message: err.message } });
+      control.markAsTouched();
+    });
+
+    this.previewErrors.set(unmapped);
+  }
+
+  private toUiBackendError(error: BackendValidationError): UiValidationError {
+    return {
+      source: 'backend',
+      field: error.field,
+      code: error.code,
+      message: error.message || error.code || 'Erreur de validation'
+    };
+  }
+
+  private clearBackendErrors(form: UntypedFormGroup): void {
+    Object.values(form.controls).forEach(control => {
+      const errors = control.errors;
+      if (!errors || !errors['backend']) {
+        return;
+      }
+      const { backend, ...rest } = errors;
+      control.setErrors(Object.keys(rest).length ? rest : null);
+    });
+  }
+
+  private buildBackendMappingContext(): BackendMappingContext {
+    return {
+      marketEventId: String(this.marketStatsForm.get('eventId')?.value ?? ''),
+      marketConditionId: String(this.marketStatsForm.get('conditionId')?.value ?? ''),
+      marketTargetId: String(this.marketStatsForm.get('targetId')?.value ?? ''),
+      seasonalityProfileId: String(this.seasonalityForm.get('profileId')?.value ?? '')
+    };
   }
 
   private buildDcaRequest(): RunRequestInput {
