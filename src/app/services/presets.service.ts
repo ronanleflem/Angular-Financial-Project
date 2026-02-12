@@ -10,7 +10,9 @@ export interface RunPreset {
   catalogVersion: string;
   createdAt: string;
   formValue: Record<string, unknown>;
-  payload: RunRequestInput;
+  payload?: RunRequestInput;
+  appVersion?: string;
+  schemaVersion?: number;
 }
 
 interface SavePresetInput {
@@ -19,6 +21,7 @@ interface SavePresetInput {
   catalogVersion: string;
   formValue: Record<string, unknown>;
   payload: RunRequestInput;
+  appVersion?: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -44,7 +47,9 @@ export class PresetsService {
       catalogVersion: input.catalogVersion,
       createdAt: now,
       formValue: input.formValue,
-      payload: input.payload
+      payload: input.payload,
+      appVersion: input.appVersion,
+      schemaVersion: 1
     };
 
     const withoutSameName = presets.filter(

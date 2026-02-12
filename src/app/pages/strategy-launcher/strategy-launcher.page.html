@@ -402,7 +402,13 @@
                 <mat-label>Charger un preset</mat-label>
                 <mat-select formControlName="presetId">
                   <mat-option *ngFor="let preset of presetsByTheme('dca')" [value]="preset.id">
-                    {{ preset.name }} ({{ preset.catalogVersion }})
+                    <span class="preset-option">
+                      <span>{{ preset.name }} ({{ preset.catalogVersion }})</span>
+                      <span class="preset-badge" [class.warn]="presetCompatibility(preset) === 'warning'"
+                        [class.bad]="presetCompatibility(preset) === 'incompatible'">
+                        {{ presetCompatibility(preset) }}
+                      </span>
+                    </span>
                   </mat-option>
                 </mat-select>
               </mat-form-field>
@@ -890,7 +896,13 @@
                 <mat-label>Charger un preset</mat-label>
                 <mat-select formControlName="presetId">
                   <mat-option *ngFor="let preset of presetsByTheme('backtests')" [value]="preset.id">
-                    {{ preset.name }} ({{ preset.catalogVersion }})
+                    <span class="preset-option">
+                      <span>{{ preset.name }} ({{ preset.catalogVersion }})</span>
+                      <span class="preset-badge" [class.warn]="presetCompatibility(preset) === 'warning'"
+                        [class.bad]="presetCompatibility(preset) === 'incompatible'">
+                        {{ presetCompatibility(preset) }}
+                      </span>
+                    </span>
                   </mat-option>
                 </mat-select>
               </mat-form-field>
@@ -1243,7 +1255,13 @@
                 <mat-label>Charger un preset</mat-label>
                 <mat-select formControlName="presetId">
                   <mat-option *ngFor="let preset of presetsByTheme('market-stats')" [value]="preset.id">
-                    {{ preset.name }} ({{ preset.catalogVersion }})
+                    <span class="preset-option">
+                      <span>{{ preset.name }} ({{ preset.catalogVersion }})</span>
+                      <span class="preset-badge" [class.warn]="presetCompatibility(preset) === 'warning'"
+                        [class.bad]="presetCompatibility(preset) === 'incompatible'">
+                        {{ presetCompatibility(preset) }}
+                      </span>
+                    </span>
                   </mat-option>
                 </mat-select>
               </mat-form-field>
@@ -1603,7 +1621,13 @@
                 <mat-label>Charger un preset</mat-label>
                 <mat-select formControlName="presetId">
                   <mat-option *ngFor="let preset of presetsByTheme('seasonality')" [value]="preset.id">
-                    {{ preset.name }} ({{ preset.catalogVersion }})
+                    <span class="preset-option">
+                      <span>{{ preset.name }} ({{ preset.catalogVersion }})</span>
+                      <span class="preset-badge" [class.warn]="presetCompatibility(preset) === 'warning'"
+                        [class.bad]="presetCompatibility(preset) === 'incompatible'">
+                        {{ presetCompatibility(preset) }}
+                      </span>
+                    </span>
                   </mat-option>
                 </mat-select>
               </mat-form-field>
@@ -1982,7 +2006,13 @@
                 <mat-label>Charger un preset</mat-label>
                 <mat-select formControlName="presetId">
                   <mat-option *ngFor="let preset of presetsByTheme('stress-tests')" [value]="preset.id">
-                    {{ preset.name }} ({{ preset.catalogVersion }})
+                    <span class="preset-option">
+                      <span>{{ preset.name }} ({{ preset.catalogVersion }})</span>
+                      <span class="preset-badge" [class.warn]="presetCompatibility(preset) === 'warning'"
+                        [class.bad]="presetCompatibility(preset) === 'incompatible'">
+                        {{ presetCompatibility(preset) }}
+                      </span>
+                    </span>
                   </mat-option>
                 </mat-select>
               </mat-form-field>

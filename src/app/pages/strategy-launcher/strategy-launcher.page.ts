@@ -42,6 +42,8 @@ import {
   mapBackendFieldToControlName,
   parseBackendValidationErrors
 } from '../../utils/backend-validation';
+import { mergePresetFormValue } from '../../utils/preset-form-fallback';
+import { PresetCompatibility, evaluatePresetCompatibility } from '../../utils/preset-version';
 
 const NUMBER_FORMAT = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 });
 const CURRENCY_FORMAT = new Intl.NumberFormat('en-US', {
@@ -989,6 +991,10 @@ export class StrategyLauncherPageComponent {
     return this.presetMessages()[theme];
   }
 
+  presetCompatibility(preset: RunPreset): PresetCompatibility {
+    return evaluatePresetCompatibility(this.catalogVersion, preset.catalogVersion).status;
+  }
+
   savePreset(theme: RunKey): void {
     const form = this.getFormForTheme(theme);
     const name = String(form.get('presetName')?.value ?? '').trim();
@@ -1021,17 +1027,23 @@ export class StrategyLauncherPageComponent {
       this.setPresetMessage(theme, 'Preset introuvable.');
       return;
     }
-    if (preset.catalogVersion !== this.catalogVersion) {
+    const compatibility = evaluatePresetCompatibility(this.catalogVersion, preset.catalogVersion);
+    if (compatibility.status === 'incompatible') {
       this.setPresetMessage(
         theme,
-        `Version incompatible: ${preset.catalogVersion} (attendu ${this.catalogVersion}).`
+        `Preset incompatible (${preset.catalogVersion} vs ${this.catalogVersion}).`
       );
       return;
     }
-    const normalized = this.normalizePresetFormValue(theme, preset.formValue);
+    const merged = mergePresetFormValue(theme, preset.formValue, preset.payload);
+    const normalized = this.normalizePresetFormValue(theme, merged);
     form.reset(normalized);
     form.get('presetId')?.setValue(preset.id);
-    this.setPresetMessage(theme, `Preset "${preset.name}" charge.`);
+    if (compatibility.status === 'warning') {
+      this.setPresetMessage(theme, `Preset "${preset.name}" charge avec avertissement. ${compatibility.message}`);
+    } else {
+      this.setPresetMessage(theme, `Preset "${preset.name}" charge.`);
+    }
   }
 
   private setPresetMessage(theme: RunKey, message: string | null): void {
