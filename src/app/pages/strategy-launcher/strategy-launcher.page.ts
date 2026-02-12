@@ -405,6 +405,7 @@ export class StrategyLauncherPageComponent {
     feePct: 0.1,
     reinvestDividends: true,
     broker: 'BINANCE',
+    includeDcaAdvanced: false,
     strategyType: 'dca_equity' as DcaStrategyType,
     gridPresets: ['grid_balanced'],
     drawdownReference: 'rolling_high',
@@ -417,6 +418,7 @@ export class StrategyLauncherPageComponent {
     forceCloseEnd: false,
     cryptoTpSlPreset: 'tp_3_sl_1.5',
     universe: ['SPY', 'AAPL'],
+    includeDcaUniverse: false,
     filters: ['volatility_guard'],
     filterRules: ['momentum_alignment'],
     filterRuleMinScore: 60,
@@ -429,6 +431,7 @@ export class StrategyLauncherPageComponent {
     mcHorizonDays: 180,
     mcShockVolPct: 22,
     mcSeed: 7,
+    includePerformance: false,
     dca_filter_volatility_guard_window: 30,
     dca_filter_volatility_guard_threshold: 22,
     dca_filter_trend_regime_lookback: 120,
@@ -498,7 +501,8 @@ export class StrategyLauncherPageComponent {
     mcPaths: 800,
     mcHorizonDays: 120,
     mcShockVolPct: 18,
-    mcSeed: 11
+    mcSeed: 11,
+    includePerformance: false
   } as const;
 
   private readonly statsDefaults = {
@@ -575,7 +579,8 @@ export class StrategyLauncherPageComponent {
     profile_by_month_rolling: 'off',
     profile_by_month_normalize: 'none',
     profile_by_session_sessions: 'Asia/Europe/US',
-    profile_by_session_min_bars: 200
+    profile_by_session_min_bars: 200,
+    includePerformance: false
   } as const;
 
   private readonly stressDefaults = {
@@ -648,6 +653,7 @@ export class StrategyLauncherPageComponent {
       feePct: [this.dcaDefaults.feePct, [Validators.min(0)]],
       reinvestDividends: [this.dcaDefaults.reinvestDividends],
       broker: [this.dcaDefaults.broker],
+      includeDcaAdvanced: [this.dcaDefaults.includeDcaAdvanced],
       strategyType: [this.dcaDefaults.strategyType, Validators.required],
       gridPresets: [this.dcaDefaults.gridPresets],
       drawdownReference: [this.dcaDefaults.drawdownReference],
@@ -660,6 +666,7 @@ export class StrategyLauncherPageComponent {
       forceCloseEnd: [this.dcaDefaults.forceCloseEnd],
       cryptoTpSlPreset: [this.dcaDefaults.cryptoTpSlPreset],
       universe: [this.dcaDefaults.universe],
+      includeDcaUniverse: [this.dcaDefaults.includeDcaUniverse],
       filters: [this.dcaDefaults.filters],
       filterRules: [this.dcaDefaults.filterRules],
       filterRuleMinScore: [this.dcaDefaults.filterRuleMinScore, [Validators.min(0)]],
@@ -672,6 +679,7 @@ export class StrategyLauncherPageComponent {
       mcHorizonDays: [this.dcaDefaults.mcHorizonDays, [Validators.min(1)]],
       mcShockVolPct: [this.dcaDefaults.mcShockVolPct, [Validators.min(0)]],
       mcSeed: [this.dcaDefaults.mcSeed, [Validators.min(0)]],
+      includePerformance: [this.dcaDefaults.includePerformance],
       dca_filter_volatility_guard_window: [this.dcaDefaults.dca_filter_volatility_guard_window, [Validators.min(1)]],
       dca_filter_volatility_guard_threshold: [this.dcaDefaults.dca_filter_volatility_guard_threshold, [Validators.min(1)]],
       dca_filter_trend_regime_lookback: [this.dcaDefaults.dca_filter_trend_regime_lookback, [Validators.min(1)]],
@@ -753,6 +761,7 @@ export class StrategyLauncherPageComponent {
       mcHorizonDays: [this.backtestDefaults.mcHorizonDays, [Validators.min(1)]],
       mcShockVolPct: [this.backtestDefaults.mcShockVolPct, [Validators.min(0)]],
       mcSeed: [this.backtestDefaults.mcSeed, [Validators.min(0)]],
+      includePerformance: [this.backtestDefaults.includePerformance],
       presetName: [''],
       presetId: ['']
     },
@@ -836,6 +845,7 @@ export class StrategyLauncherPageComponent {
     profile_by_month_normalize: [this.seasonalityDefaults.profile_by_month_normalize],
     profile_by_session_sessions: [this.seasonalityDefaults.profile_by_session_sessions],
     profile_by_session_min_bars: [this.seasonalityDefaults.profile_by_session_min_bars, [Validators.min(1)]],
+    includePerformance: [this.seasonalityDefaults.includePerformance],
     presetName: [''],
     presetId: ['']
   });
@@ -1437,14 +1447,18 @@ export class StrategyLauncherPageComponent {
       data: {
         symbol: String(v.symbol ?? this.dcaDefaults.symbol),
         timeframe: String(v.timeframe ?? this.dcaDefaults.timeframe),
-        frequency: String(v.frequency ?? this.dcaDefaults.frequency),
-        amount: Number(v.amount ?? this.dcaDefaults.amount),
         startDate: toIsoDate(v.startDate ?? this.dcaDefaults.startDate),
         endDate: toIsoDate(v.endDate ?? this.dcaDefaults.endDate),
-        feePct: Number(v.feePct ?? this.dcaDefaults.feePct),
-        broker: String(v.broker ?? this.dcaDefaults.broker),
-        reinvestDividends: Boolean(v.reinvestDividends ?? this.dcaDefaults.reinvestDividends),
-        universe: this.buildDcaUniverse(v)
+        ...(v.includeDcaAdvanced
+          ? {
+              frequency: String(v.frequency ?? this.dcaDefaults.frequency),
+              amount: Number(v.amount ?? this.dcaDefaults.amount),
+              feePct: Number(v.feePct ?? this.dcaDefaults.feePct),
+              broker: String(v.broker ?? this.dcaDefaults.broker),
+              reinvestDividends: Boolean(v.reinvestDividends ?? this.dcaDefaults.reinvestDividends)
+            }
+          : {}),
+        universe: v.includeDcaUniverse ? this.buildDcaUniverse(v) : undefined
       },
       strategy: params,
       filters: this.buildFiltersBlock(
@@ -1454,14 +1468,16 @@ export class StrategyLauncherPageComponent {
         v.filterRuleMinScorePct,
         'dca_'
       ),
-      performance: this.buildPerformanceBlock(
-        v.initialCapital,
-        v.capitalPerUnit,
-        v.maxCapitalPerTrade,
-        undefined,
-        undefined,
-        this.buildDcaStressTests(v)
-      )
+      performance: v.includePerformance
+        ? this.buildPerformanceBlock(
+            v.initialCapital,
+            v.capitalPerUnit,
+            v.maxCapitalPerTrade,
+            undefined,
+            undefined,
+            this.buildDcaStressTests(v)
+          )
+        : undefined
     };
   }
 
@@ -1493,14 +1509,16 @@ export class StrategyLauncherPageComponent {
         v.filterRuleMinScore,
         v.filterRuleMinScorePct
       ),
-      performance: this.buildPerformanceBlock(
-        v.capital,
-        undefined,
-        undefined,
-        v.riskPct,
-        v.riskFreeRate,
-        this.buildBacktestStressTests(v)
-      )
+      performance: v.includePerformance
+        ? this.buildPerformanceBlock(
+            v.capital,
+            undefined,
+            undefined,
+            v.riskPct,
+            v.riskFreeRate,
+            this.buildBacktestStressTests(v)
+          )
+        : undefined
     };
   }
 
@@ -1534,7 +1552,7 @@ export class StrategyLauncherPageComponent {
         normalize: Boolean(v.normalize ?? this.seasonalityDefaults.normalize)
       },
       seasonality: this.buildSeasonalityBlock(v),
-      performance: this.buildPerformanceBlock(undefined, undefined, undefined)
+      performance: v.includePerformance ? this.buildPerformanceBlock(undefined, undefined, undefined) : undefined
     };
   }
 

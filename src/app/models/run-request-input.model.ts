@@ -66,8 +66,8 @@ export interface CryptoGridParams {
 }
 
 export interface DcaDataBlock extends DataBlockBase, PeriodBlock {
-  frequency: 'weekly' | 'biweekly' | 'monthly' | string;
-  amount: number;
+  frequency?: 'weekly' | 'biweekly' | 'monthly' | string;
+  amount?: number;
   feePct?: number;
   broker?: string;
   reinvestDividends?: boolean;
@@ -325,10 +325,12 @@ export function validateRunRequest(input: RunRequestInput): ValidationError[] {
     case 'dca':
       validateRequired(errors, 'data.symbol', input.data.symbol);
       validateRequired(errors, 'data.timeframe', input.data.timeframe);
-      validateRequired(errors, 'data.frequency', input.data.frequency);
+      if (input.data.frequency !== undefined) {
+        validateRequired(errors, 'data.frequency', input.data.frequency);
+      }
       validateRequired(errors, 'data.startDate', input.data.startDate);
       validateRequired(errors, 'data.endDate', input.data.endDate);
-      if (input.data.amount <= 0) {
+      if (input.data.amount !== undefined && input.data.amount <= 0) {
         errors.push({ path: 'data.amount', message: 'amount must be > 0' });
       }
       validateDateOrder(errors, 'data.startDate', 'data.endDate', input.data.startDate, input.data.endDate);

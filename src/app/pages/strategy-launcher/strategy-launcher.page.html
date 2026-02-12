@@ -52,18 +52,6 @@
             </mat-select>
           </mat-form-field>
 
-          <mat-form-field appearance="outline">
-            <mat-label>Frequence</mat-label>
-            <mat-select formControlName="frequency">
-              <mat-option *ngFor="let freq of dcaFrequencies" [value]="freq.value">{{ freq.label }}</mat-option>
-            </mat-select>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Montant par achat</mat-label>
-            <input matInput type="number" formControlName="amount" min="10" />
-          </mat-form-field>
-
           <mat-form-field appearance="outline" class="range-field">
             <mat-label>Periode</mat-label>
             <mat-date-range-input [rangePicker]="dcaRangePicker">
@@ -196,6 +184,10 @@
                   </mat-expansion-panel-header>
               <div class="param-section">
                 <div class="param-title">Universe</div>
+                <div class="checkbox-row">
+                  <mat-checkbox formControlName="includeDcaUniverse">Inclure universe</mat-checkbox>
+                </div>
+                <ng-container *ngIf="dcaForm.get('includeDcaUniverse')?.value">
                 <div class="param-grid">
                   <mat-form-field appearance="outline">
                     <mat-label>universe[]</mat-label>
@@ -206,6 +198,7 @@
                     </mat-select>
                   </mat-form-field>
                 </div>
+                </ng-container>
               </div>
                 </mat-expansion-panel>
 
@@ -322,6 +315,9 @@
                   </mat-expansion-panel-header>
               <div class="param-section">
                 <div class="param-title">Performance</div>
+                <div class="checkbox-row">
+                  <mat-checkbox formControlName="includePerformance">Inclure performance</mat-checkbox>
+                </div>
                 <div class="param-grid">
                   <mat-form-field appearance="outline">
                     <mat-label>Initial capital</mat-label>
@@ -338,6 +334,59 @@
                     <input matInput type="number" formControlName="maxCapitalPerTrade" min="0" />
                   </mat-form-field>
                 </div>
+              </div>
+                </mat-expansion-panel>
+
+                <mat-expansion-panel>
+                  <mat-expansion-panel-header>
+                    <mat-panel-title>Options avancees DCA</mat-panel-title>
+                  </mat-expansion-panel-header>
+              <div class="param-section">
+                <div class="param-title">Options avancees DCA</div>
+                <div class="checkbox-row">
+                  <mat-checkbox formControlName="includeDcaAdvanced">
+                    Inclure options avancees DCA
+                  </mat-checkbox>
+                  <span class="not-implemented" *ngIf="!dcaForm.get('includeDcaAdvanced')?.value">Not implemented yet</span>
+                </div>
+                <ng-container *ngIf="dcaForm.get('includeDcaAdvanced')?.value">
+                  <div class="param-grid">
+                    <mat-form-field appearance="outline">
+                      <mat-label>Frequence</mat-label>
+                      <mat-select formControlName="frequency" [disabled]="true">
+                        <mat-option *ngFor="let freq of dcaFrequencies" [value]="freq.value">{{ freq.label }}</mat-option>
+                      </mat-select>
+                      <mat-hint class="not-implemented">Not implemented yet</mat-hint>
+                    </mat-form-field>
+
+                    <mat-form-field appearance="outline">
+                      <mat-label>Montant par achat</mat-label>
+                      <input matInput type="number" formControlName="amount" min="10" [disabled]="true" />
+                      <mat-hint class="not-implemented">Not implemented yet</mat-hint>
+                    </mat-form-field>
+
+                    <mat-form-field appearance="outline">
+                      <mat-label>Frais (%)</mat-label>
+                      <input matInput type="number" formControlName="feePct" min="0" step="0.01" [disabled]="true" />
+                      <mat-hint class="not-implemented">Not implemented yet</mat-hint>
+                    </mat-form-field>
+
+                    <mat-form-field appearance="outline">
+                      <mat-label>Broker</mat-label>
+                      <mat-select formControlName="broker" [disabled]="true">
+                        <mat-option *ngFor="let broker of brokers" [value]="broker">{{ broker }}</mat-option>
+                      </mat-select>
+                      <mat-hint class="not-implemented">Not implemented yet</mat-hint>
+                    </mat-form-field>
+
+                    <div class="checkbox-row">
+                      <mat-checkbox formControlName="reinvestDividends" [disabled]="true">
+                        Reinvestir dividendes
+                      </mat-checkbox>
+                      <span class="not-implemented">Not implemented yet</span>
+                    </div>
+                  </div>
+                </ng-container>
               </div>
                 </mat-expansion-panel>
               </mat-accordion>
@@ -375,21 +424,6 @@
             </ng-container>
           </section>
 
-          <mat-form-field appearance="outline">
-            <mat-label>Frais (%)</mat-label>
-            <input matInput type="number" formControlName="feePct" min="0" step="0.01" />
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Broker</mat-label>
-            <mat-select formControlName="broker">
-              <mat-option *ngFor="let broker of brokers" [value]="broker">{{ broker }}</mat-option>
-            </mat-select>
-          </mat-form-field>
-
-          <div class="checkbox-row">
-            <mat-checkbox formControlName="reinvestDividends">Reinvestir dividendes</mat-checkbox>
-          </div>
 
           <section class="preset-panel">
             <div class="preset-title">Presets</div>
@@ -834,6 +868,9 @@
                   </mat-expansion-panel-header>
                   <div class="param-section">
                     <div class="param-title">Performance</div>
+                    <div class="checkbox-row">
+                      <mat-checkbox formControlName="includePerformance">Inclure performance</mat-checkbox>
+                    </div>
                     <div class="param-grid">
                       <mat-form-field appearance="outline">
                         <mat-label>Capital initial</mat-label>
@@ -1585,6 +1622,18 @@
                       <mat-label>out_dir</mat-label>
                       <input matInput type="text" formControlName="artifactsOutDir" />
                     </mat-form-field>
+                  </div>
+                </div>
+              </mat-expansion-panel>
+
+              <mat-expansion-panel>
+                <mat-expansion-panel-header>
+                  <mat-panel-title>Performance</mat-panel-title>
+                </mat-expansion-panel-header>
+                <div class="param-section">
+                  <div class="param-title">Performance</div>
+                  <div class="checkbox-row">
+                    <mat-checkbox formControlName="includePerformance">Inclure performance</mat-checkbox>
                   </div>
                 </div>
               </mat-expansion-panel>
