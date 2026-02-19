@@ -3,6 +3,18 @@
 ## Title
 - Harmoniser le visuel de la page Stress Tests avec le design existant
 
+## BMAD Stage
+- Reviewer
+
+## Cross-Repo Coordination
+- Cross-Repo Initiative: N/A
+- Upstream Dependencies: None
+- Contract Version: N/A
+
+## Context7 Decision
+- Required: No
+- Reason: UI harmonization task based on existing project styles.
+
 ## Goal
 - Aligner la présentation des Stress Tests (typographies, cartes, espacements, couleurs, états) sur les pages déjà stylées du projet pour une cohérence UI/UX mesurable dans l’interface.
 

@@ -3,6 +3,18 @@
 ## Title
 - Ajouter la page stress-tests/:runId avec panels Monte Carlo et Scénarios
 
+## BMAD Stage
+- Reviewer
+
+## Cross-Repo Coordination
+- Cross-Repo Initiative: N/A
+- Upstream Dependencies: None
+- Contract Version: N/A
+
+## Context7 Decision
+- Required: No
+- Reason: Ticket scoped to local implementation with known stack patterns.
+
 ## Goal
 - Permettre l’affichage complet des stress tests d’un run (Monte Carlo + Scénarios) avec KPIs, tableaux de percentiles et courbes, en consommant le payload front-ready quand disponible et un fallback vers le payload brut.
 

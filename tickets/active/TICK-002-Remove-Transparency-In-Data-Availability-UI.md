@@ -3,6 +3,18 @@
 ## Title
 - Remove transparency from UI boxes in data-availability (global where applicable)
 
+## BMAD Stage
+- Reviewer
+
+## Cross-Repo Coordination
+- Cross-Repo Initiative: N/A
+- Upstream Dependencies: None
+- Contract Version: N/A
+
+## Context7 Decision
+- Required: No
+- Reason: UI-only styling update based on existing project patterns.
+
 ## Goal
 - Ensure the data-availability section has no transparent boxes or overlays, using solid backgrounds consistently. Avoid data-availability-specific hacks; prefer shared/global styles where possible.
 
