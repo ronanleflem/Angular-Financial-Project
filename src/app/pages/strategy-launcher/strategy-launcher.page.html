@@ -584,6 +584,9 @@
                   <div class="param-section">
                     <div class="param-title">Backtest (signal)</div>
                     <div class="param-grid">
+                      <div class="checkbox-row">
+                        <span class="not-implemented">Not implemented yet</span>
+                      </div>
                       <mat-form-field appearance="outline">
                         <mat-label>Signal type</mat-label>
                         <mat-select formControlName="signalType" [matTooltip]="enumTooltip('signal.types')">
@@ -666,6 +669,7 @@
                     <div class="param-grid">
                       <div class="checkbox-row">
                         <mat-checkbox formControlName="dynamicSlEnabled">Activer</mat-checkbox>
+                        <span class="not-implemented">Not implemented yet</span>
                       </div>
 
                       <ng-container *ngIf="backtestForm.get('dynamicSlEnabled')?.value">
@@ -694,6 +698,7 @@
                     <div class="param-grid">
                       <div class="checkbox-row">
                         <mat-checkbox formControlName="tpslJitterEnabled">Activer</mat-checkbox>
+                        <span class="not-implemented">Not implemented yet</span>
                       </div>
 
                       <ng-container *ngIf="backtestForm.get('tpslJitterEnabled')?.value">
@@ -786,6 +791,9 @@
                   <div class="param-section">
                     <div class="param-title">Filter rules</div>
                     <div class="param-grid">
+                      <div class="checkbox-row">
+                        <span class="not-implemented">Not implemented yet</span>
+                      </div>
                       <mat-form-field appearance="outline">
                         <mat-label>filter_rules[]</mat-label>
                         <mat-select multiple formControlName="filterRules">
@@ -832,6 +840,7 @@
                     <div class="param-grid">
                       <div class="checkbox-row">
                         <mat-checkbox formControlName="screeningEnabled">Enabled</mat-checkbox>
+                        <span class="not-implemented">Not implemented yet</span>
                       </div>
 
                       <mat-form-field appearance="outline">

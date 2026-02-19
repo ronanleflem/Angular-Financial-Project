@@ -94,10 +94,12 @@ function mapBacktestPayload(payload: RunRequestInput): Record<string, unknown> {
   }
   const filters = payload.filters?.filters?.map(item => item.id) ?? [];
   const rules = payload.filters?.rules?.map(item => item.id) ?? [];
-  const tpSl = payload.strategy.tpSl ?? {};
-  const screening = payload.strategy.screening ?? {};
+  const strategy = payload.strategy as any;
+  const params = strategy.params ?? {};
+  const tpSl = strategy.tpSl ?? params.tpSl ?? {};
+  const screening = strategy.screening ?? params.screening ?? {};
   return {
-    strategy: payload.data.strategyName,
+    strategy: payload.strategy.name,
     symbol: payload.data.symbol,
     timeframe: payload.data.timeframe,
     startDate: payload.data.startDate,

@@ -74,9 +74,7 @@ export interface DcaDataBlock extends DataBlockBase, PeriodBlock {
   universe?: UniverseItem[];
 }
 
-export interface BacktestDataBlock extends DataBlockBase, PeriodBlock {
-  strategyName: string;
-}
+export interface BacktestDataBlock extends DataBlockBase, PeriodBlock {}
 
 export interface BacktestSignalBlock {
   type: string;
@@ -120,6 +118,11 @@ export interface BacktestScreeningBlock {
   maxBars?: number;
   maxTrades?: number;
   maxSeconds?: number;
+}
+
+export interface BacktestStrategyParamsBlock {
+  tpSl?: BacktestTpSlBlock;
+  screening?: BacktestScreeningBlock;
 }
 
 export interface MarketStatsDataBlock extends DataBlockBase {
@@ -291,7 +294,7 @@ export type RunRequestInput =
   | {
       runType: 'backtest';
       data: BacktestDataBlock;
-      strategy: { name: string; tpSl?: BacktestTpSlBlock; screening?: BacktestScreeningBlock };
+      strategy: { name: string; params?: BacktestStrategyParamsBlock };
       signal: BacktestSignalBlock;
       filters?: BacktestFiltersBlock;
       performance?: PerformanceBlock;
@@ -341,7 +344,7 @@ export function validateRunRequest(input: RunRequestInput): ValidationError[] {
       validateRequired(errors, 'data.timeframe', input.data.timeframe);
       validateRequired(errors, 'data.startDate', input.data.startDate);
       validateRequired(errors, 'data.endDate', input.data.endDate);
-      validateRequired(errors, 'data.strategyName', input.data.strategyName);
+      validateRequired(errors, 'strategy.name', input.strategy.name);
       validateDateOrder(errors, 'data.startDate', 'data.endDate', input.data.startDate, input.data.endDate);
       validateBacktestSignal(errors, input.signal);
       break;

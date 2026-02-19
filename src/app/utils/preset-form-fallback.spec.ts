@@ -58,8 +58,7 @@ describe('preset-form-fallback', () => {
         symbol: 'SPY',
         timeframe: '1d',
         startDate: '2020-01-01',
-        endDate: '2021-01-01',
-        strategyName: 'Test'
+        endDate: '2021-01-01'
       },
       strategy: { name: 'Test' },
       signal: { type: 'ema_cross' }

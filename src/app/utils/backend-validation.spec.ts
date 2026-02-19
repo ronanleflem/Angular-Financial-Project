@@ -26,6 +26,8 @@ describe('backend-validation', () => {
   it('maps backtest fields to control names', () => {
     expect(mapBackendFieldToControlName('strategy.tp_sl.stop_loss_pct', 'backtests', {})).toBe('stopLoss');
     expect(mapBackendFieldToControlName('signal.require_crossing', 'backtests', {})).toBe('requireCrossing');
+    expect(mapBackendFieldToControlName('strategy.params.tp_sl.jitter.seed', 'backtests', {})).toBe('tpslJitterSeed');
+    expect(mapBackendFieldToControlName('screening.max_seconds', 'backtests', {})).toBe('screenMaxSeconds');
   });
 
   it('maps market stats params using context', () => {

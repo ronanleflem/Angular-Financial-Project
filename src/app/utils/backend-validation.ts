@@ -63,6 +63,8 @@ export function mapBackendFieldToControlName(
       return mapStrategyField(segments.slice(1), runTheme);
     case 'signal':
       return runTheme === 'backtests' ? mapSignalField(segments.slice(1)) : null;
+    case 'screening':
+      return runTheme === 'backtests' ? mapScreeningField(segments.slice(1)) : null;
     case 'filters':
       return mapFiltersField(segments.slice(1), runTheme);
     case 'performance':
@@ -136,6 +138,9 @@ function mapStrategyField(segments: string[], runTheme: RunTheme): string | null
 
   if (key === 'name') {
     return 'strategy';
+  }
+  if (key === 'params' && segments[1] === 'tp_sl') {
+    return mapTpSlField(segments.slice(2));
   }
   if (key === 'tp_sl') {
     return mapTpSlField(segments.slice(1));

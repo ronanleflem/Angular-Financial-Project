@@ -91,6 +91,7 @@ const FREQUENCY_DAYS: Record<string, number> = {
   biweekly: 14,
   monthly: 30
 };
+const NOT_IMPLEMENTED_YET_MESSAGE = 'Not implemented yet';
 
 type MetricTone = 'positive' | 'negative' | 'neutral';
 type RunKey = 'dca' | 'backtests' | 'market-stats' | 'seasonality' | 'stress-tests';
@@ -1370,6 +1371,9 @@ export class StrategyLauncherPageComponent {
   }
 
   formatValidationMessage(error: UiValidationError): string {
+    if (error.source === 'backend' && this.isBackendNotImplementedError(error.code, error.message)) {
+      return NOT_IMPLEMENTED_YET_MESSAGE;
+    }
     if (error.message && error.code && error.message !== error.code) {
       return `${error.message} (${error.code})`;
     }
@@ -1398,7 +1402,10 @@ export class StrategyLauncherPageComponent {
         return;
       }
       const existing = control.errors ?? {};
-      control.setErrors({ ...existing, backend: { code: err.code, message: err.message } });
+      control.setErrors({
+        ...existing,
+        backend: { code: err.code, message: this.normalizeBackendMessage(err) }
+      });
       control.markAsTouched();
     });
 
@@ -1410,8 +1417,28 @@ export class StrategyLauncherPageComponent {
       source: 'backend',
       field: error.field,
       code: error.code,
-      message: error.message || error.code || 'Erreur de validation'
+      message: this.normalizeBackendMessage(error) || error.code || 'Erreur de validation'
     };
+  }
+
+  private normalizeBackendMessage(error: BackendValidationError): string | undefined {
+    if (this.isBackendNotImplementedError(error.code, error.message)) {
+      return NOT_IMPLEMENTED_YET_MESSAGE;
+    }
+    return error.message;
+  }
+
+  private isBackendNotImplementedError(code?: string, message?: string): boolean {
+    const normalizedCode = String(code ?? '')
+      .trim()
+      .toLowerCase();
+    const normalizedMessage = String(message ?? '')
+      .trim()
+      .toLowerCase();
+    return (
+      normalizedCode === 'not_implemented_feature' ||
+      normalizedMessage.includes('not implemented yet')
+    );
   }
 
   private clearBackendErrors(form: UntypedFormGroup): void {
@@ -1489,13 +1516,14 @@ export class StrategyLauncherPageComponent {
         symbol: String(v.symbol ?? this.backtestDefaults.symbol),
         timeframe: String(v.timeframe ?? this.backtestDefaults.timeframe),
         startDate: toIsoDate(v.startDate ?? this.backtestDefaults.startDate),
-        endDate: toIsoDate(v.endDate ?? this.backtestDefaults.endDate),
-        strategyName: String(v.strategy ?? this.backtestDefaults.strategy)
+        endDate: toIsoDate(v.endDate ?? this.backtestDefaults.endDate)
       },
       strategy: {
         name: String(v.strategy ?? this.backtestDefaults.strategy),
-        tpSl: this.buildBacktestTpSl(v),
-        screening: this.buildBacktestScreening(v)
+        params: {
+          tpSl: this.buildBacktestTpSl(v),
+          screening: this.buildBacktestScreening(v)
+        }
       },
       signal: {
         type: String(v.signalType ?? this.backtestDefaults.signalType),

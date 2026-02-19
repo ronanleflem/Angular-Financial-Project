@@ -29,8 +29,7 @@ describe('RunsService', () => {
         symbol: 'EURUSD',
         timeframe: '1h',
         startDate: '2024-01-01',
-        endDate: '2024-01-31',
-        strategyName: 'Mean Reversion'
+        endDate: '2024-01-31'
       },
       strategy: { name: 'Mean Reversion' },
       signal: { type: 'ema_cross', fast: 12, slow: 26 }
