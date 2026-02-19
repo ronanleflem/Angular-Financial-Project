@@ -1,43 +1,46 @@
-﻿# FILE: tickets/_templates/AUDIT_PROMPT.md
-# Ticket Audit Prompt (Angular)
+# FILE: tickets/_templates/AUDIT_PROMPT.md
+# Ticket Audit Prompt (Angular + BMAD)
 
 Use this checklist to review a ticket before implementation.
 
-## UX / Goal clarity
-- [ ] User outcome is clear and testable.
-- [ ] Success criteria are observable in the UI.
+## PM gate
+- [ ] Goal is clear, measurable, and user-visible.
+- [ ] Scope and non-goals are explicit.
+- [ ] DoD is testable.
 
-## Scope and entry points
-- [ ] Affected pages/components are listed.
-- [ ] Services and API endpoints are listed.
-- [ ] Routing/state impact is described.
+## Architect gate
+- [ ] Impacted modules/components/services are identified.
+- [ ] Technical approach is coherent with existing architecture.
+- [ ] Risks and rollback strategy are documented.
+
+## Dev gate
+- [ ] Task can be split into small reviewable steps.
+- [ ] Data states are covered (loading/error/empty).
+- [ ] Tests and validation commands are defined.
+
+## Reviewer gate
+- [ ] Review criteria are explicit and blocking.
+- [ ] Regression risks are identified.
+- [ ] Acceptance can be decided from evidence.
+
+## Cross-repo gate (if applicable)
+- [ ] `Cross-Repo Initiative` is set (`INIT-xxx`).
+- [ ] External dependencies are explicit (`Depends on` / `Upstream Dependencies`).
+- [ ] Contract/version reference is explicit and testable.
+- [ ] Scope remains local to Angular repo (no foreign implementation scope).
 
 ## Angular conventions
-- [ ] Follows Angular style guide and existing project conventions.
+- [ ] Follows Angular style guide and project conventions.
 - [ ] Uses strict typing for DTOs and interfaces.
 - [ ] RxJS usage is safe (no nested subscribes, proper teardown).
 
-## Data states
-- [ ] Loading state defined.
-- [ ] Error state defined.
-- [ ] Empty state defined (if applicable).
-
-## Tests and validation
-- [ ] Service unit tests included.
-- [ ] Component unit tests included.
-- [ ] E2E tests required/optional are stated.
-- [ ] Validation commands listed (`ng test`, `ng build`, etc.).
-
-## Risks
-- [ ] Potential breaking UI changes identified.
-- [ ] Performance concerns identified.
-- [ ] RxJS memory leak risk assessed.
-
-## Task breakdown
-- [ ] Ticket can be split into small, parallelizable steps.
+## Context7 check (required only if needed)
+- [ ] New or uncertain external API/library/framework involved.
+- [ ] Version-specific behavior may affect implementation.
+- [ ] If no, Context7 is intentionally skipped.
 
 ## Non-goals / Guardrails
 - [ ] No global refactors unless explicitly requested.
 - [ ] No unrelated style or layout changes.
 - [ ] No API contract changes without backend agreement.
-- [ ] No changes to shared theming/design system.
+- [ ] No changes to shared theming/design system unless requested.
