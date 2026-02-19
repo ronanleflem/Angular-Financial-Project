@@ -147,6 +147,12 @@ function mapMarketStatsPayload(payload: RunRequestInput): Record<string, unknown
   if (payload.runType !== 'market_stats') {
     return {};
   }
+  const legacyStats = payload.stats as {
+    persistence?: { enabled?: boolean; specId?: string; datasetId?: string };
+    artifacts?: { outDir?: string };
+  };
+  const persistence = payload.persistence ?? legacyStats.persistence;
+  const output = payload.output ?? legacyStats.artifacts;
   const result: Record<string, unknown> = {
     symbol: payload.data.symbol,
     timeframe: payload.data.timeframe,
@@ -161,10 +167,10 @@ function mapMarketStatsPayload(payload: RunRequestInput): Record<string, unknown
     validationTestMonths: payload.stats.validation.testMonths,
     validationFolds: payload.stats.validation.folds,
     validationEmbargoDays: payload.stats.validation.embargoDays,
-    persistenceEnabled: payload.stats.persistence.enabled,
-    persistenceSpecId: payload.stats.persistence.specId,
-    persistenceDatasetId: payload.stats.persistence.datasetId,
-    artifactsOutDir: payload.stats.artifacts.outDir
+    persistenceEnabled: persistence?.enabled,
+    persistenceSpecId: persistence?.specId,
+    persistenceDatasetId: persistence?.datasetId,
+    artifactsOutDir: output?.outDir
   };
   assignParams(result, `event_${payload.stats.event.id}_`, payload.stats.event.params);
   assignParams(result, `condition_${payload.stats.condition.id}_`, payload.stats.condition.params);

@@ -52,14 +52,14 @@ describe('RunsService', () => {
       event: { id: 'vol_spike', params: {} },
       condition: { id: 'trend_regime', params: {} },
       target: { id: 'mean_reversion', params: {} },
-      validation: { trainMonths: 12, testMonths: 6, folds: 3, embargoDays: 2 },
-      persistence: { enabled: false },
-      artifacts: {}
-    } }).subscribe(value => {
+      validation: { trainMonths: 12, testMonths: 6, folds: 3, embargoDays: 2 }
+    }, persistence: { enabled: false }, output: { outDir: 'artifacts/market-stats' } }).subscribe(value => {
       response = value;
     });
 
     const req = httpMock.expectOne(`${environment.apiUrl}/api/runs`);
+    expect(req.request.body.persistence).toEqual({ enabled: false });
+    expect(req.request.body.output).toEqual({ out_dir: 'artifacts/market-stats' });
     req.flush({ request_id: 'req-123', status: 'PENDING' });
 
     expect(response.runId).toBe('req-123');

@@ -71,11 +71,36 @@ export function mapBackendFieldToControlName(
       return mapPerformanceField(segments.slice(1), runTheme);
     case 'stats':
       return runTheme === 'market-stats' ? mapStatsField(segments.slice(1), context) : null;
+    case 'persistence':
+      return runTheme === 'market-stats' ? mapStatsPersistenceField(segments.slice(1)) : null;
+    case 'output':
+      return runTheme === 'market-stats' ? mapStatsOutputField(segments.slice(1)) : null;
     case 'seasonality':
       return runTheme === 'seasonality' ? mapSeasonalityField(segments.slice(1), context) : null;
     default:
       return null;
   }
+}
+
+function mapStatsPersistenceField(segments: string[]): string | null {
+  const subKey = segments[0];
+  switch (subKey) {
+    case 'enabled':
+      return 'persistenceEnabled';
+    case 'spec_id':
+      return 'persistenceSpecId';
+    case 'dataset_id':
+      return 'persistenceDatasetId';
+    default:
+      return null;
+  }
+}
+
+function mapStatsOutputField(segments: string[]): string | null {
+  if (segments[0] === 'out_dir') {
+    return 'artifactsOutDir';
+  }
+  return null;
 }
 
 function mapDataField(segments: string[], runTheme: RunTheme): string | null {

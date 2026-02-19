@@ -42,10 +42,10 @@ describe('preset-form-fallback', () => {
         event: { id: 'vol_spike', params: {} },
         condition: { id: 'trend_regime', params: {} },
         target: { id: 'mean_reversion', params: {} },
-        validation: { trainMonths: 12, testMonths: 6, folds: 3, embargoDays: 2 },
-        persistence: { enabled: false },
-        artifacts: {}
-      }
+        validation: { trainMonths: 12, testMonths: 6, folds: 3, embargoDays: 2 }
+      },
+      persistence: { enabled: false },
+      output: { outDir: 'artifacts/market-stats' }
     };
     const result = mergePresetFormValue('market-stats', { symbol: 'ETHUSD' }, payload);
     expect(result['symbol']).toBe('ETHUSD');

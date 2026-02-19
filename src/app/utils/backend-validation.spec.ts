@@ -37,6 +37,11 @@ describe('backend-validation', () => {
     );
   });
 
+  it('maps market stats top-level persistence and output fields', () => {
+    expect(mapBackendFieldToControlName('persistence.enabled', 'market-stats', {})).toBe('persistenceEnabled');
+    expect(mapBackendFieldToControlName('output.out_dir', 'market-stats', {})).toBe('artifactsOutDir');
+  });
+
   it('maps seasonality params using context', () => {
     const ctx: BackendMappingContext = { seasonalityProfileId: 'by_hour' };
     expect(mapBackendFieldToControlName('seasonality.profile.params.bin_size', 'seasonality', ctx)).toBe(

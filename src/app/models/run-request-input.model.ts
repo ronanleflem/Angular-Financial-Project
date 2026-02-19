@@ -151,14 +151,16 @@ export interface MarketStatsBlock {
     folds: number;
     embargoDays: number;
   };
-  persistence: {
-    enabled: boolean;
-    specId?: string;
-    datasetId?: string;
-  };
-  artifacts: {
-    outDir?: string;
-  };
+}
+
+export interface MarketStatsPersistenceBlock {
+  enabled: boolean;
+  specId?: string;
+  datasetId?: string;
+}
+
+export interface MarketStatsOutputBlock {
+  outDir?: string;
 }
 
 export interface SeasonalityDataBlock extends DataBlockBase {
@@ -303,6 +305,8 @@ export type RunRequestInput =
       runType: 'market_stats';
       data: MarketStatsDataBlock;
       stats: MarketStatsBlock;
+      persistence?: MarketStatsPersistenceBlock;
+      output?: MarketStatsOutputBlock;
     }
   | {
       runType: 'seasonality';

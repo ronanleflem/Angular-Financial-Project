@@ -23,6 +23,8 @@ import {
   BacktestScreeningBlock,
   BacktestFiltersBlock,
   MarketStatsBlock,
+  MarketStatsPersistenceBlock,
+  MarketStatsOutputBlock,
   SeasonalityBlock,
   PerformanceBlock,
   MonteCarloStressTests,
@@ -1562,7 +1564,9 @@ export class StrategyLauncherPageComponent {
         session: String(v.session ?? this.statsDefaults.session),
         includeWeekends: Boolean(v.includeWeekends ?? this.statsDefaults.includeWeekends)
       },
-      stats: this.buildMarketStatsBlock(v)
+      stats: this.buildMarketStatsBlock(v),
+      persistence: this.buildMarketStatsPersistence(v),
+      output: this.buildMarketStatsOutput(v)
     };
   }
 
@@ -1751,15 +1755,25 @@ export class StrategyLauncherPageComponent {
         testMonths: Number(value.validationTestMonths ?? this.statsDefaults.validationTestMonths),
         folds: Number(value.validationFolds ?? this.statsDefaults.validationFolds),
         embargoDays: Number(value.validationEmbargoDays ?? this.statsDefaults.validationEmbargoDays)
-      },
-      persistence: {
-        enabled: Boolean(value.persistenceEnabled ?? this.statsDefaults.persistenceEnabled),
-        specId: String(value.persistenceSpecId ?? this.statsDefaults.persistenceSpecId),
-        datasetId: String(value.persistenceDatasetId ?? this.statsDefaults.persistenceDatasetId)
-      },
-      artifacts: {
-        outDir: String(value.artifactsOutDir ?? this.statsDefaults.artifactsOutDir)
       }
+    };
+  }
+
+  private buildMarketStatsPersistence(
+    value: ReturnType<typeof this.marketStatsForm.getRawValue>
+  ): MarketStatsPersistenceBlock {
+    return {
+      enabled: Boolean(value.persistenceEnabled ?? this.statsDefaults.persistenceEnabled),
+      specId: String(value.persistenceSpecId ?? this.statsDefaults.persistenceSpecId),
+      datasetId: String(value.persistenceDatasetId ?? this.statsDefaults.persistenceDatasetId)
+    };
+  }
+
+  private buildMarketStatsOutput(
+    value: ReturnType<typeof this.marketStatsForm.getRawValue>
+  ): MarketStatsOutputBlock {
+    return {
+      outDir: String(value.artifactsOutDir ?? this.statsDefaults.artifactsOutDir)
     };
   }
 
