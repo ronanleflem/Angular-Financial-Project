@@ -128,6 +128,46 @@ describe('RunsService', () => {
     expect(response.result).toEqual({ ok: true });
   });
 
+  it('submits stress_tests canonical payload with only supported fields', () => {
+    service.submitRun({
+      runType: 'stress_tests',
+      data: {
+        symbol: 'SPY',
+        timeframe: '1d',
+        startDate: '2018-01-01',
+        endDate: '2024-12-31'
+      },
+      performance: {
+        initialCapital: 50000,
+        stressTests: {
+          enabled: true,
+          method: 'block_bootstrap',
+          nSims: 2000,
+          seed: 42,
+          blockSize: 20
+        }
+      }
+    }).subscribe();
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/api/runs`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body.data).toEqual({
+      symbol: 'SPY',
+      timeframe: '1d',
+      start_date: '2018-01-01',
+      end_date: '2024-12-31'
+    });
+    expect(req.request.body.performance.initial_capital).toBe(50000);
+    expect(req.request.body.performance.stress_tests).toEqual({
+      enabled: true,
+      method: 'block_bootstrap',
+      n_sims: 2000,
+      seed: 42,
+      block_size: 20
+    });
+    req.flush({ request_id: 'req-stress', status: 'PENDING' });
+  });
+
   it('cancels run and normalizes fields', () => {
     let response: any;
 

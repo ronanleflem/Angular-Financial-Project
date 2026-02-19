@@ -231,6 +231,8 @@ function mapStressTestsPayload(payload: RunRequestInput): Record<string, unknown
     strategy: (payload as any).strategy?.name,
     symbol: payload.data.symbol,
     timeframe: payload.data.timeframe,
+    startDate: (payload.data as any).startDate,
+    endDate: (payload.data as any).endDate,
     capital: payload.performance.initialCapital,
     source: stress.source,
     nSims: stress.nSims,
@@ -261,7 +263,17 @@ function mapStressTestsPayload(payload: RunRequestInput): Record<string, unknown
     outputCurveStride: stress.output?.curveStride,
     aggregation: stress.multiAsset?.aggregation,
     weights: stress.multiAsset?.weights ? stress.multiAsset?.weights.join(',') : undefined,
-    timestampAlignment: stress.multiAsset?.timestampAlignment
+    timestampAlignment: stress.multiAsset?.timestampAlignment,
+    includeStressAdvanced: Boolean(
+      stress.source !== undefined ||
+      stress.overlapping !== undefined ||
+      stress.timeDistribution !== undefined ||
+      stress.paramDrift !== undefined ||
+      stress.sizing !== undefined ||
+      stress.output !== undefined ||
+      (Array.isArray(stress.scenarios) && stress.scenarios.length > 0) ||
+      stress.multiAsset !== undefined
+    )
   };
 
   if (Array.isArray(stress.scenarios)) {

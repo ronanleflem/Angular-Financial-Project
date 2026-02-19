@@ -136,4 +136,34 @@ describe('StrategyLauncherPageComponent', () => {
     const signalErrors = component.backtestForm.get('signalType')?.errors;
     expect(signalErrors?.['backend']?.message).toBe('Unsupported signal type');
   });
+
+  it('builds stress-tests payload with canonical fields and hides advanced by default', () => {
+    fixture.detectChanges();
+    flushInitRequests();
+
+    component.selectRun('stress-tests');
+    fixture.detectChanges();
+
+    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(text).toMatch(/Inclure options avancees stress tests[\s\S]*Not implemented yet/);
+    expect(component.stressForm.get('includeStressAdvanced')?.value).toBeFalse();
+
+    const payload = component.buildRunRequest();
+    expect(payload.runType).toBe('stress_tests');
+    expect((payload as any).data.startDate).toBeTruthy();
+    expect((payload as any).data.endDate).toBeTruthy();
+    expect((payload as any).performance.stressTests).toEqual(
+      jasmine.objectContaining({
+        enabled: true,
+        method: jasmine.any(String),
+        nSims: jasmine.any(Number),
+        seed: jasmine.any(Number),
+        blockSize: jasmine.any(Number)
+      })
+    );
+    expect((payload as any).performance.stressTests.source).toBeUndefined();
+    expect((payload as any).performance.stressTests.overlapping).toBeUndefined();
+    expect((payload as any).performance.stressTests.timeDistribution).toBeUndefined();
+    expect((payload as any).performance.stressTests.scenarios).toBeUndefined();
+  });
 });

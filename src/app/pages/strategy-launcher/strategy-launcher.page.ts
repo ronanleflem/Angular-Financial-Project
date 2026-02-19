@@ -592,6 +592,8 @@ export class StrategyLauncherPageComponent {
     strategy: 'Breakout v2',
     symbol: 'SPY',
     timeframe: '1d',
+    startDate: new Date(2018, 0, 1),
+    endDate: new Date(2024, 11, 31),
     scenario: '2008 Crash',
     capital: 50000,
     leverage: 2,
@@ -644,7 +646,8 @@ export class StrategyLauncherPageComponent {
     scenario3Index: 'NDX',
     aggregation: 'weighted',
     weights: '0.5,0.3,0.2',
-    timestampAlignment: 'asof'
+    timestampAlignment: 'asof',
+    includeStressAdvanced: false
   } as const;
 
   readonly dcaForm = this.fb.group(
@@ -859,6 +862,8 @@ export class StrategyLauncherPageComponent {
     strategy: [this.stressDefaults.strategy, Validators.required],
     symbol: [this.stressDefaults.symbol, [Validators.required, symbolListValidator(this.symbols)]],
     timeframe: [this.stressDefaults.timeframe, Validators.required],
+    startDate: [this.stressDefaults.startDate, Validators.required],
+    endDate: [this.stressDefaults.endDate, Validators.required],
     scenario: [this.stressDefaults.scenario, Validators.required],
     capital: [this.stressDefaults.capital, [Validators.min(1000)]],
     leverage: [this.stressDefaults.leverage, [Validators.min(1)]],
@@ -912,9 +917,10 @@ export class StrategyLauncherPageComponent {
     aggregation: [this.stressDefaults.aggregation],
     weights: [this.stressDefaults.weights],
     timestampAlignment: [this.stressDefaults.timestampAlignment],
+    includeStressAdvanced: [this.stressDefaults.includeStressAdvanced],
     presetName: [''],
     presetId: ['']
-  });
+  }, { validators: dateRangeValidator('startDate', 'endDate') });
 
   readonly dcaResult = signal<StrategyResult | null>(null);
   readonly backtestResult = signal<StrategyResult | null>(null);
@@ -946,9 +952,29 @@ export class StrategyLauncherPageComponent {
   private supportedFilterIds = new Set<string>();
 
   constructor() {
+    this.bindStressAdvancedControls();
     this.runForSelection(this.selectedRun());
     this.loadPresets();
     this.loadCatalog();
+  }
+
+  private bindStressAdvancedControls(): void {
+    const includeAdvancedControl = this.stressForm.get('includeStressAdvanced');
+    const scenarioControl = this.stressForm.get('scenario');
+    if (!includeAdvancedControl || !scenarioControl) {
+      return;
+    }
+
+    const applyState = (enabled: boolean) => {
+      if (enabled) {
+        scenarioControl.enable({ emitEvent: false });
+        return;
+      }
+      scenarioControl.disable({ emitEvent: false });
+    };
+
+    applyState(Boolean(includeAdvancedControl.value));
+    includeAdvancedControl.valueChanges.subscribe(value => applyState(Boolean(value)));
   }
 
   selectRun(key: RunKey): void {
@@ -1207,6 +1233,10 @@ export class StrategyLauncherPageComponent {
       normalized['endDate'] = normalizeDate(formValue['endDate']);
       normalized['screenWindowStart'] = normalizeDate(formValue['screenWindowStart']);
       normalized['screenWindowEnd'] = normalizeDate(formValue['screenWindowEnd']);
+    }
+    if (theme === 'stress-tests') {
+      normalized['startDate'] = normalizeDate(formValue['startDate']);
+      normalized['endDate'] = normalizeDate(formValue['endDate']);
     }
     return normalized;
   }
@@ -1596,7 +1626,9 @@ export class StrategyLauncherPageComponent {
       runType: 'stress_tests',
       data: {
         symbol: String(v.symbol ?? this.stressDefaults.symbol),
-        timeframe: String(v.timeframe ?? this.stressDefaults.timeframe)
+        timeframe: String(v.timeframe ?? this.stressDefaults.timeframe),
+        startDate: toIsoDate(v.startDate ?? this.stressDefaults.startDate),
+        endDate: toIsoDate(v.endDate ?? this.stressDefaults.endDate)
       },
       performance: {
         ...this.buildPerformanceBlock(
@@ -1606,7 +1638,7 @@ export class StrategyLauncherPageComponent {
           undefined,
           undefined
         ),
-        stressTests: this.buildStressTestsBlock(v, true)
+        stressTests: this.buildStressTestsBlock(v)
       }
     };
   }
@@ -1897,63 +1929,13 @@ export class StrategyLauncherPageComponent {
     };
   }
 
-  private buildStressTestsBlock(
-    value: ReturnType<typeof this.stressForm.getRawValue>,
-    forceEnabled = false
-  ): MonteCarloStressTests {
+  private buildStressTestsBlock(value: ReturnType<typeof this.stressForm.getRawValue>): MonteCarloStressTests {
     return {
-      enabled: forceEnabled ? true : Boolean(value.source ?? true),
-      source: String(value.source ?? this.stressDefaults.source),
+      enabled: true,
       nSims: Number(value.nSims ?? this.stressDefaults.nSims),
       seed: Number(value.seed ?? this.stressDefaults.seed),
       method: String(value.method ?? this.stressDefaults.method),
-      blockSize: Number(value.blockSize ?? this.stressDefaults.blockSize),
-      overlapping: Boolean(value.overlapping ?? this.stressDefaults.overlapping),
-      timeDistribution: {
-        mode: String(value.timeDistMode ?? this.stressDefaults.timeDistMode),
-        seed: Number(value.timeDistSeed ?? this.stressDefaults.timeDistSeed)
-      },
-      paramDrift: {
-        mode: String(value.paramDriftMode ?? this.stressDefaults.paramDriftMode),
-        dist: String(value.paramDriftDist ?? this.stressDefaults.paramDriftDist),
-        mu: Number(value.paramDriftMu ?? this.stressDefaults.paramDriftMu),
-        sigma: Number(value.paramDriftSigma ?? this.stressDefaults.paramDriftSigma),
-        low: Number(value.paramDriftLow ?? this.stressDefaults.paramDriftLow),
-        high: Number(value.paramDriftHigh ?? this.stressDefaults.paramDriftHigh),
-        min: Number(value.paramDriftMin ?? this.stressDefaults.paramDriftMin),
-        max: Number(value.paramDriftMax ?? this.stressDefaults.paramDriftMax),
-        seed: Number(value.paramDriftSeed ?? this.stressDefaults.paramDriftSeed)
-      },
-      sizing: {
-        dist: String(value.sizingDist ?? this.stressDefaults.sizingDist),
-        low: Number(value.sizingLow ?? this.stressDefaults.sizingLow),
-        high: Number(value.sizingHigh ?? this.stressDefaults.sizingHigh),
-        mu: Number(value.sizingMu ?? this.stressDefaults.sizingMu),
-        sigma: Number(value.sizingSigma ?? this.stressDefaults.sizingSigma),
-        min: Number(value.sizingMin ?? this.stressDefaults.sizingMin),
-        max: Number(value.sizingMax ?? this.stressDefaults.sizingMax)
-      },
-      output: {
-        mode: String(value.outputMode ?? this.stressDefaults.outputMode),
-        maxCurves: Number(value.outputMaxCurves ?? this.stressDefaults.outputMaxCurves),
-        curveStride: Number(value.outputCurveStride ?? this.stressDefaults.outputCurveStride)
-      },
-      scenarios: this.stressScenarioSlots.map(slot => ({
-        type: String((value as Record<string, unknown>)[`scenario${slot}Type`] ?? ''),
-        shockPct: Number((value as Record<string, unknown>)[`scenario${slot}ShockPct`] ?? 0),
-        volMultiplier: Number((value as Record<string, unknown>)[`scenario${slot}VolMultiplier`] ?? 0),
-        drawdownPct: Number((value as Record<string, unknown>)[`scenario${slot}DrawdownPct`] ?? 0),
-        window: Number((value as Record<string, unknown>)[`scenario${slot}Window`] ?? 0),
-        index: String((value as Record<string, unknown>)[`scenario${slot}Index`] ?? '')
-      })),
-      multiAsset: {
-        aggregation: String(value.aggregation ?? this.stressDefaults.aggregation),
-        weights: String(value.weights ?? this.stressDefaults.weights)
-          .split(',')
-          .map(item => Number(item.trim()))
-          .filter(item => Number.isFinite(item)),
-        timestampAlignment: String(value.timestampAlignment ?? this.stressDefaults.timestampAlignment)
-      }
+      blockSize: Number(value.blockSize ?? this.stressDefaults.blockSize)
     };
   }
 

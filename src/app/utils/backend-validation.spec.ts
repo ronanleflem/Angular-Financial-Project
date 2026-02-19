@@ -52,6 +52,8 @@ describe('backend-validation', () => {
   });
 
   it('maps stress test scenarios to slot controls', () => {
+    expect(mapBackendFieldToControlName('data.start_date', 'stress-tests', {})).toBe('startDate');
+    expect(mapBackendFieldToControlName('data.end_date', 'stress-tests', {})).toBe('endDate');
     expect(
       mapBackendFieldToControlName('performance.stress_tests.scenarios.1.shock_pct', 'stress-tests', {})
     ).toBe('scenario2ShockPct');

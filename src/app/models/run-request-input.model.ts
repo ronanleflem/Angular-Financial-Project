@@ -213,6 +213,8 @@ export interface SeasonalityBlock {
   execution: SeasonalityExecutionBlock;
 }
 
+export interface StressTestsDataBlock extends DataBlockBase, PeriodBlock {}
+
 export interface MonteCarloStressTests {
   enabled: boolean;
   source?: 'equity' | 'returns' | 'trades' | string;
@@ -307,7 +309,7 @@ export type RunRequestInput =
     }
   | {
       runType: 'stress_tests';
-      data: DataBlockBase;
+      data: StressTestsDataBlock;
       performance: PerformanceBlock & { stressTests: MonteCarloStressTests };
     };
 
@@ -362,6 +364,9 @@ export function validateRunRequest(input: RunRequestInput): ValidationError[] {
     case 'stress_tests':
       validateRequired(errors, 'data.symbol', input.data.symbol);
       validateRequired(errors, 'data.timeframe', input.data.timeframe);
+      validateRequired(errors, 'data.startDate', input.data.startDate);
+      validateRequired(errors, 'data.endDate', input.data.endDate);
+      validateDateOrder(errors, 'data.startDate', 'data.endDate', input.data.startDate, input.data.endDate);
       if (!input.performance?.stressTests) {
         errors.push({ path: 'performance.stressTests', message: 'stressTests is required' });
       } else {

@@ -118,9 +118,9 @@ function mapDataField(segments: string[], runTheme: RunTheme): string | null {
     case 'amount':
       return runTheme === 'dca' ? 'amount' : null;
     case 'start_date':
-      return runTheme === 'dca' || runTheme === 'backtests' ? 'startDate' : null;
+      return runTheme === 'dca' || runTheme === 'backtests' || runTheme === 'stress-tests' ? 'startDate' : null;
     case 'end_date':
-      return runTheme === 'dca' || runTheme === 'backtests' ? 'endDate' : null;
+      return runTheme === 'dca' || runTheme === 'backtests' || runTheme === 'stress-tests' ? 'endDate' : null;
     case 'strategy_name':
       return runTheme === 'backtests' ? 'strategy' : null;
     case 'lookback':

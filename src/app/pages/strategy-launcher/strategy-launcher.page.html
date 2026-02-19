@@ -1782,16 +1782,38 @@
             </mat-select>
           </mat-form-field>
 
-          <mat-form-field appearance="outline">
-            <mat-label>Scenario</mat-label>
-            <mat-select formControlName="scenario">
-              <mat-option *ngFor="let scenario of stressScenarios" [value]="scenario">{{ scenario }}</mat-option>
-            </mat-select>
+          <mat-form-field appearance="outline" class="range-field">
+            <mat-label>Periode</mat-label>
+            <mat-date-range-input [rangePicker]="stressRangePicker">
+              <input matStartDate placeholder="Debut" formControlName="startDate" />
+              <input matEndDate placeholder="Fin" formControlName="endDate" />
+            </mat-date-range-input>
+            <mat-datepicker-toggle matIconSuffix [for]="stressRangePicker"></mat-datepicker-toggle>
+            <mat-date-range-picker #stressRangePicker></mat-date-range-picker>
           </mat-form-field>
+
+          <ng-container *ngIf="stressForm.get('includeStressAdvanced')?.value; else stressScenarioLocked">
+            <mat-form-field appearance="outline">
+              <mat-label>Scenario</mat-label>
+              <mat-select formControlName="scenario">
+                <mat-option *ngFor="let scenario of stressScenarios" [value]="scenario">{{ scenario }}</mat-option>
+              </mat-select>
+            </mat-form-field>
+          </ng-container>
+          <ng-template #stressScenarioLocked>
+            <div class="checkbox-row">
+              <span class="not-implemented">Scenario: Not implemented yet</span>
+            </div>
+          </ng-template>
 
           <section class="section-block">
             <div class="section-title">Parametres</div>
+            <div class="checkbox-row">
+              <mat-checkbox formControlName="includeStressAdvanced">Inclure options avancees stress tests</mat-checkbox>
+              <span class="not-implemented" *ngIf="!stressForm.get('includeStressAdvanced')?.value">Not implemented yet</span>
+            </div>
             <mat-accordion class="accordion" multi>
+              <ng-container *ngIf="stressForm.get('includeStressAdvanced')?.value">
               <mat-expansion-panel>
                 <mat-expansion-panel-header>
                   <mat-panel-title>Source</mat-panel-title>
@@ -1805,6 +1827,7 @@
                   </mat-form-field>
                 </div>
               </mat-expansion-panel>
+              </ng-container>
 
               <mat-expansion-panel>
                 <mat-expansion-panel-header>
@@ -1833,12 +1856,13 @@
                     <input matInput type="number" formControlName="blockSize" min="1" />
                   </mat-form-field>
 
-                  <div class="checkbox-row">
+                  <div class="checkbox-row" *ngIf="stressForm.get('includeStressAdvanced')?.value">
                     <mat-checkbox formControlName="overlapping">overlapping</mat-checkbox>
                   </div>
                 </div>
               </mat-expansion-panel>
 
+              <ng-container *ngIf="stressForm.get('includeStressAdvanced')?.value">
               <mat-expansion-panel>
                 <mat-expansion-panel-header>
                   <mat-panel-title>Advanced</mat-panel-title>
@@ -2030,6 +2054,7 @@
                   </mat-form-field>
                 </div>
               </mat-expansion-panel>
+              </ng-container>
             </mat-accordion>
           </section>
 
@@ -2038,20 +2063,22 @@
             <input matInput type="number" formControlName="capital" min="1000" />
           </mat-form-field>
 
-          <mat-form-field appearance="outline">
-            <mat-label>Leverage</mat-label>
-            <input matInput type="number" formControlName="leverage" min="1" step="0.5" />
-          </mat-form-field>
+          <ng-container *ngIf="stressForm.get('includeStressAdvanced')?.value">
+            <mat-form-field appearance="outline">
+              <mat-label>Leverage</mat-label>
+              <input matInput type="number" formControlName="leverage" min="1" step="0.5" />
+            </mat-form-field>
 
-          <mat-form-field appearance="outline">
-            <mat-label>Limite max DD (%)</mat-label>
-            <input matInput type="number" formControlName="maxDdLimit" min="5" step="0.5" />
-          </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Limite max DD (%)</mat-label>
+              <input matInput type="number" formControlName="maxDdLimit" min="5" step="0.5" />
+            </mat-form-field>
 
-          <mat-form-field appearance="outline">
-            <mat-label>Monte Carlo paths</mat-label>
-            <input matInput type="number" formControlName="mcPaths" min="100" step="50" />
-          </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Monte Carlo paths</mat-label>
+              <input matInput type="number" formControlName="mcPaths" min="100" step="50" />
+            </mat-form-field>
+          </ng-container>
 
           <section class="preset-panel">
             <div class="preset-title">Presets</div>
