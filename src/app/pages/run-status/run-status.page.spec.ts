@@ -65,7 +65,37 @@ describe('RunStatusPageComponent', () => {
     const resultReq = httpMock.expectOne(`${environment.apiUrl}/api/runs/run-1/result`);
     resultReq.flush({ run_id: 'run-1', result: { canceled: true } });
 
-    expect(component.errorMessage()).toBe('Run deja termine, statut actualise.');
+    expect(component.errorMessage()).toBeNull();
     expect(component.uiStatus()).toBe('canceled');
+  }));
+
+  it('shows not implemented runtime details on failed runs', fakeAsync(() => {
+    fixture.detectChanges();
+    tick(0);
+
+    const statusReq = httpMock.expectOne(`${environment.apiUrl}/api/runs/run-1`);
+    statusReq.flush({
+      run_id: 'run-1',
+      status: 'FAILED',
+      error: {
+        code: 'not_implemented_feature',
+        message: 'Feature not wired',
+        details: [
+          { field: 'signal.type', message: 'not wired' },
+          { field: 'strategy.params.tp_sl', message: 'not wired' }
+        ]
+      }
+    });
+
+    const resultReq = httpMock.expectOne(`${environment.apiUrl}/api/runs/run-1/result`);
+    resultReq.flush({ run_id: 'run-1', result: { error: { code: 'not_implemented_feature' } } });
+
+    fixture.detectChanges();
+    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(component.terminalMessage()).toBe('Not implemented yet');
+    expect(component.notImplementedFields()).toEqual(['signal.type', 'strategy.params.tp_sl']);
+    expect(text).toContain('Champs non cables');
+    expect(text).toContain('signal.type');
+    expect(text).toContain('strategy.params.tp_sl');
   }));
 });

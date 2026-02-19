@@ -1506,6 +1506,7 @@
                       <mat-select multiple formControlName="signalDims">
                         <mat-option *ngFor="let dim of seasonalitySignalDims" [value]="dim">{{ dim }}</mat-option>
                       </mat-select>
+                      <mat-hint>Session buckets use UTC fixed windows.</mat-hint>
                     </mat-form-field>
 
                     <mat-form-field appearance="outline">
@@ -1514,6 +1515,14 @@
                         <mat-option *ngFor="let mode of seasonalityCombineModes" [value]="mode">{{ mode }}</mat-option>
                       </mat-select>
                     </mat-form-field>
+                  </div>
+                  <div class="param-group">
+                    <div class="param-hint">Session UTC buckets</div>
+                    <div class="param-grid">
+                      <div class="checkbox-row" *ngFor="let bucket of seasonalitySessionUtcBuckets">
+                        <span>{{ bucket.label }}: {{ bucket.range }}</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </mat-expansion-panel>
@@ -1561,36 +1570,6 @@
                         <mat-option value="tp_2_sl_1">tp_2_sl_1</mat-option>
                         <mat-option value="tp_3_sl_1.5">tp_3_sl_1.5</mat-option>
                       </mat-select>
-                    </mat-form-field>
-                  </div>
-                </div>
-              </mat-expansion-panel>
-
-              <mat-expansion-panel>
-                <mat-expansion-panel-header>
-                  <mat-panel-title>Validation</mat-panel-title>
-                </mat-expansion-panel-header>
-                <div class="param-section">
-                  <div class="param-title">Validation</div>
-                  <div class="param-grid">
-                    <mat-form-field appearance="outline">
-                      <mat-label>train_months</mat-label>
-                      <input matInput type="number" formControlName="validationTrainMonths" min="1" />
-                    </mat-form-field>
-
-                    <mat-form-field appearance="outline">
-                      <mat-label>test_months</mat-label>
-                      <input matInput type="number" formControlName="validationTestMonths" min="1" />
-                    </mat-form-field>
-
-                    <mat-form-field appearance="outline">
-                      <mat-label>folds</mat-label>
-                      <input matInput type="number" formControlName="validationFolds" min="1" />
-                    </mat-form-field>
-
-                    <mat-form-field appearance="outline">
-                      <mat-label>embargo_days</mat-label>
-                      <input matInput type="number" formControlName="validationEmbargoDays" min="0" />
                     </mat-form-field>
                   </div>
                 </div>
@@ -1656,17 +1635,6 @@
             <mat-label>Annee fin</mat-label>
             <input matInput type="number" formControlName="endYear" min="1990" />
           </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Filtre marche</mat-label>
-            <mat-select formControlName="filter">
-              <mat-option *ngFor="let option of seasonalityFilters" [value]="option">{{ option }}</mat-option>
-            </mat-select>
-          </mat-form-field>
-
-          <div class="checkbox-row">
-            <mat-checkbox formControlName="normalize">Normaliser performances</mat-checkbox>
-          </div>
 
           <section class="preset-panel">
             <div class="preset-title">Presets</div>

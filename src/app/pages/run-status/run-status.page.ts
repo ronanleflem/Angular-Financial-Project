@@ -8,6 +8,9 @@ import { catchError, of, switchMap, timer } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subscription } from 'rxjs';
 import { UiRunStatus, formatRunStatusLabel, isTerminalStatus, normalizeRunStatus } from '../../utils/run-status';
+import { RuntimeRunError, parseRunRuntimeError } from '../../utils/backend-validation';
+
+const NOT_IMPLEMENTED_YET_MESSAGE = 'Not implemented yet';
 
 @Component({
   selector: 'app-run-status-page',
@@ -37,6 +40,7 @@ export class RunStatusPageComponent implements OnInit {
   readonly resultLoading = signal(false);
   readonly resultError = signal<string | null>(null);
   readonly terminalMessage = signal<string | null>(null);
+  readonly runtimeError = signal<RuntimeRunError | null>(null);
   readonly canceling = signal(false);
   private resultForRequestId: string | null = null;
 
@@ -85,7 +89,9 @@ export class RunStatusPageComponent implements OnInit {
         this.applyStatus(response);
         this.loading.set(false);
         this.errorMessage.set(null);
-        this.checkTerminalAndLoadResult();
+        if (this.checkTerminalAndLoadResult()) {
+          this.stopPolling();
+        }
       });
   }
 
@@ -177,6 +183,7 @@ export class RunStatusPageComponent implements OnInit {
     this.status.set(response);
     const uiStatus = normalizeRunStatus(response.status);
     this.uiStatus.set(uiStatus);
+    this.updateRuntimeError(parseRunRuntimeError(response));
     this.terminalMessage.set(this.terminalStatusMessage(uiStatus, response));
   }
 
@@ -213,6 +220,7 @@ export class RunStatusPageComponent implements OnInit {
           return;
         }
         this.result.set(response);
+        this.updateRuntimeError(parseRunRuntimeError(response));
         this.resultForRequestId = requestId;
       });
   }
@@ -223,11 +231,17 @@ export class RunStatusPageComponent implements OnInit {
     this.resultLoading.set(false);
     this.resultForRequestId = null;
     this.terminalMessage.set(null);
+    this.runtimeError.set(null);
   }
 
   private terminalStatusMessage(status: UiRunStatus, response?: RunStatusResponse | null): string | null {
     if (!isTerminalStatus(status)) {
       return null;
+    }
+    const runtimeError = this.runtimeError();
+    const runtimeCode = String(runtimeError?.code ?? '').trim().toLowerCase();
+    if (status === 'failed' && runtimeCode === 'not_implemented_feature') {
+      return NOT_IMPLEMENTED_YET_MESSAGE;
     }
     if (response?.message) {
       return response.message;
@@ -242,5 +256,63 @@ export class RunStatusPageComponent implements OnInit {
       default:
         return null;
     }
+  }
+
+  notImplementedFields(): string[] {
+    const runtime = this.runtimeError();
+    const runtimeCode = String(runtime?.code ?? '').trim().toLowerCase();
+    if (runtimeCode !== 'not_implemented_feature') {
+      return [];
+    }
+    const fields = runtime?.details
+      .map(detail => detail.field?.trim())
+      .filter((field): field is string => Boolean(field)) ?? [];
+    return Array.from(new Set(fields));
+  }
+
+  runtimeDetailLines(): string[] {
+    const runtime = this.runtimeError();
+    if (!runtime?.details?.length) {
+      return [];
+    }
+    return runtime.details
+      .map(detail => {
+        const field = detail.field?.trim();
+        const message = detail.message?.trim();
+        const code = detail.code?.trim();
+        if (field && message) {
+          return `${field} - ${message}`;
+        }
+        if (field && code) {
+          return `${field} - ${code}`;
+        }
+        if (field) {
+          return field;
+        }
+        return message || code || '';
+      })
+      .filter(Boolean);
+  }
+
+  private updateRuntimeError(next: RuntimeRunError | null): void {
+    if (!next) {
+      return;
+    }
+    const current = this.runtimeError();
+    if (!current) {
+      this.runtimeError.set(next);
+      return;
+    }
+    const currentScore = this.runtimeErrorScore(current);
+    const nextScore = this.runtimeErrorScore(next);
+    if (nextScore >= currentScore) {
+      this.runtimeError.set(next);
+    }
+  }
+
+  private runtimeErrorScore(error: RuntimeRunError): number {
+    const detailsScore = error.details.length * 10;
+    const messageScore = error.message ? 1 : 0;
+    return detailsScore + messageScore;
   }
 }

@@ -166,4 +166,36 @@ describe('StrategyLauncherPageComponent', () => {
     expect((payload as any).performance.stressTests.timeDistribution).toBeUndefined();
     expect((payload as any).performance.stressTests.scenarios).toBeUndefined();
   });
+
+  it('keeps dca payload canonical even if advanced toggle is enabled', () => {
+    fixture.detectChanges();
+    flushInitRequests();
+
+    component.selectRun('dca');
+    component.dcaForm.patchValue({ includeDcaAdvanced: true, frequency: 'weekly', amount: 1000 } as any);
+
+    const payload = component.buildRunRequest() as any;
+    expect(payload.runType).toBe('dca');
+    expect(payload.data.frequency).toBeUndefined();
+    expect(payload.data.amount).toBeUndefined();
+    expect(payload.data.feePct).toBeUndefined();
+    expect(payload.data.broker).toBeUndefined();
+    expect(payload.data.reinvestDividends).toBeUndefined();
+  });
+
+  it('shows seasonality UTC session buckets help', () => {
+    fixture.detectChanges();
+    flushInitRequests();
+
+    component.selectRun('seasonality');
+    fixture.detectChanges();
+
+    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(text).toContain('Session UTC buckets');
+    expect(text).toContain('Asia: 00:00-06:59');
+    expect(text).toContain('Europe: 07:00-11:59');
+    expect(text).toContain('EU_US_overlap: 12:00-15:59');
+    expect(text).toContain('US: 16:00-20:59');
+    expect(text).toContain('Other: 21:00-23:59');
+  });
 });

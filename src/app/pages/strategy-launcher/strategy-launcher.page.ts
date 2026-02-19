@@ -385,7 +385,13 @@ export class StrategyLauncherPageComponent {
   readonly backtestStrategies = ['Breakout', 'Mean Reversion', 'Momentum', 'MA Crossover'];
   readonly statsPacks = ['Volatility', 'Liquidity', 'Regime', 'Microstructure'];
   readonly seasonalityWindows = ['Monthly', 'Weekly', 'Day of Week', 'Intraday'];
-  readonly seasonalityFilters = ['All', 'Bull', 'Bear'];
+  readonly seasonalitySessionUtcBuckets = [
+    { label: 'Asia', range: '00:00-06:59' },
+    { label: 'Europe', range: '07:00-11:59' },
+    { label: 'EU_US_overlap', range: '12:00-15:59' },
+    { label: 'US', range: '16:00-20:59' },
+    { label: 'Other', range: '21:00-23:59' }
+  ] as const;
   readonly stressStrategies = ['Breakout v2', 'Trend Rider', 'Carry FX', 'Stat Arb'];
   readonly stressScenarios = ['2008 Crash', 'Covid 2020', 'Flash Crash 2010', 'Rates Shock 2022'];
   stressSourceOptions = ['equity', 'returns', 'trades'];
@@ -554,8 +560,6 @@ export class StrategyLauncherPageComponent {
     window: 'Monthly',
     startYear: 2010,
     endYear: 2024,
-    filter: 'All',
-    normalize: true,
     profileId: 'by_session',
     profileMeasure: 'avg_return',
     profileRetHorizon: 5,
@@ -569,10 +573,6 @@ export class StrategyLauncherPageComponent {
     optunaSearchSpace: 'default',
     executionRiskModel: 'fixed_fraction',
     executionTpSl: 'tp_2_sl_1',
-    validationTrainMonths: 24,
-    validationTestMonths: 6,
-    validationFolds: 3,
-    validationEmbargoDays: 2,
     persistenceEnabled: false,
     persistenceSpecId: 'seas_001',
     persistenceDatasetId: 'seasonality_ds',
@@ -822,8 +822,6 @@ export class StrategyLauncherPageComponent {
     window: [this.seasonalityDefaults.window, Validators.required],
     startYear: [this.seasonalityDefaults.startYear, [Validators.min(1990)]],
     endYear: [this.seasonalityDefaults.endYear, [Validators.max(new Date().getFullYear())]],
-    filter: [this.seasonalityDefaults.filter],
-    normalize: [this.seasonalityDefaults.normalize],
     profileId: [this.seasonalityDefaults.profileId, Validators.required],
     profileMeasure: [this.seasonalityDefaults.profileMeasure, Validators.required],
     profileRetHorizon: [this.seasonalityDefaults.profileRetHorizon, [Validators.min(1)]],
@@ -837,10 +835,6 @@ export class StrategyLauncherPageComponent {
     optunaSearchSpace: [this.seasonalityDefaults.optunaSearchSpace],
     executionRiskModel: [this.seasonalityDefaults.executionRiskModel],
     executionTpSl: [this.seasonalityDefaults.executionTpSl],
-    validationTrainMonths: [this.seasonalityDefaults.validationTrainMonths, [Validators.min(1)]],
-    validationTestMonths: [this.seasonalityDefaults.validationTestMonths, [Validators.min(1)]],
-    validationFolds: [this.seasonalityDefaults.validationFolds, [Validators.min(1)]],
-    validationEmbargoDays: [this.seasonalityDefaults.validationEmbargoDays, [Validators.min(0)]],
     persistenceEnabled: [this.seasonalityDefaults.persistenceEnabled],
     persistenceSpecId: [this.seasonalityDefaults.persistenceSpecId],
     persistenceDatasetId: [this.seasonalityDefaults.persistenceDatasetId],
@@ -1510,15 +1504,6 @@ export class StrategyLauncherPageComponent {
         timeframe: String(v.timeframe ?? this.dcaDefaults.timeframe),
         startDate: toIsoDate(v.startDate ?? this.dcaDefaults.startDate),
         endDate: toIsoDate(v.endDate ?? this.dcaDefaults.endDate),
-        ...(v.includeDcaAdvanced
-          ? {
-              frequency: String(v.frequency ?? this.dcaDefaults.frequency),
-              amount: Number(v.amount ?? this.dcaDefaults.amount),
-              feePct: Number(v.feePct ?? this.dcaDefaults.feePct),
-              broker: String(v.broker ?? this.dcaDefaults.broker),
-              reinvestDividends: Boolean(v.reinvestDividends ?? this.dcaDefaults.reinvestDividends)
-            }
-          : {}),
         universe: v.includeDcaUniverse ? this.buildDcaUniverse(v) : undefined
       },
       strategy: params,

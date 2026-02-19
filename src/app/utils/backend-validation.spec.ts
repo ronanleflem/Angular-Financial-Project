@@ -1,4 +1,9 @@
-import { BackendMappingContext, mapBackendFieldToControlName, parseBackendValidationErrors } from './backend-validation';
+import {
+  BackendMappingContext,
+  mapBackendFieldToControlName,
+  parseBackendValidationErrors,
+  parseRunRuntimeError
+} from './backend-validation';
 
 describe('backend-validation', () => {
   it('parses 422 backend validation payloads', () => {
@@ -16,6 +21,24 @@ describe('backend-validation', () => {
   it('ignores non-422 payloads', () => {
     const error = { status: 400, error: { errors: [{ field: 'data.symbol' }] } };
     expect(parseBackendValidationErrors(error)).toEqual([]);
+  });
+
+  it('parses runtime run errors from status payloads', () => {
+    const runtime = parseRunRuntimeError({
+      status: 'FAILED',
+      error: {
+        code: 'not_implemented_feature',
+        message: 'Feature not implemented',
+        details: [
+          { field: 'signal.type', message: 'not wired' }
+        ]
+      }
+    });
+    expect(runtime).toEqual({
+      code: 'not_implemented_feature',
+      message: 'Feature not implemented',
+      details: [{ field: 'signal.type', message: 'not wired', code: undefined }]
+    });
   });
 
   it('maps dca fields to control names', () => {

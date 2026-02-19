@@ -13,6 +13,18 @@ export interface BackendMappingContext {
   seasonalityProfileId?: string;
 }
 
+export interface RuntimeRunErrorDetail {
+  field?: string;
+  code?: string;
+  message?: string;
+}
+
+export interface RuntimeRunError {
+  code?: string;
+  message?: string;
+  details: RuntimeRunErrorDetail[];
+}
+
 export function parseBackendValidationErrors(error: unknown): BackendValidationError[] {
   const status = (error as { status?: number } | null)?.status;
   if (status !== 422) {
@@ -41,6 +53,48 @@ export function parseBackendValidationErrors(error: unknown): BackendValidationE
       } as BackendValidationError;
     })
     .filter((entry): entry is BackendValidationError => Boolean(entry));
+}
+
+export function parseRunRuntimeError(payload: unknown): RuntimeRunError | null {
+  const candidate = extractRuntimeErrorCandidate(payload);
+  if (!candidate) {
+    return null;
+  }
+
+  const code = candidate['code'] !== undefined ? String(candidate['code']) : undefined;
+  const message = candidate['message'] !== undefined ? String(candidate['message']) : undefined;
+  const detailsRaw = candidate['details'];
+  const details = Array.isArray(detailsRaw)
+    ? detailsRaw
+      .map(item => {
+        if (!item || typeof item !== 'object') {
+          return null;
+        }
+        const entry = item as Record<string, unknown>;
+        const field = entry['field'] !== undefined ? String(entry['field']) : undefined;
+        const detailCode = entry['code'] !== undefined ? String(entry['code']) : undefined;
+        const detailMessage = entry['message'] !== undefined ? String(entry['message']) : undefined;
+        if (!field && !detailCode && !detailMessage) {
+          return null;
+        }
+        return {
+          field,
+          code: detailCode,
+          message: detailMessage
+        } as RuntimeRunErrorDetail;
+      })
+      .filter((item): item is RuntimeRunErrorDetail => Boolean(item))
+    : [];
+
+  if (!code && !message && details.length === 0) {
+    return null;
+  }
+
+  return {
+    code,
+    message,
+    details
+  };
 }
 
 export function mapBackendFieldToControlName(
@@ -623,6 +677,36 @@ function normalizeFieldSegments(field: string): string[] {
     .map(segment => segment.trim())
     .filter(Boolean)
     .map(segment => toSnakeCaseKey(segment));
+}
+
+function extractRuntimeErrorCandidate(payload: unknown): Record<string, unknown> | null {
+  if (!payload || typeof payload !== 'object') {
+    return null;
+  }
+  const obj = payload as Record<string, unknown>;
+
+  const direct = obj['error'];
+  if (direct && typeof direct === 'object') {
+    return direct as Record<string, unknown>;
+  }
+
+  const result = obj['result'];
+  if (result && typeof result === 'object') {
+    const nested = (result as Record<string, unknown>)['error'];
+    if (nested && typeof nested === 'object') {
+      return nested as Record<string, unknown>;
+    }
+  }
+
+  if (
+    obj['code'] !== undefined ||
+    obj['message'] !== undefined ||
+    Array.isArray(obj['details'])
+  ) {
+    return obj;
+  }
+
+  return null;
 }
 
 function toSnakeCaseKey(key: string): string {

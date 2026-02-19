@@ -35,6 +35,20 @@
         <span class="label">etat</span>
         <span class="value">{{ terminalMessage() }}</span>
       </div>
+      <div class="error-panel" *ngIf="runtimeError() as runtime">
+        <div class="error-title">Runtime error</div>
+        <div class="error-body" *ngIf="runtime.code">code: {{ runtime.code }}</div>
+        <div class="error-body" *ngIf="runtime.message">{{ runtime.message }}</div>
+        <div class="error-body" *ngIf="notImplementedFields().length">
+          Champs non cables:
+          <span *ngFor="let field of notImplementedFields(); let last = last">
+            {{ field }}<span *ngIf="!last">, </span>
+          </span>
+        </div>
+        <ul class="error-body" *ngIf="runtimeDetailLines().length">
+          <li *ngFor="let line of runtimeDetailLines()">{{ line }}</li>
+        </ul>
+      </div>
       <div class="error-panel" *ngIf="errorMessage()">
         <div class="error-title">Erreur</div>
         <div class="error-body">{{ errorMessage() }}</div>
