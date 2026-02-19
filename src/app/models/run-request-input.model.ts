@@ -167,12 +167,11 @@ export interface SeasonalityDataBlock extends DataBlockBase {
   window: string;
   startYear: number;
   endYear: number;
-  filter?: string;
-  normalize?: boolean;
 }
 
 export interface SeasonalityProfileBlock {
   id: string;
+  bySession?: boolean;
   measure: string;
   retHorizon: number;
   minSamplesBin: number;
@@ -197,13 +196,6 @@ export interface SeasonalityExecutionBlock {
   tpSl?: string;
 }
 
-export interface SeasonalityValidationBlock {
-  trainMonths: number;
-  testMonths: number;
-  folds: number;
-  embargoDays: number;
-}
-
 export interface SeasonalityPersistenceBlock {
   enabled: boolean;
   specId?: string;
@@ -219,9 +211,6 @@ export interface SeasonalityBlock {
   signal: SeasonalitySignalBlock;
   compute: SeasonalityComputeBlock;
   execution: SeasonalityExecutionBlock;
-  validation: SeasonalityValidationBlock;
-  persistence: SeasonalityPersistenceBlock;
-  artifacts: SeasonalityArtifactsBlock;
 }
 
 export interface MonteCarloStressTests {
@@ -312,6 +301,8 @@ export type RunRequestInput =
       runType: 'seasonality';
       data: SeasonalityDataBlock;
       seasonality: SeasonalityBlock;
+      persistence?: SeasonalityPersistenceBlock;
+      output?: SeasonalityArtifactsBlock;
       performance?: PerformanceBlock;
     }
   | {

@@ -182,6 +182,13 @@ function mapSeasonalityPayload(payload: RunRequestInput): Record<string, unknown
   if (payload.runType !== 'seasonality') {
     return {};
   }
+  const legacySeasonality = payload.seasonality as {
+    validation?: { trainMonths?: number; testMonths?: number; folds?: number; embargoDays?: number };
+    persistence?: { enabled?: boolean; specId?: string; datasetId?: string };
+    artifacts?: { outDir?: string };
+  };
+  const persistence = payload.persistence ?? legacySeasonality.persistence;
+  const output = payload.output ?? legacySeasonality.artifacts;
   const profileId = payload.seasonality.profile.id;
   const result: Record<string, unknown> = {
     symbol: payload.data.symbol,
@@ -189,8 +196,6 @@ function mapSeasonalityPayload(payload: RunRequestInput): Record<string, unknown
     window: payload.data.window,
     startYear: payload.data.startYear,
     endYear: payload.data.endYear,
-    filter: payload.data.filter,
-    normalize: payload.data.normalize,
     profileId,
     profileMeasure: payload.seasonality.profile.measure,
     profileRetHorizon: payload.seasonality.profile.retHorizon,
@@ -204,14 +209,14 @@ function mapSeasonalityPayload(payload: RunRequestInput): Record<string, unknown
     optunaSearchSpace: payload.seasonality.compute.searchSpace,
     executionRiskModel: payload.seasonality.execution.riskModel,
     executionTpSl: payload.seasonality.execution.tpSl,
-    validationTrainMonths: payload.seasonality.validation.trainMonths,
-    validationTestMonths: payload.seasonality.validation.testMonths,
-    validationFolds: payload.seasonality.validation.folds,
-    validationEmbargoDays: payload.seasonality.validation.embargoDays,
-    persistenceEnabled: payload.seasonality.persistence.enabled,
-    persistenceSpecId: payload.seasonality.persistence.specId,
-    persistenceDatasetId: payload.seasonality.persistence.datasetId,
-    artifactsOutDir: payload.seasonality.artifacts.outDir
+    validationTrainMonths: legacySeasonality.validation?.trainMonths,
+    validationTestMonths: legacySeasonality.validation?.testMonths,
+    validationFolds: legacySeasonality.validation?.folds,
+    validationEmbargoDays: legacySeasonality.validation?.embargoDays,
+    persistenceEnabled: persistence?.enabled,
+    persistenceSpecId: persistence?.specId,
+    persistenceDatasetId: persistence?.datasetId,
+    artifactsOutDir: output?.outDir
   };
   assignParams(result, `profile_${profileId}_`, payload.seasonality.profile.params);
   return result;

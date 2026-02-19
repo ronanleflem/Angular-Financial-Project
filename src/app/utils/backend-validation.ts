@@ -72,9 +72,13 @@ export function mapBackendFieldToControlName(
     case 'stats':
       return runTheme === 'market-stats' ? mapStatsField(segments.slice(1), context) : null;
     case 'persistence':
-      return runTheme === 'market-stats' ? mapStatsPersistenceField(segments.slice(1)) : null;
+      return runTheme === 'market-stats' || runTheme === 'seasonality'
+        ? mapStatsPersistenceField(segments.slice(1))
+        : null;
     case 'output':
-      return runTheme === 'market-stats' ? mapStatsOutputField(segments.slice(1)) : null;
+      return runTheme === 'market-stats' || runTheme === 'seasonality'
+        ? mapStatsOutputField(segments.slice(1))
+        : null;
     case 'seasonality':
       return runTheme === 'seasonality' ? mapSeasonalityField(segments.slice(1), context) : null;
     default:
@@ -133,10 +137,6 @@ function mapDataField(segments: string[], runTheme: RunTheme): string | null {
       return runTheme === 'seasonality' ? 'startYear' : null;
     case 'end_year':
       return runTheme === 'seasonality' ? 'endYear' : null;
-    case 'filter':
-      return runTheme === 'seasonality' ? 'filter' : null;
-    case 'normalize':
-      return runTheme === 'seasonality' ? 'normalize' : null;
     default:
       return null;
   }

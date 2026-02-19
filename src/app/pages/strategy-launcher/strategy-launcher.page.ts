@@ -26,6 +26,8 @@ import {
   MarketStatsPersistenceBlock,
   MarketStatsOutputBlock,
   SeasonalityBlock,
+  SeasonalityPersistenceBlock,
+  SeasonalityArtifactsBlock,
   PerformanceBlock,
   MonteCarloStressTests,
   ValidationError,
@@ -554,14 +556,14 @@ export class StrategyLauncherPageComponent {
     endYear: 2024,
     filter: 'All',
     normalize: true,
-    profileId: 'by_month',
+    profileId: 'by_session',
     profileMeasure: 'avg_return',
     profileRetHorizon: 5,
     profileMinSamples: 100,
     signalMethod: 'zscore',
     signalThreshold: 1.2,
     signalTopk: 5,
-    signalDims: ['month'],
+    signalDims: ['session'],
     signalCombine: 'mean',
     optunaMaxTrials: 80,
     optunaSearchSpace: 'default',
@@ -1579,11 +1581,11 @@ export class StrategyLauncherPageComponent {
         timeframe: String(v.timeframe ?? this.seasonalityDefaults.timeframe),
         window: String(v.window ?? this.seasonalityDefaults.window),
         startYear: Number(v.startYear ?? this.seasonalityDefaults.startYear),
-        endYear: Number(v.endYear ?? this.seasonalityDefaults.endYear),
-        filter: String(v.filter ?? this.seasonalityDefaults.filter),
-        normalize: Boolean(v.normalize ?? this.seasonalityDefaults.normalize)
+        endYear: Number(v.endYear ?? this.seasonalityDefaults.endYear)
       },
       seasonality: this.buildSeasonalityBlock(v),
+      persistence: this.buildSeasonalityPersistence(v),
+      output: this.buildSeasonalityOutput(v),
       performance: v.includePerformance ? this.buildPerformanceBlock(undefined, undefined, undefined) : undefined
     };
   }
@@ -1793,9 +1795,12 @@ export class StrategyLauncherPageComponent {
 
   private buildSeasonalityBlock(value: ReturnType<typeof this.seasonalityForm.getRawValue>): SeasonalityBlock {
     const profileId = String(value.profileId ?? this.seasonalityDefaults.profileId);
+    const baseDims = Array.from((value.signalDims ?? this.seasonalityDefaults.signalDims) as ReadonlyArray<string>);
+    const dims = Array.from(new Set([...baseDims, 'session']));
     return {
       profile: {
         id: profileId,
+        bySession: dims.includes('session'),
         measure: String(value.profileMeasure ?? this.seasonalityDefaults.profileMeasure),
         retHorizon: Number(value.profileRetHorizon ?? this.seasonalityDefaults.profileRetHorizon),
         minSamplesBin: Number(value.profileMinSamples ?? this.seasonalityDefaults.profileMinSamples),
@@ -1805,7 +1810,7 @@ export class StrategyLauncherPageComponent {
         method: String(value.signalMethod ?? this.seasonalityDefaults.signalMethod),
         threshold: Number(value.signalThreshold ?? this.seasonalityDefaults.signalThreshold),
         topk: Number(value.signalTopk ?? this.seasonalityDefaults.signalTopk),
-        dims: Array.from((value.signalDims ?? this.seasonalityDefaults.signalDims) as ReadonlyArray<string>),
+        dims,
         combine: String(value.signalCombine ?? this.seasonalityDefaults.signalCombine)
       },
       compute: {
@@ -1815,21 +1820,25 @@ export class StrategyLauncherPageComponent {
       execution: {
         riskModel: String(value.executionRiskModel ?? this.seasonalityDefaults.executionRiskModel),
         tpSl: String(value.executionTpSl ?? this.seasonalityDefaults.executionTpSl)
-      },
-      validation: {
-        trainMonths: Number(value.validationTrainMonths ?? this.seasonalityDefaults.validationTrainMonths),
-        testMonths: Number(value.validationTestMonths ?? this.seasonalityDefaults.validationTestMonths),
-        folds: Number(value.validationFolds ?? this.seasonalityDefaults.validationFolds),
-        embargoDays: Number(value.validationEmbargoDays ?? this.seasonalityDefaults.validationEmbargoDays)
-      },
-      persistence: {
-        enabled: Boolean(value.persistenceEnabled ?? this.seasonalityDefaults.persistenceEnabled),
-        specId: String(value.persistenceSpecId ?? this.seasonalityDefaults.persistenceSpecId),
-        datasetId: String(value.persistenceDatasetId ?? this.seasonalityDefaults.persistenceDatasetId)
-      },
-      artifacts: {
-        outDir: String(value.artifactsOutDir ?? this.seasonalityDefaults.artifactsOutDir)
       }
+    };
+  }
+
+  private buildSeasonalityPersistence(
+    value: ReturnType<typeof this.seasonalityForm.getRawValue>
+  ): SeasonalityPersistenceBlock {
+    return {
+      enabled: Boolean(value.persistenceEnabled ?? this.seasonalityDefaults.persistenceEnabled),
+      specId: String(value.persistenceSpecId ?? this.seasonalityDefaults.persistenceSpecId),
+      datasetId: String(value.persistenceDatasetId ?? this.seasonalityDefaults.persistenceDatasetId)
+    };
+  }
+
+  private buildSeasonalityOutput(
+    value: ReturnType<typeof this.seasonalityForm.getRawValue>
+  ): SeasonalityArtifactsBlock {
+    return {
+      outDir: String(value.artifactsOutDir ?? this.seasonalityDefaults.artifactsOutDir)
     };
   }
 

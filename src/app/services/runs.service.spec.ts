@@ -81,6 +81,38 @@ describe('RunsService', () => {
     expect(response.updatedAt).toBe('2024-01-01T00:00:00Z');
   });
 
+  it('submits seasonality canonical payload without unsupported nested fields', () => {
+    service.submitRun({
+      runType: 'seasonality',
+      data: { symbol: 'SPY', timeframe: '1d', window: 'Monthly', startYear: 2015, endYear: 2024 },
+      seasonality: {
+        profile: { id: 'by_session', bySession: true, measure: 'return', retHorizon: 5, minSamplesBin: 100, params: {} },
+        signal: { method: 'threshold', threshold: 0.01, dims: ['session'], combine: 'and' },
+        compute: { maxTrials: 50, searchSpace: 'default' },
+        execution: { riskModel: 'fixed_fraction', tpSl: 'tp_2_sl_1' }
+      },
+      persistence: { enabled: false, specId: 'spec_001', datasetId: 'dataset_main' },
+      output: { outDir: 'artifacts/seasonality' }
+    }).subscribe();
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/api/runs`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body.data.filter).toBeUndefined();
+    expect(req.request.body.data.normalize).toBeUndefined();
+    expect(req.request.body.seasonality.validation).toBeUndefined();
+    expect(req.request.body.seasonality.persistence).toBeUndefined();
+    expect(req.request.body.seasonality.artifacts).toBeUndefined();
+    expect(req.request.body.seasonality.profile.by_session).toBeTrue();
+    expect(req.request.body.seasonality.signal.dims).toEqual(['session']);
+    expect(req.request.body.persistence).toEqual({
+      enabled: false,
+      spec_id: 'spec_001',
+      dataset_id: 'dataset_main'
+    });
+    expect(req.request.body.output).toEqual({ out_dir: 'artifacts/seasonality' });
+    req.flush({ request_id: 'req-seasonality', status: 'PENDING' });
+  });
+
   it('requests run result and normalizes fields', () => {
     let response: any;
 

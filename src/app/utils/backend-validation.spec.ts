@@ -47,6 +47,8 @@ describe('backend-validation', () => {
     expect(mapBackendFieldToControlName('seasonality.profile.params.bin_size', 'seasonality', ctx)).toBe(
       'profile_by_hour_bin_size'
     );
+    expect(mapBackendFieldToControlName('persistence.enabled', 'seasonality', {})).toBe('persistenceEnabled');
+    expect(mapBackendFieldToControlName('output.out_dir', 'seasonality', {})).toBe('artifactsOutDir');
   });
 
   it('maps stress test scenarios to slot controls', () => {
