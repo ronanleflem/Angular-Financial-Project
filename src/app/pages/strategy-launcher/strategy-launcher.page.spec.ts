@@ -205,6 +205,7 @@ describe('StrategyLauncherPageComponent', () => {
 
     const payload = component.buildRunRequest() as any;
     expect(payload.strategy.grid).toBeUndefined();
+    expect(payload.strategy.params.assetClass).toBe('CRYPTO');
     expect(payload.strategy.params.grid).toEqual([
       { dd: -5, weight: 1 },
       { dd: -10, weight: 1 },
@@ -238,12 +239,65 @@ describe('StrategyLauncherPageComponent', () => {
     });
   });
 
+  it('emits strategy.params.grid for crypto_grid', () => {
+    fixture.detectChanges();
+    flushInitRequests();
+
+    component.selectRun('dca');
+    component.dcaForm.patchValue({
+      strategyType: 'crypto_grid',
+      gridPresets: ['grid_balanced'],
+      cryptoTpSlPreset: 'tp_2_sl_1'
+    } as any);
+
+    const payload = component.buildRunRequest() as any;
+    expect(payload.strategy.type).toBe('crypto_grid');
+    expect(payload.strategy.params.grid).toEqual([
+      { dd: -5, weight: 1 },
+      { dd: -10, weight: 1 },
+      { dd: -15, weight: 1 }
+    ]);
+  });
+
+  it('forces CRYPTO asset_class and uses existing supported rule id for crypto_grid', () => {
+    fixture.detectChanges();
+    flushInitRequests({
+      filters: {
+        supported_ids: {
+          filters: ['volatility_guard'],
+          rules: ['drawdown_guard']
+        }
+      }
+    });
+
+    component.selectRun('dca');
+    component.dcaForm.patchValue({
+      strategyType: 'crypto_grid',
+      assetClass: 'ETF',
+      filterRules: ['momentum_alignment'],
+      gridPresets: ['grid_balanced']
+    } as any);
+
+    const payload = component.buildRunRequest() as any;
+    expect(payload.strategy.params.assetClass).toBe('CRYPTO');
+    expect(payload.filters.rules).toEqual([
+      jasmine.objectContaining({
+        id: 'drawdown_guard',
+        params: {},
+        mode: 'hard',
+        weight: 0.8,
+        enabled: true
+      })
+    ]);
+  });
+
   it('rejects invalid dca execution/drawdown/tp-sl values in angular validation', () => {
     fixture.detectChanges();
     flushInitRequests();
 
     component.selectRun('dca');
     component.dcaForm.patchValue({
+      assetClass: '',
       executionMode: 'limit',
       drawdownReference: 'rolling_high',
       tpSlEnabled: true,
@@ -252,6 +306,7 @@ describe('StrategyLauncherPageComponent', () => {
       slValue: 0
     } as any);
 
+    expect(component.dcaForm.get('assetClass')?.invalid).toBeTrue();
     expect(component.dcaForm.get('executionMode')?.invalid).toBeTrue();
     expect(component.dcaForm.get('drawdownReference')?.invalid).toBeTrue();
     expect(component.dcaForm.errors?.['tpSlModeInvalid']).toBeTrue();
@@ -326,6 +381,24 @@ describe('StrategyLauncherPageComponent', () => {
     expect(component.dcaLegacyOnlyFields()).toEqual(['data.universe']);
     expect(component.isLegacyOnlyDcaField('data.universe')).toBeTrue();
     expect(component.isLegacyOnlyDcaField('data.frequency')).toBeFalse();
+  });
+
+  it('loads filters and rules options from capabilities filters.supported_ids', () => {
+    fixture.detectChanges();
+    flushInitRequests({
+      filters: {
+        supported_ids: {
+          filters: ['volatility_guard', 'liquidity_spread'],
+          rules: ['drawdown_guard']
+        }
+      }
+    });
+
+    expect(component.backtestFilterOptions.map(option => option.id)).toEqual([
+      'volatility_guard',
+      'liquidity_spread'
+    ]);
+    expect(component.backtestRuleOptions.map(option => option.id)).toEqual(['drawdown_guard']);
   });
 
   it('falls back to static options when capabilities endpoint is unavailable', () => {

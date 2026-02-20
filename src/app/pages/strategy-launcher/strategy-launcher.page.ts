@@ -59,6 +59,7 @@ const CURRENCY_FORMAT = new Intl.NumberFormat('en-US', {
 });
 
 const SYMBOL_BASE_PRICE: Record<string, number> = {
+  BTC: 42000,
   BTCUSD: 42000,
   ETHUSD: 2200,
   EURUSD: 1.08,
@@ -99,6 +100,7 @@ const FREQUENCY_DAYS: Record<string, number> = {
 };
 const DCA_ALLOWED_EXECUTION_MODES = ['bar_close', 'intracandle'] as const;
 const DCA_ALLOWED_DRAWDOWN_REFERENCES = ['ATH', '1M', '3M', '6M', '1Y'] as const;
+const DCA_ALLOWED_ASSET_CLASSES = ['CRYPTO', 'EQUITY', 'ETF', 'STOCK', 'ACTION'] as const;
 const NOT_IMPLEMENTED_YET_MESSAGE = 'Not implemented yet';
 
 type MetricTone = 'positive' | 'negative' | 'neutral';
@@ -163,6 +165,39 @@ interface SeasonalityOption {
   params: FilterParam[];
 }
 
+const DEFAULT_FILTER_OPTIONS: FilterOption[] = [
+  {
+    id: 'volatility_guard',
+    label: 'Volatility guard',
+    params: [
+      { key: 'window', label: 'Fenetre', type: 'number', min: 5, max: 200, step: 1 },
+      { key: 'threshold', label: 'Seuil %', type: 'number', min: 1, max: 80, step: 0.5 }
+    ]
+  },
+  {
+    id: 'trend_regime',
+    label: 'Trend regime',
+    params: [
+      { key: 'lookback', label: 'Lookback', type: 'number', min: 20, max: 400, step: 5 },
+      { key: 'min_strength', label: 'Force min', type: 'number', min: 0, max: 100, step: 1 }
+    ]
+  },
+  {
+    id: 'liquidity_spread',
+    label: 'Liquidity / spread',
+    params: [
+      { key: 'max_spread_bps', label: 'Spread max (bps)', type: 'number', min: 1, max: 50, step: 1 },
+      { key: 'min_volume', label: 'Volume min', type: 'number', min: 1000, max: 1000000, step: 1000 }
+    ]
+  }
+];
+
+const DEFAULT_RULE_OPTIONS: FilterRuleOption[] = [
+  { id: 'drawdown_guard', label: 'Drawdown guard' },
+  { id: 'macro_filter', label: 'Macro filter' }
+];
+const UNSUPPORTED_RULE_IDS = new Set(['momentum_alignment']);
+
 @Component({
   selector: 'app-strategy-launcher-page',
   standalone: true,
@@ -207,7 +242,7 @@ export class StrategyLauncherPageComponent {
     { key: 'stress-tests', label: 'Stress tests', description: 'Chocs et scenarios extremes' }
   ];
 
-  readonly symbols = ['BTCUSD', 'BTCUSDT', 'ETHUSD', 'EURUSD', 'AAPL', 'SPY', 'XAUUSD'];
+  readonly symbols = ['BTC', 'BTCUSD', 'BTCUSDT', 'ETHUSD', 'EURUSD', 'AAPL', 'SPY', 'XAUUSD'];
   readonly timeframes = ['15m', '1h', '4h', '1d'];
   readonly brokers = ['BINANCE', 'COINBASE', 'IBKR', 'FXCM'];
 
@@ -224,6 +259,7 @@ export class StrategyLauncherPageComponent {
   readonly dcaGridPresets = ['grid_conservative', 'grid_balanced', 'grid_aggressive'];
   readonly dcaExecutionModes = [...DCA_ALLOWED_EXECUTION_MODES];
   readonly dcaDrawdownRefs = [...DCA_ALLOWED_DRAWDOWN_REFERENCES];
+  readonly dcaAssetClasses = [...DCA_ALLOWED_ASSET_CLASSES];
   readonly dcaTpSlModes = ['rule_based'];
   readonly dcaTpSlPresets = ['none', 'tp_2_sl_1', 'tp_3_sl_1.5'];
   readonly dcaUniverseOptions = [
@@ -234,38 +270,9 @@ export class StrategyLauncherPageComponent {
     { id: 'ETHUSD', label: 'ETHUSD', assetClass: 'Crypto', exchange: 'COINBASE', broker: 'COINBASE' }
   ];
 
-  backtestFilterOptions: FilterOption[] = [
-    {
-      id: 'volatility_guard',
-      label: 'Volatility guard',
-      params: [
-        { key: 'window', label: 'Fenetre', type: 'number', min: 5, max: 200, step: 1 },
-        { key: 'threshold', label: 'Seuil %', type: 'number', min: 1, max: 80, step: 0.5 }
-      ]
-    },
-    {
-      id: 'trend_regime',
-      label: 'Trend regime',
-      params: [
-        { key: 'lookback', label: 'Lookback', type: 'number', min: 20, max: 400, step: 5 },
-        { key: 'min_strength', label: 'Force min', type: 'number', min: 0, max: 100, step: 1 }
-      ]
-    },
-    {
-      id: 'liquidity_spread',
-      label: 'Liquidity / spread',
-      params: [
-        { key: 'max_spread_bps', label: 'Spread max (bps)', type: 'number', min: 1, max: 50, step: 1 },
-        { key: 'min_volume', label: 'Volume min', type: 'number', min: 1000, max: 1000000, step: 1000 }
-      ]
-    }
-  ];
+  backtestFilterOptions: FilterOption[] = [...DEFAULT_FILTER_OPTIONS];
 
-  backtestRuleOptions: FilterRuleOption[] = [
-    { id: 'momentum_alignment', label: 'Momentum alignment' },
-    { id: 'drawdown_guard', label: 'Drawdown guard' },
-    { id: 'macro_filter', label: 'Macro filter' }
-  ];
+  backtestRuleOptions: FilterRuleOption[] = [...DEFAULT_RULE_OPTIONS];
 
   marketEventOptions: MarketOption[] = [
     {
@@ -423,6 +430,7 @@ export class StrategyLauncherPageComponent {
     broker: 'BINANCE',
     includeDcaAdvanced: false,
     strategyType: 'dca_equity' as DcaStrategyType,
+    assetClass: 'CRYPTO',
     gridPresets: ['grid_balanced'],
     drawdownReference: 'ATH',
     executionMode: 'bar_close',
@@ -441,7 +449,7 @@ export class StrategyLauncherPageComponent {
     universe: ['SPY', 'AAPL'],
     includeDcaUniverse: false,
     filters: ['volatility_guard'],
-    filterRules: ['momentum_alignment'],
+    filterRules: ['drawdown_guard'],
     filterRuleMinScore: 60,
     filterRuleMinScorePct: 70,
     initialCapital: 25000,
@@ -496,7 +504,7 @@ export class StrategyLauncherPageComponent {
     tpslJitterSlBps: 6,
     tpslJitterSeed: 42,
     filters: ['volatility_guard'],
-    filterRules: ['momentum_alignment'],
+    filterRules: ['drawdown_guard'],
     filterRuleMinScore: 60,
     filterRuleMinScorePct: 70,
     screeningEnabled: false,
@@ -673,6 +681,10 @@ export class StrategyLauncherPageComponent {
       broker: [this.dcaDefaults.broker],
       includeDcaAdvanced: [this.dcaDefaults.includeDcaAdvanced],
       strategyType: [this.dcaDefaults.strategyType, Validators.required],
+      assetClass: [
+        this.dcaDefaults.assetClass,
+        [Validators.required, oneOfValidator(DCA_ALLOWED_ASSET_CLASSES)]
+      ],
       gridPresets: [this.dcaDefaults.gridPresets],
       drawdownReference: [this.dcaDefaults.drawdownReference, oneOfValidator(DCA_ALLOWED_DRAWDOWN_REFERENCES)],
       executionMode: [this.dcaDefaults.executionMode, oneOfValidator(DCA_ALLOWED_EXECUTION_MODES)],
@@ -967,7 +979,9 @@ export class StrategyLauncherPageComponent {
   });
   catalogVersion = 'v1';
   private supportedFilterIds = new Set<string>();
+  private supportedRuleIds = new Set<string>();
   private supportedDcaGridPresets = new Set<string>();
+  private hasCapabilitiesFilterSupport = false;
 
   constructor() {
     this.bindStressAdvancedControls();
@@ -1136,23 +1150,35 @@ export class StrategyLauncherPageComponent {
       }
       this.catalogVersion = catalog.meta?.version ?? this.catalogVersion;
       this.applyCatalogEnums(catalog.enums ?? {});
-      this.supportedFilterIds = new Set(Object.keys(catalog.filters_expanded?.items ?? {}));
+      if (!this.hasCapabilitiesFilterSupport) {
+        this.supportedFilterIds = new Set(Object.keys(catalog.filters_expanded?.items ?? {}));
+      }
       this.filterUnsupportedSelections();
       this.catalogReady.set(true);
     });
   }
 
   private filterUnsupportedSelections(): void {
-    if (this.supportedFilterIds.size === 0) {
-      return;
-    }
-    const backtestFilters = (this.backtestForm.get('filters')?.value as ReadonlyArray<string> | null) ?? [];
-    const backtestAllowed = backtestFilters.filter(id => this.supportedFilterIds.has(id));
-    this.backtestForm.get('filters')?.setValue(backtestAllowed as any);
+    if (this.supportedFilterIds.size > 0) {
+      const backtestFilters = (this.backtestForm.get('filters')?.value as ReadonlyArray<string> | null) ?? [];
+      const backtestAllowed = backtestFilters.filter(id => this.supportedFilterIds.has(id));
+      this.backtestForm.get('filters')?.setValue(backtestAllowed as any);
 
-    const dcaFilters = (this.dcaForm.get('filters')?.value as ReadonlyArray<string> | null) ?? [];
-    const dcaAllowed = dcaFilters.filter(id => this.supportedFilterIds.has(id));
-    this.dcaForm.get('filters')?.setValue(dcaAllowed as any);
+      const dcaFilters = (this.dcaForm.get('filters')?.value as ReadonlyArray<string> | null) ?? [];
+      const dcaAllowed = dcaFilters.filter(id => this.supportedFilterIds.has(id));
+      this.dcaForm.get('filters')?.setValue(dcaAllowed as any);
+    }
+
+    if (this.supportedRuleIds.size > 0) {
+      const defaultRule = Array.from(this.supportedRuleIds)[0];
+      const backtestRules = (this.backtestForm.get('filterRules')?.value as ReadonlyArray<string> | null) ?? [];
+      const backtestAllowed = backtestRules.filter(id => this.supportedRuleIds.has(id));
+      this.backtestForm.get('filterRules')?.setValue((backtestAllowed.length > 0 ? backtestAllowed : [defaultRule]) as any);
+
+      const dcaRules = (this.dcaForm.get('filterRules')?.value as ReadonlyArray<string> | null) ?? [];
+      const dcaAllowed = dcaRules.filter(id => this.supportedRuleIds.has(id));
+      this.dcaForm.get('filterRules')?.setValue((dcaAllowed.length > 0 ? dcaAllowed : [defaultRule]) as any);
+    }
   }
 
   private applyCatalogEnums(enums: Record<string, string[]>): void {
@@ -1297,6 +1323,11 @@ export class StrategyLauncherPageComponent {
         catchError(err => {
           console.warn('[StrategyLauncher] /runs/capabilities unavailable, fallback static mode', err);
           this.supportedDcaGridPresets = new Set();
+          this.supportedRuleIds = new Set();
+          this.hasCapabilitiesFilterSupport = false;
+          this.backtestFilterOptions = [...DEFAULT_FILTER_OPTIONS];
+          this.backtestRuleOptions = [...DEFAULT_RULE_OPTIONS];
+          this.supportedFilterIds = new Set(this.backtestFilterOptions.map(option => option.id));
           this.dcaCapabilitiesInfo.set('Capabilities runtime indisponibles, mode statique active.');
           this.dcaCanonicalSupportedFields.set([]);
           this.dcaCanonicalAcceptedButNotWiredFields.set([]);
@@ -1316,6 +1347,7 @@ export class StrategyLauncherPageComponent {
         const canonicalFields = this.extractCanonicalDcaFields(capabilitiesRecord);
         const presets = this.extractDcaPresetCapabilities(capabilitiesRecord);
         const gridPresets = this.extractDcaGridCapabilities(capabilities);
+        const filterSupport = this.extractCapabilitiesFilterSupport(capabilitiesRecord);
         const legacy = this.extractLegacyDcaFields(capabilities);
         this.dcaCanonicalSupportedFields.set(canonicalFields.supported);
         this.dcaCanonicalAcceptedButNotWiredFields.set(canonicalFields.acceptedButNotWired);
@@ -1324,6 +1356,7 @@ export class StrategyLauncherPageComponent {
         this.dcaLegacySupportedFields.set(legacy.supported);
         this.dcaLegacyOnlyFields.set(legacy.notInCanonical);
         this.dcaLegacyNotes.set(this.extractStringArray((capabilities as any)?.legacy_dca?.notes));
+        this.applyCapabilitiesFilterSupport(filterSupport);
         if (gridPresets.length === 0) {
           this.supportedDcaGridPresets = new Set();
           this.dcaCapabilitiesInfo.set(
@@ -1374,7 +1407,7 @@ export class StrategyLauncherPageComponent {
     supported: string[];
     acceptedButNotWired: string[];
   } {
-    const fields = ((payload as any)?.fields ?? {}) as Record<string, unknown>;
+    const fields = (((payload as any)?.fields ?? (payload as any)?.canonical?.fields ?? {}) as Record<string, unknown>);
     return {
       supported: this.extractStringArray(fields['supported']),
       acceptedButNotWired: this.extractStringArray(fields['accepted_but_not_wired'])
@@ -1432,6 +1465,93 @@ export class StrategyLauncherPageComponent {
       supported: Array.from(new Set(supported)),
       notInCanonical: Array.from(new Set(notInCanonical))
     };
+  }
+
+  private extractCapabilitiesFilterSupport(payload: Record<string, unknown>): { filters: string[]; rules: string[] } {
+    const filtersBlock = ((payload as any)?.filters ?? {}) as Record<string, unknown>;
+    const supportedIds = filtersBlock['supported_ids'];
+    if (Array.isArray(supportedIds)) {
+      if (supportedIds.every(item => typeof item === 'string')) {
+        const ids = this.extractStringArray(supportedIds);
+        return { filters: ids, rules: ids };
+      }
+      const filterIds: string[] = [];
+      const ruleIds: string[] = [];
+      supportedIds.forEach(item => {
+        if (!item || typeof item !== 'object') {
+          return;
+        }
+        const entry = item as Record<string, unknown>;
+        const id = String(entry['id'] ?? '').trim();
+        const type = String(entry['type'] ?? entry['kind'] ?? '').trim().toLowerCase();
+        if (!id) {
+          return;
+        }
+        if (type === 'rule' || type === 'rules') {
+          ruleIds.push(id);
+          return;
+        }
+        filterIds.push(id);
+      });
+      return { filters: Array.from(new Set(filterIds)), rules: Array.from(new Set(ruleIds)) };
+    }
+    if (supportedIds && typeof supportedIds === 'object') {
+      const typed = supportedIds as Record<string, unknown>;
+      const filters = this.extractStringArray(typed['filters'] ?? typed['filter_ids']);
+      const rules = this.extractStringArray(typed['rules'] ?? typed['rule_ids']);
+      return {
+        filters,
+        rules: rules.length > 0 ? rules : filters
+      };
+    }
+    return { filters: [], rules: [] };
+  }
+
+  private applyCapabilitiesFilterSupport(support: { filters: string[]; rules: string[] }): void {
+    const defaultFilterById = new Map(DEFAULT_FILTER_OPTIONS.map(option => [option.id, option]));
+    const defaultRuleById = new Map(DEFAULT_RULE_OPTIONS.map(option => [option.id, option]));
+
+    if (support.filters.length > 0) {
+      this.hasCapabilitiesFilterSupport = true;
+      this.supportedFilterIds = new Set(support.filters);
+      this.backtestFilterOptions = support.filters.map(id => {
+        const known = defaultFilterById.get(id);
+        return known ?? { id, label: humanizeId(id), params: [] };
+      });
+    } else {
+      this.hasCapabilitiesFilterSupport = false;
+      this.backtestFilterOptions = [...DEFAULT_FILTER_OPTIONS];
+      this.supportedFilterIds = new Set(this.backtestFilterOptions.map(option => option.id));
+    }
+
+    const supportedRules = support.rules.filter(id => !UNSUPPORTED_RULE_IDS.has(id));
+    if (supportedRules.length > 0) {
+      this.supportedRuleIds = new Set(supportedRules);
+      this.backtestRuleOptions = supportedRules.map(id => {
+        const known = defaultRuleById.get(id);
+        return known ?? { id, label: humanizeId(id) };
+      });
+      this.ensureRuleControls(this.dcaForm, 'dca_rule_', supportedRules);
+      this.ensureRuleControls(this.backtestForm, 'rule_', supportedRules);
+    } else {
+      this.supportedRuleIds = new Set();
+      this.backtestRuleOptions = [...DEFAULT_RULE_OPTIONS];
+    }
+
+    this.filterUnsupportedSelections();
+  }
+
+  private ensureRuleControls(form: UntypedFormGroup, prefix: string, ruleIds: ReadonlyArray<string>): void {
+    ruleIds.forEach(ruleId => {
+      const modeControlName = `${prefix}${ruleId}_mode`;
+      const weightControlName = `${prefix}${ruleId}_weight`;
+      if (!form.contains(modeControlName)) {
+        form.addControl(modeControlName, this.fb.control('soft'));
+      }
+      if (!form.contains(weightControlName)) {
+        form.addControl(weightControlName, this.fb.control(0.5));
+      }
+    });
   }
 
   private extractStringArray(value: unknown): string[] {
@@ -1849,10 +1969,15 @@ export class StrategyLauncherPageComponent {
 
   private buildDcaParams(value: ReturnType<typeof this.dcaForm.getRawValue>): DcaStrategyCore['params'] {
     const type = (value.strategyType ?? this.dcaDefaults.strategyType) as DcaStrategyType;
+    const assetClassRaw = String(value.assetClass ?? this.dcaDefaults.assetClass);
+    const assetClass = (DCA_ALLOWED_ASSET_CLASSES as readonly string[]).includes(assetClassRaw)
+      ? assetClassRaw
+      : this.dcaDefaults.assetClass;
     switch (type) {
       case 'dca_etf':
         return {
           kind: 'dca_etf',
+          assetClass,
           activationLimit: Number(value.activationLimit ?? this.dcaDefaults.activationLimit),
           resetOnNewHigh: Boolean(value.resetOnNewHigh ?? this.dcaDefaults.resetOnNewHigh),
           rearmOnReboundPct: Number(value.rearmOnReboundPct ?? this.dcaDefaults.rearmOnReboundPct),
@@ -1861,6 +1986,8 @@ export class StrategyLauncherPageComponent {
       case 'crypto_grid':
         return {
           kind: 'crypto_grid',
+          assetClass: 'CRYPTO',
+          grid: this.buildDcaGridFromPresets(value.gridPresets),
           tpSl: this.buildDcaTpSlFromLegacyPreset(String(value.cryptoTpSlPreset ?? this.dcaDefaults.cryptoTpSlPreset))
         };
       default:
@@ -1868,6 +1995,7 @@ export class StrategyLauncherPageComponent {
         const drawdownReference = String(value.drawdownReference ?? this.dcaDefaults.drawdownReference);
         return {
           kind: 'dca_equity',
+          assetClass,
           drawdownReference: (DCA_ALLOWED_DRAWDOWN_REFERENCES as readonly string[]).includes(drawdownReference)
             ? drawdownReference
             : this.dcaDefaults.drawdownReference,
@@ -2005,16 +2133,24 @@ export class StrategyLauncherPageComponent {
       ? filters.filter(id => this.supportedFilterIds.has(id))
       : filters;
     const rules = (rulesValue as ReadonlyArray<string> | null | undefined) ?? [];
+    const allowedRules = this.supportedRuleIds.size > 0
+      ? rules.filter(id => this.supportedRuleIds.has(id))
+      : rules.filter(id => !UNSUPPORTED_RULE_IDS.has(id));
+    const effectiveRules = this.supportedRuleIds.size > 0 && allowedRules.length === 0
+      ? [Array.from(this.supportedRuleIds)[0]]
+      : allowedRules;
 
     return {
       filters: allowedFilters.map(id => ({
         id,
         params: this.buildFilterParams(id, prefix)
       })),
-      rules: rules.map(id => ({
+      rules: effectiveRules.map(id => ({
         id,
+        params: this.buildFilterParams(id, prefix),
         mode: String(this.getControlValue(`${prefix}rule_${id}_mode`) ?? 'soft') as 'soft' | 'hard',
-        weight: Number(this.getControlValue(`${prefix}rule_${id}_weight`) ?? 0.5)
+        weight: Number(this.getControlValue(`${prefix}rule_${id}_weight`) ?? 0.5),
+        enabled: true
       })),
       rulesConfig: {
         minScore: Number(minScore ?? 0),
@@ -2443,6 +2579,14 @@ function coerceParamValue(value: unknown): number | string | boolean {
     return '';
   }
   return String(value);
+}
+
+function humanizeId(value: string): string {
+  return value
+    .split('_')
+    .filter(Boolean)
+    .map(chunk => chunk.charAt(0).toUpperCase() + chunk.slice(1))
+    .join(' ');
 }
 
 function collectPaths(value: unknown, prefix = ''): string[] {

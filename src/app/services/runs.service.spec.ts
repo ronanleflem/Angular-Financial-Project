@@ -195,6 +195,7 @@ describe('RunsService', () => {
         type: 'dca_equity',
         params: {
           kind: 'dca_equity',
+          assetClass: 'CRYPTO',
           drawdownReference: 'ATH',
           executionMode: 'bar_close',
           tpSl: {
@@ -239,6 +240,7 @@ describe('RunsService', () => {
         type: 'dca_equity',
         params: {
           kind: 'dca_equity',
+          assetClass: 'CRYPTO',
           drawdownReference: 'ATH',
           executionMode: 'bar_close',
           tpSl: {

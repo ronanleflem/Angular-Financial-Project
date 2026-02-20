@@ -252,6 +252,8 @@ function mapSignalField(segments: string[]): string | null {
 function mapDcaParamsField(segments: string[]): string | null {
   const key = segments[0];
   switch (key) {
+    case 'asset_class':
+      return 'assetClass';
     case 'drawdown_reference':
       return 'drawdownReference';
     case 'execution_mode':

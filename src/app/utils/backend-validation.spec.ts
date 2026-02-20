@@ -43,6 +43,7 @@ describe('backend-validation', () => {
 
   it('maps dca fields to control names', () => {
     expect(mapBackendFieldToControlName('data.start_date', 'dca', {})).toBe('startDate');
+    expect(mapBackendFieldToControlName('strategy.params.asset_class', 'dca', {})).toBe('assetClass');
     expect(mapBackendFieldToControlName('strategy.params.drawdown_reference', 'dca', {})).toBe('drawdownReference');
     expect(mapBackendFieldToControlName('strategy.params.tp_sl.tp.value', 'dca', {})).toBe('tpValue');
     expect(mapBackendFieldToControlName('strategy.params.tp_sl.sl.value', 'dca', {})).toBe('slValue');

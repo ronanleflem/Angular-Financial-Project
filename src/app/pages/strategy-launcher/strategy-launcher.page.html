@@ -103,6 +103,13 @@
                   </mat-form-field>
 
                   <mat-form-field appearance="outline">
+                    <mat-label>strategy.params.asset_class</mat-label>
+                    <mat-select formControlName="assetClass">
+                      <mat-option *ngFor="let assetClass of dcaAssetClasses" [value]="assetClass">{{ assetClass }}</mat-option>
+                    </mat-select>
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline">
                     <mat-label>grid[]</mat-label>
                     <mat-select multiple formControlName="gridPresets">
                       <mat-option
@@ -147,7 +154,7 @@
                       </ul>
                     </div>
                     <div class="param-group" *ngIf="dcaLegacyOnlyFields().length">
-                      <div class="param-hint">Legacy-only (necessite mapping, non envoye en canonical)</div>
+                      <div class="param-hint">Legacy-only (non canonical direct, necessite mapping)</div>
                       <ul class="error-body">
                         <li *ngFor="let field of dcaLegacyOnlyFields()">{{ field }}</li>
                       </ul>

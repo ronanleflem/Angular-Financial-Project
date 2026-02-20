@@ -66,6 +66,7 @@ function mapDcaPayload(payload: RunRequestInput): Record<string, unknown> {
     broker: payload.data.broker,
     reinvestDividends: payload.data.reinvestDividends,
     strategyType: payload.strategy.type,
+    assetClass: params.assetClass ?? 'CRYPTO',
     gridPresets: inferDcaGridPresets(params.grid),
     drawdownReference: params.drawdownReference,
     executionMode: params.executionMode,

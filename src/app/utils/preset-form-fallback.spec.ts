@@ -17,6 +17,7 @@ describe('preset-form-fallback', () => {
         type: 'dca_equity',
         params: {
           kind: 'dca_equity',
+          assetClass: 'CRYPTO',
           drawdownReference: 'ATH',
           executionMode: 'bar_close',
           tpSl: {
@@ -34,6 +35,7 @@ describe('preset-form-fallback', () => {
     const result = mergePresetFormValue('dca', {}, payload);
     expect(result['symbol']).toBe('BTCUSD');
     expect(result['strategyType']).toBe('dca_equity');
+    expect(result['assetClass']).toBe('CRYPTO');
     expect(result['tpSlMode']).toBe('rule_based');
     expect(result['tpValue']).toBe(2);
     expect(result['slValue']).toBe(1);
@@ -52,6 +54,7 @@ describe('preset-form-fallback', () => {
         type: 'dca_equity',
         params: {
           kind: 'dca_equity',
+          assetClass: 'CRYPTO',
           drawdownReference: 'ATH',
           executionMode: 'bar_close',
           tpSl: 'tp_2_sl_1',

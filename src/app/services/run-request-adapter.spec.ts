@@ -16,6 +16,7 @@ describe('run-request-adapter', () => {
         type: 'dca_equity',
         params: {
           kind: 'dca_equity',
+          assetClass: 'CRYPTO',
           drawdownReference: 'ATH',
           executionMode: 'bar_close',
           tpSl: {
@@ -37,6 +38,7 @@ describe('run-request-adapter', () => {
     expect(canonical.data.symbol).toBe('BTCUSD');
     expect(canonical.data.universe).toBeUndefined();
     expect(canonical.strategy.params.grid).toEqual([{ dd: -5, weight: 1 }]);
+    expect(canonical.strategy.params.asset_class).toBe('CRYPTO');
     expect(canonical.strategy.params.tp_sl).toEqual({
       enabled: true,
       mode: 'rule_based',
@@ -60,6 +62,7 @@ describe('run-request-adapter', () => {
         grid: ['grid_balanced'],
         params: {
           kind: 'dca_equity',
+          assetClass: 'CRYPTO',
           drawdownReference: 'ATH',
           executionMode: 'bar_close',
           tpSl: 'tp_2_sl_1',
@@ -96,6 +99,7 @@ describe('run-request-adapter', () => {
         type: 'dca_equity',
         params: {
           kind: 'dca_equity',
+          assetClass: 'CRYPTO',
           drawdownReference: 'ATH',
           executionMode: 'bar_close',
           grid: [{ dd: -5, weight: 1 }],

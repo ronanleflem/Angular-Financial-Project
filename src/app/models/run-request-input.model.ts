@@ -10,8 +10,10 @@ export interface FilterConfig {
 
 export interface FilterRule {
   id: string;
+  params?: Record<string, number | string | boolean>;
   mode: 'soft' | 'hard';
   weight: number;
+  enabled?: boolean;
 }
 
 export interface FilterRulesConfig {
@@ -70,6 +72,7 @@ export interface DcaStrategyCore {
 
 export interface DcaEquityParams {
   kind: 'dca_equity';
+  assetClass: string;
   drawdownReference: DcaDrawdownReference | string;
   executionMode: DcaExecutionMode | string;
   tpSl?: DcaTpSlBlock | string;
@@ -79,6 +82,7 @@ export interface DcaEquityParams {
 
 export interface DcaEtfParams {
   kind: 'dca_etf';
+  assetClass: string;
   activationLimit: number;
   resetOnNewHigh: boolean;
   rearmOnReboundPct: number;
@@ -87,6 +91,8 @@ export interface DcaEtfParams {
 
 export interface CryptoGridParams {
   kind: 'crypto_grid';
+  grid: DcaGridLevel[];
+  assetClass: string;
   tpSl?: DcaTpSlBlock | string;
 }
 
@@ -436,6 +442,15 @@ function validateDateOrder(
 
 function validateDcaStrategy(errors: ValidationError[], strategy: DcaStrategyCore): void {
   validateRequired(errors, 'strategy.type', strategy.type);
+  const paramsWithAssetClass = strategy.params as { assetClass?: string };
+  if (!paramsWithAssetClass.assetClass) {
+    errors.push({ path: 'strategy.params.assetClass', message: 'required' });
+  } else if (!['CRYPTO', 'EQUITY', 'ETF', 'STOCK', 'ACTION'].includes(paramsWithAssetClass.assetClass)) {
+    errors.push({
+      path: 'strategy.params.assetClass',
+      message: 'must be one of: CRYPTO, EQUITY, ETF, STOCK, ACTION'
+    });
+  }
   if (strategy.type === 'dca_equity') {
     const params = strategy.params as DcaEquityParams;
     if (!params.grid?.length) {
@@ -467,6 +482,12 @@ function validateDcaStrategy(errors: ValidationError[], strategy: DcaStrategyCor
           errors.push({ path: 'strategy.params.tpSl.sl.value', message: 'must be > 0' });
         }
       }
+    }
+  }
+  if (strategy.type === 'crypto_grid') {
+    const params = strategy.params as CryptoGridParams;
+    if (!params.grid?.length) {
+      errors.push({ path: 'strategy.params.grid', message: 'at least one grid level is required' });
     }
   }
 }
