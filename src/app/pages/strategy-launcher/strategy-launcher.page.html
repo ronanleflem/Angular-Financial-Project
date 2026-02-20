@@ -428,13 +428,41 @@
                   <mat-form-field appearance="outline">
                     <mat-label>filter_rules[]</mat-label>
                     <mat-select multiple formControlName="filterRules">
-                      <mat-option *ngFor="let rule of backtestRuleOptions" [value]="rule.id">{{ rule.label }}</mat-option>
+                      <mat-option *ngFor="let rule of backtestRuleOptions" [value]="rule.id" [matTooltip]="filterTooltip(rule.id)">
+                        {{ rule.label }}
+                      </mat-option>
                     </mat-select>
                   </mat-form-field>
 
                   <div class="param-group" *ngFor="let ruleId of dcaSelectedRules()">
                     <div class="param-hint">{{ ruleId }}</div>
                     <div class="param-grid">
+                      <ng-container *ngFor="let param of dcaRuleParams(ruleId)">
+                        <mat-form-field appearance="outline">
+                          <mat-label>{{ param.label }}</mat-label>
+                          <input
+                            *ngIf="param.type === 'number'"
+                            matInput
+                            type="number"
+                            [attr.min]="param.min"
+                            [attr.max]="param.max"
+                            [attr.step]="param.step"
+                            [formControlName]="dcaRuleParamControlName(ruleId, param.key)"
+                          />
+                          <input
+                            *ngIf="param.type === 'text'"
+                            matInput
+                            type="text"
+                            [formControlName]="dcaRuleParamControlName(ruleId, param.key)"
+                          />
+                          <mat-select
+                            *ngIf="param.type === 'select'"
+                            [formControlName]="dcaRuleParamControlName(ruleId, param.key)"
+                          >
+                            <mat-option *ngFor="let option of param.options ?? []" [value]="option">{{ option }}</mat-option>
+                          </mat-select>
+                        </mat-form-field>
+                      </ng-container>
                       <mat-form-field appearance="outline">
                         <mat-label>Mode</mat-label>
                         <mat-select [formControlName]="dcaRuleModeControlName(ruleId)">
@@ -957,13 +985,41 @@
                       <mat-form-field appearance="outline">
                         <mat-label>filter_rules[]</mat-label>
                         <mat-select multiple formControlName="filterRules">
-                          <mat-option *ngFor="let rule of backtestRuleOptions" [value]="rule.id">{{ rule.label }}</mat-option>
+                          <mat-option *ngFor="let rule of backtestRuleOptions" [value]="rule.id" [matTooltip]="filterTooltip(rule.id)">
+                            {{ rule.label }}
+                          </mat-option>
                         </mat-select>
                       </mat-form-field>
 
                       <div class="param-group" *ngFor="let ruleId of backtestSelectedRules()">
                         <div class="param-hint">{{ ruleId }}</div>
                         <div class="param-grid">
+                          <ng-container *ngFor="let param of backtestRuleParams(ruleId)">
+                            <mat-form-field appearance="outline">
+                              <mat-label>{{ param.label }}</mat-label>
+                              <input
+                                *ngIf="param.type === 'number'"
+                                matInput
+                                type="number"
+                                [attr.min]="param.min"
+                                [attr.max]="param.max"
+                                [attr.step]="param.step"
+                                [formControlName]="ruleParamControlName(ruleId, param.key)"
+                              />
+                              <input
+                                *ngIf="param.type === 'text'"
+                                matInput
+                                type="text"
+                                [formControlName]="ruleParamControlName(ruleId, param.key)"
+                              />
+                              <mat-select
+                                *ngIf="param.type === 'select'"
+                                [formControlName]="ruleParamControlName(ruleId, param.key)"
+                              >
+                                <mat-option *ngFor="let option of param.options ?? []" [value]="option">{{ option }}</mat-option>
+                              </mat-select>
+                            </mat-form-field>
+                          </ng-container>
                           <mat-form-field appearance="outline">
                             <mat-label>Mode</mat-label>
                             <mat-select [formControlName]="ruleModeControlName(ruleId)">

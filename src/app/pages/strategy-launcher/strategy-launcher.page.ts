@@ -158,6 +158,7 @@ interface FilterOption {
 interface FilterRuleOption {
   id: string;
   label: string;
+  params: FilterParam[];
 }
 
 interface MarketOption {
@@ -205,8 +206,8 @@ const DEFAULT_FILTER_OPTIONS: FilterOption[] = [
 ];
 
 const DEFAULT_RULE_OPTIONS: FilterRuleOption[] = [
-  { id: 'drawdown_guard', label: 'Drawdown guard' },
-  { id: 'macro_filter', label: 'Macro filter' }
+  { id: 'drawdown_guard', label: 'Drawdown guard', params: [] },
+  { id: 'macro_filter', label: 'Macro filter', params: [] }
 ];
 const UNSUPPORTED_RULE_IDS = new Set(['momentum_alignment']);
 
@@ -1706,8 +1707,13 @@ export class StrategyLauncherPageComponent {
       this.supportedFilterIds = new Set(support.filters);
       this.backtestFilterOptions = support.filters.map(id => {
         const known = defaultFilterById.get(id);
-        return known ?? { id, label: humanizeId(id), params: [] };
+        if (known) {
+          return known;
+        }
+        return { id, label: humanizeId(id), params: this.buildCatalogParams(id) };
       });
+      this.ensureFilterParamControls(this.dcaForm, 'dca_filter_', this.backtestFilterOptions);
+      this.ensureFilterParamControls(this.backtestForm, 'filter_', this.backtestFilterOptions);
     } else {
       this.hasCapabilitiesFilterSupport = false;
       this.backtestFilterOptions = [...DEFAULT_FILTER_OPTIONS];
@@ -1719,10 +1725,15 @@ export class StrategyLauncherPageComponent {
       this.supportedRuleIds = new Set(supportedRules);
       this.backtestRuleOptions = supportedRules.map(id => {
         const known = defaultRuleById.get(id);
-        return known ?? { id, label: humanizeId(id) };
+        if (known) {
+          return known;
+        }
+        return { id, label: humanizeId(id), params: this.buildCatalogParams(id) };
       });
       this.ensureRuleControls(this.dcaForm, 'dca_rule_', supportedRules);
       this.ensureRuleControls(this.backtestForm, 'rule_', supportedRules);
+      this.ensureRuleParamControls(this.dcaForm, 'dca_filter_', this.backtestRuleOptions);
+      this.ensureRuleParamControls(this.backtestForm, 'filter_', this.backtestRuleOptions);
     } else {
       this.supportedRuleIds = new Set();
       this.backtestRuleOptions = [...DEFAULT_RULE_OPTIONS];
@@ -1742,6 +1753,60 @@ export class StrategyLauncherPageComponent {
         form.addControl(weightControlName, this.fb.control(0.5));
       }
     });
+  }
+
+  private ensureFilterParamControls(
+    form: UntypedFormGroup,
+    prefix: string,
+    options: ReadonlyArray<FilterOption>
+  ): void {
+    options.forEach(option => {
+      option.params.forEach(param => {
+        const controlName = `${prefix}${option.id}_${param.key}`;
+        if (!form.contains(controlName)) {
+          form.addControl(controlName, this.fb.control(this.defaultParamValue(param)));
+        }
+      });
+    });
+  }
+
+  private ensureRuleParamControls(
+    form: UntypedFormGroup,
+    prefix: string,
+    options: ReadonlyArray<FilterRuleOption>
+  ): void {
+    options.forEach(option => {
+      option.params.forEach(param => {
+        const controlName = `${prefix}${option.id}_${param.key}`;
+        if (!form.contains(controlName)) {
+          form.addControl(controlName, this.fb.control(this.defaultParamValue(param)));
+        }
+      });
+    });
+  }
+
+  private buildCatalogParams(id: string): FilterParam[] {
+    return this.catalogService.filterParams(id).map(param => this.mapCatalogParam(param));
+  }
+
+  private mapCatalogParam(param: { name: string; type: string; enum?: string[] }): FilterParam {
+    const rawType = String(param.type ?? '').trim().toLowerCase();
+    const enumOptions = Array.isArray(param.enum) ? param.enum : [];
+    if (enumOptions.length > 0) {
+      return { key: param.name, label: humanizeId(param.name), type: 'select', options: enumOptions };
+    }
+    const mappedType = ['int', 'float', 'number', 'numeric'].includes(rawType) ? 'number' : 'text';
+    return { key: param.name, label: humanizeId(param.name), type: mappedType };
+  }
+
+  private defaultParamValue(param: FilterParam): number | string {
+    if (param.type === 'number') {
+      return 0;
+    }
+    if (param.type === 'select') {
+      return (param.options ?? [])[0] ?? '';
+    }
+    return '';
   }
 
   private extractStringArray(value: unknown): string[] {
@@ -2349,7 +2414,7 @@ export class StrategyLauncherPageComponent {
       })),
       rules: allowedRules.map(id => ({
         id,
-        params: this.buildFilterParams(id, prefix),
+        params: this.buildRuleParams(id, prefix),
         mode: String(this.getControlValue(`${prefix}rule_${id}_mode`) ?? 'soft') as 'soft' | 'hard',
         weight: Number(this.getControlValue(`${prefix}rule_${id}_weight`) ?? 0.5),
         enabled: true
@@ -2363,6 +2428,16 @@ export class StrategyLauncherPageComponent {
 
   private buildFilterParams(id: string, prefix: string): Record<string, number | string | boolean> {
     const params = this.backtestFilterOptions.find(option => option.id === id)?.params ?? [];
+    const result: Record<string, number | string | boolean> = {};
+    params.forEach(param => {
+      const controlName = `${prefix}filter_${id}_${param.key}`;
+      result[param.key] = coerceParamValue(this.getControlValue(controlName));
+    });
+    return result;
+  }
+
+  private buildRuleParams(id: string, prefix: string): Record<string, number | string | boolean> {
+    const params = this.backtestRuleOptions.find(option => option.id === id)?.params ?? [];
     const result: Record<string, number | string | boolean> = {};
     params.forEach(param => {
       const controlName = `${prefix}filter_${id}_${param.key}`;
@@ -2625,6 +2700,14 @@ export class StrategyLauncherPageComponent {
     return `rule_${ruleId}_weight`;
   }
 
+  backtestRuleParams(ruleId: string): FilterParam[] {
+    return this.backtestRuleOptions.find(option => option.id === ruleId)?.params ?? [];
+  }
+
+  ruleParamControlName(ruleId: string, paramKey: string): string {
+    return `filter_${ruleId}_${paramKey}`;
+  }
+
   dcaSelectedFilters(): string[] {
     const value = this.dcaForm.get('filters')?.value as ReadonlyArray<string> | null | undefined;
     return value ? Array.from(value) : [];
@@ -2649,6 +2732,14 @@ export class StrategyLauncherPageComponent {
 
   dcaRuleWeightControlName(ruleId: string): string {
     return `dca_rule_${ruleId}_weight`;
+  }
+
+  dcaRuleParams(ruleId: string): FilterParam[] {
+    return this.backtestRuleOptions.find(option => option.id === ruleId)?.params ?? [];
+  }
+
+  dcaRuleParamControlName(ruleId: string, paramKey: string): string {
+    return `dca_filter_${ruleId}_${paramKey}`;
   }
 
   marketEventParams(eventId: string): FilterParam[] {

@@ -414,6 +414,57 @@ describe('StrategyLauncherPageComponent', () => {
     expect(component.backtestRuleOptions.map(option => option.id)).toEqual(['drawdown_guard']);
   });
 
+  it('emits rules params from catalog-backed capabilities options', () => {
+    fixture.detectChanges();
+
+    const catalogReq = httpMock.expectOne('/parameter_catalog.json');
+    catalogReq.flush({
+      meta: { version: 'v1' },
+      filters_expanded: {
+        items: {
+          adx: {
+            summary: 'ADX',
+            params: [
+              { name: 'window', type: 'int' },
+              { name: 'threshold', type: 'float' }
+            ]
+          }
+        }
+      }
+    } as any);
+
+    const capabilitiesReq = httpMock.expectOne(
+      `${environment.apiUrl}/api/runs/capabilities?spec_type=dca`
+    );
+    capabilitiesReq.flush({
+      filters: {
+        supported_ids: {
+          filters: ['volatility_guard'],
+          rules: ['adx']
+        }
+      }
+    } as any);
+
+    component.selectRun('dca');
+    component.dcaForm.patchValue({
+      strategyType: 'crypto_grid',
+      filterRules: ['adx'],
+      dca_filter_adx_window: 14,
+      dca_filter_adx_threshold: 25
+    } as any);
+
+    const payload = component.buildRunRequest() as any;
+    expect(payload.filters.rules).toEqual([
+      jasmine.objectContaining({
+        id: 'adx',
+        params: {
+          window: 14,
+          threshold: 25
+        }
+      })
+    ]);
+  });
+
   it('falls back to static options when capabilities endpoint is unavailable', () => {
     fixture.detectChanges();
     flushInitRequests({}, { status: 503, statusText: 'Service Unavailable' });

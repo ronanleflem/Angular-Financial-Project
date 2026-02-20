@@ -16,7 +16,7 @@ interface CatalogSpec {
 
 interface FilterExpandedEntry {
   summary?: string;
-  params?: Array<{ name: string; type: string }>;
+  params?: Array<{ name: string; type: string; enum?: string[] }>;
 }
 
 export interface ParameterCatalog {
@@ -63,5 +63,19 @@ export class ParameterCatalogService {
     }
     const params = entry.params?.map(param => `${param.name}:${param.type}`).join(', ');
     return params ? `${entry.summary ?? id} (${params})` : entry.summary ?? id;
+  }
+
+  filterParams(id: string): Array<{ name: string; type: string; enum?: string[] }> {
+    const entry = this.catalog?.filters_expanded?.items?.[id];
+    if (!entry?.params || !Array.isArray(entry.params)) {
+      return [];
+    }
+    return entry.params
+      .filter(param => typeof param.name === 'string' && typeof param.type === 'string')
+      .map(param => ({
+        name: param.name,
+        type: param.type,
+        enum: Array.isArray(param.enum) ? param.enum.filter(value => typeof value === 'string') : undefined
+      }));
   }
 }
