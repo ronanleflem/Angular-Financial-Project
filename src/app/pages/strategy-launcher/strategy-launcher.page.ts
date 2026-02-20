@@ -1170,14 +1170,13 @@ export class StrategyLauncherPageComponent {
     }
 
     if (this.supportedRuleIds.size > 0) {
-      const defaultRule = Array.from(this.supportedRuleIds)[0];
       const backtestRules = (this.backtestForm.get('filterRules')?.value as ReadonlyArray<string> | null) ?? [];
       const backtestAllowed = backtestRules.filter(id => this.supportedRuleIds.has(id));
-      this.backtestForm.get('filterRules')?.setValue((backtestAllowed.length > 0 ? backtestAllowed : [defaultRule]) as any);
+      this.backtestForm.get('filterRules')?.setValue(backtestAllowed as any);
 
       const dcaRules = (this.dcaForm.get('filterRules')?.value as ReadonlyArray<string> | null) ?? [];
       const dcaAllowed = dcaRules.filter(id => this.supportedRuleIds.has(id));
-      this.dcaForm.get('filterRules')?.setValue((dcaAllowed.length > 0 ? dcaAllowed : [defaultRule]) as any);
+      this.dcaForm.get('filterRules')?.setValue(dcaAllowed as any);
     }
   }
 
@@ -2136,16 +2135,13 @@ export class StrategyLauncherPageComponent {
     const allowedRules = this.supportedRuleIds.size > 0
       ? rules.filter(id => this.supportedRuleIds.has(id))
       : rules.filter(id => !UNSUPPORTED_RULE_IDS.has(id));
-    const effectiveRules = this.supportedRuleIds.size > 0 && allowedRules.length === 0
-      ? [Array.from(this.supportedRuleIds)[0]]
-      : allowedRules;
 
     return {
       filters: allowedFilters.map(id => ({
         id,
         params: this.buildFilterParams(id, prefix)
       })),
-      rules: effectiveRules.map(id => ({
+      rules: allowedRules.map(id => ({
         id,
         params: this.buildFilterParams(id, prefix),
         mode: String(this.getControlValue(`${prefix}rule_${id}_mode`) ?? 'soft') as 'soft' | 'hard',

@@ -259,7 +259,7 @@ describe('StrategyLauncherPageComponent', () => {
     ]);
   });
 
-  it('forces CRYPTO asset_class and uses existing supported rule id for crypto_grid', () => {
+  it('forces CRYPTO asset_class and keeps rules empty for crypto_grid when none selected', () => {
     fixture.detectChanges();
     flushInitRequests({
       filters: {
@@ -280,15 +280,28 @@ describe('StrategyLauncherPageComponent', () => {
 
     const payload = component.buildRunRequest() as any;
     expect(payload.strategy.params.assetClass).toBe('CRYPTO');
-    expect(payload.filters.rules).toEqual([
-      jasmine.objectContaining({
-        id: 'drawdown_guard',
-        params: {},
-        mode: 'hard',
-        weight: 0.8,
-        enabled: true
-      })
-    ]);
+    expect(payload.filters.rules).toEqual([]);
+  });
+
+  it('does not auto-inject rule when filterRules selection is empty', () => {
+    fixture.detectChanges();
+    flushInitRequests({
+      filters: {
+        supported_ids: {
+          filters: ['volatility_guard'],
+          rules: ['adx']
+        }
+      }
+    });
+
+    component.selectRun('dca');
+    component.dcaForm.patchValue({
+      strategyType: 'crypto_grid',
+      filterRules: []
+    } as any);
+
+    const payload = component.buildRunRequest() as any;
+    expect(payload.filters.rules).toEqual([]);
   });
 
   it('rejects invalid dca execution/drawdown/tp-sl values in angular validation', () => {
