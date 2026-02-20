@@ -760,7 +760,7 @@ export class StrategyLauncherPageComponent {
       presetName: [''],
       presetId: ['']
     },
-    { validators: [dateRangeValidator('startDate', 'endDate'), dcaTpSlValidator()] }
+    { validators: [dateRangeValidator('startDate', 'endDate'), dcaTpSlValidator(), dcaUniverseSelectionValidator()] }
   );
 
   readonly backtestForm = this.fb.group(
@@ -1000,6 +1000,7 @@ export class StrategyLauncherPageComponent {
   readonly dcaLegacySupportedFields = signal<string[]>([]);
   readonly dcaLegacyOnlyFields = signal<string[]>([]);
   readonly dcaLegacyNotes = signal<string[]>([]);
+  readonly dcaUniverseCanonicalSupported = signal(false);
   readonly presetMessages = signal<Record<RunKey, string | null>>({
     'dca': null,
     'backtests': null,
@@ -1014,6 +1015,7 @@ export class StrategyLauncherPageComponent {
   private hasCapabilitiesFilterSupport = false;
 
   constructor() {
+    this.setUniverseControlAvailability(false);
     this.bindStressAdvancedControls();
     this.bindDcaDeltaPresetControls();
     this.runForSelection(this.selectedRun());
@@ -1250,6 +1252,10 @@ export class StrategyLauncherPageComponent {
 
   isLegacyOnlyDcaField(fieldPath: string): boolean {
     return this.dcaLegacyOnlyFields().includes(fieldPath);
+  }
+
+  canUseCanonicalUniverse(): boolean {
+    return this.dcaUniverseCanonicalSupported();
   }
 
   hasDcaCapabilitiesDetails(): boolean {
@@ -1527,6 +1533,8 @@ export class StrategyLauncherPageComponent {
           this.dcaLegacySupportedFields.set([]);
           this.dcaLegacyOnlyFields.set([]);
           this.dcaLegacyNotes.set([]);
+          this.dcaUniverseCanonicalSupported.set(false);
+          this.setUniverseControlAvailability(false);
           return of(null);
         })
       )
@@ -1547,6 +1555,10 @@ export class StrategyLauncherPageComponent {
         this.dcaLegacySupportedFields.set(legacy.supported);
         this.dcaLegacyOnlyFields.set(legacy.notInCanonical);
         this.dcaLegacyNotes.set(this.extractStringArray((capabilities as any)?.legacy_dca?.notes));
+        this.dcaUniverseCanonicalSupported.set(
+          canonicalFields.supported.some(field => this.isCanonicalUniverseField(field))
+        );
+        this.setUniverseControlAvailability(this.dcaUniverseCanonicalSupported());
         this.applyCapabilitiesFilterSupport(filterSupport);
         if (gridPresets.length === 0) {
           this.supportedDcaGridPresets = new Set();
@@ -1603,6 +1615,24 @@ export class StrategyLauncherPageComponent {
       supported: this.extractStringArray(fields['supported']),
       acceptedButNotWired: this.extractStringArray(fields['accepted_but_not_wired'])
     };
+  }
+
+  private isCanonicalUniverseField(fieldPath: string): boolean {
+    const normalized = String(fieldPath).trim().toLowerCase();
+    return normalized === 'data.universe' || normalized.startsWith('data.universe.');
+  }
+
+  private setUniverseControlAvailability(enabled: boolean): void {
+    const control = this.dcaForm.get('includeDcaUniverse');
+    if (!control) {
+      return;
+    }
+    if (enabled) {
+      control.enable({ emitEvent: false });
+      return;
+    }
+    control.setValue(false, { emitEvent: false });
+    control.disable({ emitEvent: false });
   }
 
   private extractDcaPresetCapabilities(payload: Record<string, unknown>): {
@@ -2088,9 +2118,12 @@ export class StrategyLauncherPageComponent {
     const v = this.dcaForm.getRawValue();
     const useDeltaPreset = Boolean(v.useDeltaPreset);
     const deltaPeriod = useDeltaPreset ? this.selectedDeltaPeriod() : null;
-    const effectiveSymbol = useDeltaPreset
+    const canUseUniverse = this.canUseCanonicalUniverse();
+    const selectedUniverse = canUseUniverse && Boolean(v.includeDcaUniverse) ? this.buildDcaUniverse(v) : undefined;
+    const universePrimarySymbol = canUseUniverse ? (selectedUniverse?.[0]?.symbol?.trim() ?? '') : '';
+    const effectiveSymbol = universePrimarySymbol || (useDeltaPreset
       ? String(v.deltaPresetSymbol ?? '').trim()
-      : String(v.symbol ?? this.dcaDefaults.symbol);
+      : String(v.symbol ?? this.dcaDefaults.symbol));
     const effectiveTimeframe = useDeltaPreset
       ? String(v.deltaPresetTimeframe ?? '').trim()
       : String(v.timeframe ?? this.dcaDefaults.timeframe);
@@ -2113,7 +2146,7 @@ export class StrategyLauncherPageComponent {
         timeframe: effectiveTimeframe || this.dcaDefaults.timeframe,
         startDate: effectiveStartDate,
         endDate: effectiveEndDate,
-        universe: v.includeDcaUniverse ? this.buildDcaUniverse(v) : undefined
+        universe: canUseUniverse ? selectedUniverse : undefined
       },
       strategy: params,
       filters: this.buildFiltersBlock(
@@ -2962,6 +2995,19 @@ function dcaTpSlValidator() {
       errors['slValueInvalid'] = true;
     }
     return Object.keys(errors).length ? errors : null;
+  };
+}
+
+function dcaUniverseSelectionValidator() {
+  return (control: AbstractControl): ValidationErrors | null => {
+    const includeUniverse = Boolean(control.get('includeDcaUniverse')?.value);
+    if (!includeUniverse) {
+      return null;
+    }
+    const selection = control.get('universe')?.value as ReadonlyArray<unknown> | null | undefined;
+    return Array.isArray(selection) && selection.length > 0
+      ? null
+      : { universeRequired: true };
   };
 }
 

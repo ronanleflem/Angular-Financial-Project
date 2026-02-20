@@ -2,7 +2,7 @@ import { RunRequestInput } from '../models/run-request-input.model';
 import { buildCanonicalRunPayload } from './run-request-adapter';
 
 describe('run-request-adapter', () => {
-  it('builds canonical dca payload and strips universe', () => {
+  it('builds canonical dca payload and keeps universe', () => {
     const payload: RunRequestInput = {
       runType: 'dca',
       data: {
@@ -36,7 +36,7 @@ describe('run-request-adapter', () => {
     expect(canonical.spec_type).toBe('dca');
     expect(canonical.catalog_version).toBe('2026-02-02');
     expect(canonical.data.symbol).toBe('BTCUSD');
-    expect(canonical.data.universe).toBeUndefined();
+    expect(canonical.data.universe).toEqual([{ symbol: 'BTCUSD', asset_class: 'Crypto' }]);
     expect(canonical.strategy.params.grid).toEqual([{ dd: -5, weight: 1 }]);
     expect(canonical.strategy.params.asset_class).toBe('CRYPTO');
     expect(canonical.strategy.params.tp_sl).toEqual({
@@ -109,5 +109,39 @@ describe('run-request-adapter', () => {
     } as RunRequestInput;
 
     expect(() => buildCanonicalRunPayload(payload, 'dca')).toThrowError(/data\.symbol is required/);
+  });
+
+  it('accepts dca payload without data.symbol when universe is provided and derives symbol', () => {
+    const payload = {
+      runType: 'dca',
+      data: {
+        symbol: '',
+        timeframe: '1h',
+        startDate: '2024-01-01',
+        endDate: '2024-12-31',
+        universe: [
+          { symbol: 'BTCUSDT', assetClass: 'CRYPTO' },
+          { symbol: 'ETHUSD', assetClass: 'CRYPTO' }
+        ]
+      },
+      strategy: {
+        type: 'dca_equity',
+        params: {
+          kind: 'dca_equity',
+          assetClass: 'CRYPTO',
+          drawdownReference: 'ATH',
+          executionMode: 'bar_close',
+          grid: [{ dd: -5, weight: 1 }],
+          requireCrossing: true
+        }
+      }
+    } as RunRequestInput;
+
+    const canonical = buildCanonicalRunPayload(payload, 'dca') as any;
+    expect(canonical.data.symbol).toBe('BTCUSDT');
+    expect(canonical.data.universe).toEqual([
+      { symbol: 'BTCUSDT', asset_class: 'CRYPTO' },
+      { symbol: 'ETHUSD', asset_class: 'CRYPTO' }
+    ]);
   });
 });

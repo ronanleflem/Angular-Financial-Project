@@ -347,6 +347,12 @@
                 <div class="checkbox-row">
                   <mat-checkbox formControlName="includeDcaUniverse">Inclure universe</mat-checkbox>
                 </div>
+                <div class="param-hint" *ngIf="!canUseCanonicalUniverse()">
+                  Universe canonical non supporte par le backend detecte: fallback mono-symbole (data.symbol).
+                </div>
+                <div class="param-hint" *ngIf="dcaForm.errors?.['universeRequired']">
+                  Selectionne au moins un symbole dans universe.
+                </div>
                 <ng-container *ngIf="dcaForm.get('includeDcaUniverse')?.value">
                 <div class="param-grid">
                   <mat-form-field appearance="outline">

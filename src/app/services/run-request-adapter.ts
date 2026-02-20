@@ -19,7 +19,9 @@ export function buildCanonicalRunPayload(
   specType: RunType = uiModel.runType,
   options: CanonicalRunRequestOptions = {}
 ): CanonicalRunRequest {
-  if (!uiModel?.data?.symbol || !String(uiModel.data.symbol).trim()) {
+  const hasUniverseEntries = Array.isArray((uiModel as any)?.data?.universe)
+    && ((uiModel as any)?.data?.universe as unknown[]).length > 0;
+  if ((!uiModel?.data?.symbol || !String(uiModel.data.symbol).trim()) && !hasUniverseEntries) {
     throw new Error('canonical_builder_error:data.symbol is required');
   }
   if (uiModel.runType !== specType) {
@@ -60,10 +62,17 @@ function normalizeCanonicalInput(input: RunRequestInput): Record<string, unknown
   const data = (rest['data'] ?? {}) as unknown as Record<string, unknown>;
   const params = ((strategy['params'] ?? {}) as Record<string, unknown>);
   const normalizedParams: Record<string, unknown> = { ...params };
-
-  // En canonical DCA, universe ne doit pas etre present.
-  const { universe, ...dataWithoutUniverse } = data as Record<string, unknown>;
-  void universe;
+  const dataWithCompatSymbol = { ...data };
+  const universeEntries = Array.isArray(dataWithCompatSymbol['universe'])
+    ? (dataWithCompatSymbol['universe'] as unknown[])
+    : [];
+  if ((!dataWithCompatSymbol['symbol'] || !String(dataWithCompatSymbol['symbol']).trim()) && universeEntries.length > 0) {
+    const first = universeEntries[0] as Record<string, unknown> | undefined;
+    const firstSymbol = String(first?.['symbol'] ?? '').trim();
+    if (firstSymbol) {
+      dataWithCompatSymbol['symbol'] = firstSymbol;
+    }
+  }
 
   // Backward compatibility: strategy.grid preset string list -> strategy.params.grid.
   if ((!Array.isArray(normalizedParams['grid']) || normalizedParams['grid'].length === 0) && Array.isArray(strategy['grid'])) {
@@ -80,7 +89,7 @@ function normalizeCanonicalInput(input: RunRequestInput): Record<string, unknown
 
   return {
     ...rest,
-    data: dataWithoutUniverse,
+    data: dataWithCompatSymbol,
     strategy: {
       ...strategy,
       params: normalizedParams

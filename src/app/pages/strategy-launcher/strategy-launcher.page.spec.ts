@@ -414,6 +414,89 @@ describe('StrategyLauncherPageComponent', () => {
     expect(component.backtestRuleOptions.map(option => option.id)).toEqual(['drawdown_guard']);
   });
 
+  it('builds dca payload with canonical universe for one selected symbol', () => {
+    fixture.detectChanges();
+    flushInitRequests({
+      fields: {
+        supported: ['data.symbol', 'data.universe', 'strategy.params.grid']
+      }
+    });
+
+    component.selectRun('dca');
+    component.dcaForm.patchValue({
+      includeDcaUniverse: true,
+      universe: ['BTCUSD']
+    } as any);
+
+    const payload = component.buildRunRequest() as any;
+    expect(payload.data.symbol).toBe('BTCUSD');
+    expect(payload.data.universe).toEqual([
+      jasmine.objectContaining({ symbol: 'BTCUSD' })
+    ]);
+  });
+
+  it('builds dca payload with canonical universe for multiple selected symbols', () => {
+    fixture.detectChanges();
+    flushInitRequests({
+      fields: {
+        supported: ['data.symbol', 'data.universe', 'strategy.params.grid']
+      }
+    });
+
+    component.selectRun('dca');
+    component.dcaForm.patchValue({
+      includeDcaUniverse: true,
+      universe: ['BTCUSD', 'AAPL']
+    } as any);
+
+    const payload = component.buildRunRequest() as any;
+    expect(payload.data.symbol).toBe('BTCUSD');
+    expect(payload.data.universe).toEqual([
+      jasmine.objectContaining({ symbol: 'BTCUSD' }),
+      jasmine.objectContaining({ symbol: 'AAPL' })
+    ]);
+  });
+
+  it('marks dca form invalid when universe is enabled and no symbol is selected', () => {
+    fixture.detectChanges();
+    flushInitRequests({
+      fields: {
+        supported: ['data.symbol', 'data.universe']
+      }
+    });
+
+    component.selectRun('dca');
+    component.dcaForm.patchValue({
+      includeDcaUniverse: true,
+      universe: []
+    } as any);
+    component.dcaForm.updateValueAndValidity();
+
+    expect(component.dcaForm.errors?.['universeRequired']).toBeTrue();
+    expect(component.dcaForm.invalid).toBeTrue();
+  });
+
+  it('falls back to data.symbol-only payload when backend capabilities do not support universe', () => {
+    fixture.detectChanges();
+    flushInitRequests({
+      fields: {
+        supported: ['data.symbol', 'strategy.params.grid']
+      }
+    });
+
+    component.selectRun('dca');
+    component.dcaForm.patchValue({
+      includeDcaUniverse: true,
+      universe: ['BTCUSD', 'AAPL'],
+      symbol: 'ETHUSD'
+    } as any);
+
+    const payload = component.buildRunRequest() as any;
+    expect(component.canUseCanonicalUniverse()).toBeFalse();
+    expect(payload.data.symbol).toBe('ETHUSD');
+    expect(payload.data.universe).toBeUndefined();
+  });
+
   it('emits rules params from catalog-backed capabilities options', () => {
     fixture.detectChanges();
 
