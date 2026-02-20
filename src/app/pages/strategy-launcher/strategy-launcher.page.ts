@@ -19,6 +19,8 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import {
   RunRequestInput,
   DcaStrategyCore,
+  DcaGridLevel,
+  DcaTpSlBlock,
   BacktestTpSlBlock,
   BacktestScreeningBlock,
   BacktestFiltersBlock,
@@ -95,6 +97,8 @@ const FREQUENCY_DAYS: Record<string, number> = {
   biweekly: 14,
   monthly: 30
 };
+const DCA_ALLOWED_EXECUTION_MODES = ['bar_close', 'intracandle'] as const;
+const DCA_ALLOWED_DRAWDOWN_REFERENCES = ['ATH', '1M', '3M', '6M', '1Y'] as const;
 const NOT_IMPLEMENTED_YET_MESSAGE = 'Not implemented yet';
 
 type MetricTone = 'positive' | 'negative' | 'neutral';
@@ -218,8 +222,8 @@ export class StrategyLauncherPageComponent {
   readonly jitterDistributions = ['gaussian', 'uniform', 'laplace'];
   dcaStrategyTypes: DcaStrategyType[] = ['dca_equity', 'dca_etf', 'crypto_grid'];
   readonly dcaGridPresets = ['grid_conservative', 'grid_balanced', 'grid_aggressive'];
-  readonly dcaExecutionModes = ['limit', 'market', 'vwap'];
-  readonly dcaDrawdownRefs = ['rolling_high', 'rolling_avg', 'benchmark'];
+  readonly dcaExecutionModes = [...DCA_ALLOWED_EXECUTION_MODES];
+  readonly dcaDrawdownRefs = [...DCA_ALLOWED_DRAWDOWN_REFERENCES];
   readonly dcaTpSlPresets = ['none', 'tp_2_sl_1', 'tp_3_sl_1.5'];
   readonly dcaUniverseOptions = [
     { id: 'SPY', label: 'SPY', assetClass: 'ETF', exchange: 'NYSE', broker: 'IBKR' },
@@ -419,8 +423,8 @@ export class StrategyLauncherPageComponent {
     includeDcaAdvanced: false,
     strategyType: 'dca_equity' as DcaStrategyType,
     gridPresets: ['grid_balanced'],
-    drawdownReference: 'rolling_high',
-    executionMode: 'limit',
+    drawdownReference: 'ATH',
+    executionMode: 'bar_close',
     tpSlPreset: 'tp_2_sl_1',
     requireCrossing: true,
     activationLimit: 8,
@@ -664,8 +668,8 @@ export class StrategyLauncherPageComponent {
       includeDcaAdvanced: [this.dcaDefaults.includeDcaAdvanced],
       strategyType: [this.dcaDefaults.strategyType, Validators.required],
       gridPresets: [this.dcaDefaults.gridPresets],
-      drawdownReference: [this.dcaDefaults.drawdownReference],
-      executionMode: [this.dcaDefaults.executionMode],
+      drawdownReference: [this.dcaDefaults.drawdownReference, oneOfValidator(DCA_ALLOWED_DRAWDOWN_REFERENCES)],
+      executionMode: [this.dcaDefaults.executionMode, oneOfValidator(DCA_ALLOWED_EXECUTION_MODES)],
       tpSlPreset: [this.dcaDefaults.tpSlPreset],
       requireCrossing: [this.dcaDefaults.requireCrossing],
       activationLimit: [this.dcaDefaults.activationLimit, [Validators.min(0)]],
@@ -1493,7 +1497,6 @@ export class StrategyLauncherPageComponent {
     const v = this.dcaForm.getRawValue();
     const params: DcaStrategyCore = {
       type: (v.strategyType ?? this.dcaDefaults.strategyType) as DcaStrategyType,
-      grid: Array.from((v.gridPresets ?? []) as ReadonlyArray<string>),
       params: this.buildDcaParams(v)
     };
 
@@ -1642,15 +1645,90 @@ export class StrategyLauncherPageComponent {
       case 'crypto_grid':
         return {
           kind: 'crypto_grid',
-          tpSl: String(value.cryptoTpSlPreset ?? this.dcaDefaults.cryptoTpSlPreset)
+          tpSl: this.buildDcaTpSlFromPreset(String(value.cryptoTpSlPreset ?? this.dcaDefaults.cryptoTpSlPreset))
         };
       default:
+        const executionMode = String(value.executionMode ?? this.dcaDefaults.executionMode);
+        const drawdownReference = String(value.drawdownReference ?? this.dcaDefaults.drawdownReference);
         return {
           kind: 'dca_equity',
-          drawdownReference: String(value.drawdownReference ?? this.dcaDefaults.drawdownReference),
-          executionMode: String(value.executionMode ?? this.dcaDefaults.executionMode),
-          tpSl: String(value.tpSlPreset ?? this.dcaDefaults.tpSlPreset),
+          drawdownReference: (DCA_ALLOWED_DRAWDOWN_REFERENCES as readonly string[]).includes(drawdownReference)
+            ? drawdownReference
+            : this.dcaDefaults.drawdownReference,
+          executionMode: (DCA_ALLOWED_EXECUTION_MODES as readonly string[]).includes(executionMode)
+            ? executionMode
+            : this.dcaDefaults.executionMode,
+          tpSl: this.buildDcaTpSlFromPreset(String(value.tpSlPreset ?? this.dcaDefaults.tpSlPreset)),
+          grid: this.buildDcaGridFromPresets(value.gridPresets),
           requireCrossing: Boolean(value.requireCrossing ?? this.dcaDefaults.requireCrossing)
+        };
+    }
+  }
+
+  private buildDcaGridFromPresets(gridPresetsValue: unknown): DcaGridLevel[] {
+    const presets = Array.from((gridPresetsValue ?? []) as ReadonlyArray<string>);
+    const selected = presets.length ? presets : [...this.dcaDefaults.gridPresets];
+    const seen = new Set<number>();
+    const grid = selected
+      .flatMap(preset => this.gridPresetToLevels(preset))
+      .filter(level => {
+        if (seen.has(level.dd)) {
+          return false;
+        }
+        seen.add(level.dd);
+        return true;
+      });
+
+    return grid.length ? grid : [{ dd: -5, weight: 1 }];
+  }
+
+  private gridPresetToLevels(preset: string): DcaGridLevel[] {
+    switch (preset) {
+      case 'grid_conservative':
+        return [
+          { dd: -3, weight: 0.8 },
+          { dd: -6, weight: 1 },
+          { dd: -10, weight: 1.2 }
+        ];
+      case 'grid_aggressive':
+        return [
+          { dd: -4, weight: 1.2 },
+          { dd: -8, weight: 1 },
+          { dd: -12, weight: 0.8 }
+        ];
+      case 'grid_balanced':
+      default:
+        return [
+          { dd: -5, weight: 1 },
+          { dd: -10, weight: 1 },
+          { dd: -15, weight: 1 }
+        ];
+    }
+  }
+
+  private buildDcaTpSlFromPreset(presetValue: string): DcaTpSlBlock {
+    switch (presetValue) {
+      case 'none':
+        return {
+          enabled: false,
+          mode: 'per_grid_max_dd',
+          rules: [],
+          slDd: -100
+        };
+      case 'tp_3_sl_1.5':
+        return {
+          enabled: true,
+          mode: 'per_grid_max_dd',
+          rules: [{ maxDdReached: -20, tpPct: 22.5, bePct: 10 }],
+          slDd: -65
+        };
+      case 'tp_2_sl_1':
+      default:
+        return {
+          enabled: true,
+          mode: 'per_grid_max_dd',
+          rules: [{ maxDdReached: -20, tpPct: 15, bePct: 7 }],
+          slDd: -70
         };
     }
   }
@@ -2153,6 +2231,16 @@ function symbolListValidator(symbols: string[]) {
       return null;
     }
     return symbols.includes(String(value)) ? null : { symbolUnknown: true };
+  };
+}
+
+function oneOfValidator(values: readonly string[]) {
+  return (control: AbstractControl): ValidationErrors | null => {
+    const value = control.value;
+    if (value === null || value === undefined || value === '') {
+      return null;
+    }
+    return values.includes(String(value)) ? null : { oneOf: { allowed: values } };
   };
 }
 

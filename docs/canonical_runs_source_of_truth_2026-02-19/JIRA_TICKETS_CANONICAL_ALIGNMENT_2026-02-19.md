@@ -20,6 +20,49 @@ Aligner les payloads `/runs` Angular sur le contrat canonique Python strict pour
 - JSON canonique exporte par l'UI est conforme aux docs `*.md` de ce dossier.
 - Tests unitaires mapping payload mis a jour.
 
+### Story Detail - ANG-1 (DCA runtime Python)
+
+#### Objectif
+Garantir que le payload DCA construit par Angular est compatible runtime Python `/runs` (pas uniquement valide a l'entree).
+
+#### Regles de mapping Angular -> Python
+- Interdire `strategy.grid` en sortie.
+- Convertir preset UI `grid_balanced|grid_conservative|grid_aggressive` vers `strategy.params.grid` (`[{dd, weight}]`).
+- Convertir preset UI `tp_2_sl_1|tp_3_sl_1.5|none` vers objet `strategy.params.tp_sl`.
+- Autoriser `strategy.params.execution_mode` uniquement: `bar_close`, `intracandle`.
+- Autoriser `strategy.params.drawdown_reference` uniquement: `ATH`, `1M`, `3M`, `6M`, `1Y`.
+- Conserver les filtres dans le bloc canonical `filters`.
+- Ne jamais emettre de champ top-level hors contrat (`screening`, etc.).
+
+#### Exemple payload final "safe"
+```json
+{
+  "spec_type": "dca",
+  "catalog_version": "2026-02-02",
+  "data": {
+    "symbol": "BTCUSD",
+    "timeframe": "1h",
+    "start_date": "2022-12-31",
+    "end_date": "2024-12-30"
+  },
+  "strategy": {
+    "type": "dca_equity",
+    "params": {
+      "execution_mode": "bar_close",
+      "drawdown_reference": "ATH",
+      "grid": [{ "dd": -5.0, "weight": 1.0 }],
+      "tp_sl": {
+        "enabled": true,
+        "mode": "per_grid_max_dd",
+        "rules": [{ "max_dd_reached": -20.0, "tp_pct": 15.0, "be_pct": 7.0 }],
+        "sl_dd": -70.0
+      },
+      "require_crossing": true
+    }
+  }
+}
+```
+
 ---
 
 ## TICKET B - Angular Run Errors UX (422 vs FAILED)

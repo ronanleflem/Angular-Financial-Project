@@ -183,6 +183,51 @@ describe('StrategyLauncherPageComponent', () => {
     expect(payload.data.reinvestDividends).toBeUndefined();
   });
 
+  it('maps dca grid preset to strategy.params.grid and never emits strategy.grid', () => {
+    fixture.detectChanges();
+    flushInitRequests();
+
+    component.selectRun('dca');
+    component.dcaForm.patchValue({ strategyType: 'dca_equity', gridPresets: ['grid_balanced'] } as any);
+
+    const payload = component.buildRunRequest() as any;
+    expect(payload.strategy.grid).toBeUndefined();
+    expect(payload.strategy.params.grid).toEqual([
+      { dd: -5, weight: 1 },
+      { dd: -10, weight: 1 },
+      { dd: -15, weight: 1 }
+    ]);
+  });
+
+  it('maps dca tp/sl preset to strategy.params.tpSl object (never string)', () => {
+    fixture.detectChanges();
+    flushInitRequests();
+
+    component.selectRun('dca');
+    component.dcaForm.patchValue({ strategyType: 'dca_equity', tpSlPreset: 'tp_2_sl_1' } as any);
+
+    const payload = component.buildRunRequest() as any;
+    expect(typeof payload.strategy.params.tpSl).toBe('object');
+    expect(payload.strategy.params.tpSl).toEqual({
+      enabled: true,
+      mode: 'per_grid_max_dd',
+      rules: [{ maxDdReached: -20, tpPct: 15, bePct: 7 }],
+      slDd: -70
+    });
+  });
+
+  it('rejects invalid dca execution mode and drawdown reference in angular validation', () => {
+    fixture.detectChanges();
+    flushInitRequests();
+
+    component.selectRun('dca');
+    component.dcaForm.patchValue({ executionMode: 'limit', drawdownReference: 'rolling_high' } as any);
+
+    expect(component.dcaForm.get('executionMode')?.invalid).toBeTrue();
+    expect(component.dcaForm.get('drawdownReference')?.invalid).toBeTrue();
+    expect(component.dcaForm.invalid).toBeTrue();
+  });
+
   it('shows seasonality UTC session buckets help', () => {
     fixture.detectChanges();
     flushInitRequests();

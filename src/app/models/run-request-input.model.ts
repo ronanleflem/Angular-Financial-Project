@@ -37,18 +37,38 @@ export interface PeriodBlock {
 }
 
 export type DcaStrategyType = 'dca_equity' | 'dca_etf' | 'crypto_grid';
+export type DcaExecutionMode = 'bar_close' | 'intracandle';
+export type DcaDrawdownReference = 'ATH' | '1M' | '3M' | '6M' | '1Y';
+
+export interface DcaGridLevel {
+  dd: number;
+  weight: number;
+}
+
+export interface DcaTpSlRule {
+  maxDdReached: number;
+  tpPct: number;
+  bePct: number;
+}
+
+export interface DcaTpSlBlock {
+  enabled: boolean;
+  mode: string;
+  rules: DcaTpSlRule[];
+  slDd: number;
+}
 
 export interface DcaStrategyCore {
   type: DcaStrategyType;
-  grid: string[];
   params: DcaEquityParams | DcaEtfParams | CryptoGridParams;
 }
 
 export interface DcaEquityParams {
   kind: 'dca_equity';
-  drawdownReference: string;
-  executionMode: string;
-  tpSl?: string;
+  drawdownReference: DcaDrawdownReference | string;
+  executionMode: DcaExecutionMode | string;
+  tpSl?: DcaTpSlBlock;
+  grid: DcaGridLevel[];
   requireCrossing: boolean;
 }
 
@@ -62,7 +82,7 @@ export interface DcaEtfParams {
 
 export interface CryptoGridParams {
   kind: 'crypto_grid';
-  tpSl?: string;
+  tpSl?: DcaTpSlBlock;
 }
 
 export interface DcaDataBlock extends DataBlockBase, PeriodBlock {
@@ -411,16 +431,23 @@ function validateDateOrder(
 
 function validateDcaStrategy(errors: ValidationError[], strategy: DcaStrategyCore): void {
   validateRequired(errors, 'strategy.type', strategy.type);
-  if (!strategy.grid?.length) {
-    errors.push({ path: 'strategy.grid', message: 'at least one grid preset is required' });
-  }
   if (strategy.type === 'dca_equity') {
     const params = strategy.params as DcaEquityParams;
+    if (!params.grid?.length) {
+      errors.push({ path: 'strategy.params.grid', message: 'at least one grid level is required' });
+    }
     if (!params.drawdownReference) {
       errors.push({ path: 'strategy.params.drawdownReference', message: 'required' });
+    } else if (!['ATH', '1M', '3M', '6M', '1Y'].includes(params.drawdownReference)) {
+      errors.push({
+        path: 'strategy.params.drawdownReference',
+        message: 'must be one of: ATH, 1M, 3M, 6M, 1Y'
+      });
     }
     if (!params.executionMode) {
       errors.push({ path: 'strategy.params.executionMode', message: 'required' });
+    } else if (!['bar_close', 'intracandle'].includes(params.executionMode)) {
+      errors.push({ path: 'strategy.params.executionMode', message: 'must be one of: bar_close, intracandle' });
     }
   }
 }

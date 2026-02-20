@@ -54,6 +54,7 @@ function mapDcaPayload(payload: RunRequestInput): Record<string, unknown> {
   }
   const filters = payload.filters?.filters?.map(item => item.id) ?? [];
   const rules = payload.filters?.rules?.map(item => item.id) ?? [];
+  const params = payload.strategy.params as any;
   return {
     symbol: payload.data.symbol,
     timeframe: payload.data.timeframe,
@@ -65,15 +66,15 @@ function mapDcaPayload(payload: RunRequestInput): Record<string, unknown> {
     broker: payload.data.broker,
     reinvestDividends: payload.data.reinvestDividends,
     strategyType: payload.strategy.type,
-    gridPresets: payload.strategy.grid,
-    drawdownReference: (payload.strategy.params as any).drawdownReference,
-    executionMode: (payload.strategy.params as any).executionMode,
-    tpSlPreset: (payload.strategy.params as any).tpSl,
-    requireCrossing: (payload.strategy.params as any).requireCrossing,
-    activationLimit: (payload.strategy.params as any).activationLimit,
-    resetOnNewHigh: (payload.strategy.params as any).resetOnNewHigh,
-    rearmOnReboundPct: (payload.strategy.params as any).rearmOnReboundPct,
-    forceCloseEnd: (payload.strategy.params as any).forceCloseEnd,
+    gridPresets: inferDcaGridPresets(params.grid),
+    drawdownReference: params.drawdownReference,
+    executionMode: params.executionMode,
+    tpSlPreset: inferDcaTpSlPreset(params.tpSl),
+    requireCrossing: params.requireCrossing,
+    activationLimit: params.activationLimit,
+    resetOnNewHigh: params.resetOnNewHigh,
+    rearmOnReboundPct: params.rearmOnReboundPct,
+    forceCloseEnd: params.forceCloseEnd,
     universe: payload.data.universe?.map(item => item.symbol) ?? [],
     filters,
     filterRules: rules,
@@ -86,6 +87,38 @@ function mapDcaPayload(payload: RunRequestInput): Record<string, unknown> {
     mcPaths: payload.performance?.stressTests?.nSims,
     mcSeed: payload.performance?.stressTests?.seed
   };
+}
+
+function inferDcaGridPresets(grid: unknown): string[] {
+  if (!Array.isArray(grid) || grid.length === 0) {
+    return ['grid_balanced'];
+  }
+  const levels = grid
+    .map(item => Number((item as any)?.dd))
+    .filter(value => Number.isFinite(value))
+    .sort((a, b) => a - b);
+  if (levels.includes(-3) || levels.includes(-6)) {
+    return ['grid_conservative'];
+  }
+  if (levels.includes(-4) || levels.includes(-8)) {
+    return ['grid_aggressive'];
+  }
+  return ['grid_balanced'];
+}
+
+function inferDcaTpSlPreset(tpSl: unknown): string {
+  if (!tpSl || typeof tpSl !== 'object') {
+    return 'none';
+  }
+  if ((tpSl as any).enabled === false) {
+    return 'none';
+  }
+  const firstRule = Array.isArray((tpSl as any).rules) ? (tpSl as any).rules[0] : undefined;
+  const tpPct = Number((firstRule as any)?.tpPct ?? 0);
+  if (tpPct >= 20) {
+    return 'tp_3_sl_1.5';
+  }
+  return 'tp_2_sl_1';
 }
 
 function mapBacktestPayload(payload: RunRequestInput): Record<string, unknown> {

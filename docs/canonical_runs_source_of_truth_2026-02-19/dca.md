@@ -10,8 +10,10 @@
 - `data.start_date`
 - `data.end_date`
 - `strategy.type`
-- `strategy.grid` (array)
 - `strategy.params` (object)
+- `strategy.params.grid` (array d'objets `{dd, weight}` pour `dca_equity`)
+- `strategy.params.execution_mode` (`bar_close` ou `intracandle` pour `dca_equity`)
+- `strategy.params.drawdown_reference` (`ATH`, `1M`, `3M`, `6M`, `1Y` pour `dca_equity`)
 
 ## Optional
 - `request_id`
@@ -34,15 +36,27 @@
   },
   "strategy": {
     "type": "dca_equity",
-    "grid": ["grid_balanced"],
-    "params": {"kind": "dca_equity"}
+    "params": {
+      "kind": "dca_equity",
+      "execution_mode": "bar_close",
+      "drawdown_reference": "ATH",
+      "grid": [{ "dd": -5.0, "weight": 1.0 }],
+      "tp_sl": {
+        "enabled": true,
+        "mode": "per_grid_max_dd",
+        "rules": [{ "max_dd_reached": -20.0, "tp_pct": 15.0, "be_pct": 7.0 }],
+        "sl_dd": -70.0
+      },
+      "require_crossing": true
+    }
   }
 }
 ```
 
 ## Notes integration
-- `strategy.params` est libre au contrat, mais peut echouer runtime si non cable.
-- Figer un mapping enum pour `strategy.params.tp_sl` cote Angular (ex: `tp_2_sl_1`) avant wiring complet Python.
+- Ne pas envoyer `strategy.grid` (preset string array) vers `/runs`: convertir en `strategy.params.grid`.
+- Ne pas envoyer `strategy.params.tp_sl` en string preset: convertir en objet complet.
+- Eviter les champs top-level hors contrat (`screening`, etc.) sinon `422 extra_forbidden`.
 
 ## Test d'acceptation Angular
 - Le payload DCA genere par `run-request-adapter` passe en 200 sur `/runs`.

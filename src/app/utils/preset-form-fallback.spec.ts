@@ -15,11 +15,17 @@ describe('preset-form-fallback', () => {
       },
       strategy: {
         type: 'dca_equity',
-        grid: ['grid_balanced'],
         params: {
           kind: 'dca_equity',
-          drawdownReference: 'rolling_high',
-          executionMode: 'limit',
+          drawdownReference: 'ATH',
+          executionMode: 'bar_close',
+          tpSl: {
+            enabled: true,
+            mode: 'per_grid_max_dd',
+            rules: [{ maxDdReached: -20, tpPct: 15, bePct: 7 }],
+            slDd: -70
+          },
+          grid: [{ dd: -5, weight: 1 }],
           requireCrossing: true
         }
       }

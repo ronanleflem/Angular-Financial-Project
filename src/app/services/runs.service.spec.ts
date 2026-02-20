@@ -184,7 +184,21 @@ describe('RunsService', () => {
   });
 
   it('surfaces 422 errors from submit', done => {
-    service.submitRun({ runType: 'dca', data: { symbol: 'BTCUSD', timeframe: '1h', frequency: 'weekly', amount: 100, startDate: '2024-01-01', endDate: '2024-01-31' }, strategy: { type: 'dca_equity', grid: ['grid'], params: { kind: 'dca_equity', drawdownReference: 'rolling_high', executionMode: 'limit', requireCrossing: true } } })
+    service.submitRun({
+      runType: 'dca',
+      data: { symbol: 'BTCUSD', timeframe: '1h', frequency: 'weekly', amount: 100, startDate: '2024-01-01', endDate: '2024-01-31' },
+      strategy: {
+        type: 'dca_equity',
+        params: {
+          kind: 'dca_equity',
+          drawdownReference: 'ATH',
+          executionMode: 'bar_close',
+          tpSl: { enabled: true, mode: 'per_grid_max_dd', rules: [{ maxDdReached: -20, tpPct: 15, bePct: 7 }], slDd: -70 },
+          grid: [{ dd: -5, weight: 1 }],
+          requireCrossing: true
+        }
+      }
+    })
       .subscribe({
         next: () => done.fail('expected error'),
         error: err => {
