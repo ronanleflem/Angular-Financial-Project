@@ -37,30 +37,103 @@
       </mat-card-header>
       <mat-card-content>
         <form class="strategy-form" [formGroup]="dcaForm" (ngSubmit)="runDca()">
-          <mat-form-field appearance="outline">
-            <mat-label>Symbole</mat-label>
-            <input matInput type="text" [matAutocomplete]="symbolAutoDca" formControlName="symbol" />
-            <mat-autocomplete #symbolAutoDca="matAutocomplete" autoActiveFirstOption>
-              <mat-option *ngFor="let symbol of symbols" [value]="symbol">{{ symbol }}</mat-option>
-            </mat-autocomplete>
-          </mat-form-field>
+          <div class="row-3 row-primary">
+            <mat-form-field appearance="outline">
+              <mat-label>Symbole</mat-label>
+              <input matInput type="text" [matAutocomplete]="symbolAutoDca" formControlName="symbol" />
+              <mat-autocomplete #symbolAutoDca="matAutocomplete" autoActiveFirstOption>
+                <mat-option *ngFor="let symbol of symbols" [value]="symbol">{{ symbol }}</mat-option>
+              </mat-autocomplete>
+            </mat-form-field>
 
-          <mat-form-field appearance="outline">
-            <mat-label>Timeframe</mat-label>
-            <mat-select formControlName="timeframe">
-              <mat-option *ngFor="let tf of timeframes" [value]="tf">{{ tf }}</mat-option>
-            </mat-select>
-          </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Timeframe</mat-label>
+              <mat-select formControlName="timeframe">
+                <mat-option *ngFor="let tf of timeframes" [value]="tf">{{ tf }}</mat-option>
+              </mat-select>
+            </mat-form-field>
 
-          <mat-form-field appearance="outline" class="range-field">
-            <mat-label>Periode</mat-label>
-            <mat-date-range-input [rangePicker]="dcaRangePicker">
-              <input matStartDate placeholder="Debut" formControlName="startDate" />
-              <input matEndDate placeholder="Fin" formControlName="endDate" />
-            </mat-date-range-input>
-            <mat-datepicker-toggle matIconSuffix [for]="dcaRangePicker"></mat-datepicker-toggle>
-            <mat-date-range-picker #dcaRangePicker></mat-date-range-picker>
-          </mat-form-field>
+            <mat-form-field appearance="outline" class="range-field">
+              <mat-label>Periode</mat-label>
+              <mat-date-range-input [rangePicker]="dcaRangePicker">
+                <input matStartDate placeholder="Debut" formControlName="startDate" />
+                <input matEndDate placeholder="Fin" formControlName="endDate" />
+              </mat-date-range-input>
+              <mat-datepicker-toggle matIconSuffix [for]="dcaRangePicker"></mat-datepicker-toggle>
+              <mat-date-range-picker #dcaRangePicker></mat-date-range-picker>
+            </mat-form-field>
+          </div>
+
+          <div class="checkbox-row checkbox-full">
+            <mat-checkbox formControlName="useDeltaPreset" (change)="onDcaUseDeltaPresetChange($event)">
+              Utiliser preset Delta
+            </mat-checkbox>
+          </div>
+
+          <ng-container *ngIf="dcaForm.get('useDeltaPreset')?.value">
+            <div class="row-3 row-delta-filters">
+              <mat-form-field appearance="outline">
+                <mat-label>Filtre Delta symbole</mat-label>
+                <input matInput type="text" formControlName="deltaQuerySymbol" />
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Filtre Delta type</mat-label>
+                <mat-select formControlName="deltaQueryInsertedType">
+                  <mat-option value="">Tous</mat-option>
+                  <mat-option *ngFor="let type of deltaInsertedTypes" [value]="type">{{ type }}</mat-option>
+                </mat-select>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Filtre Delta timeframe</mat-label>
+                <input matInput type="text" formControlName="deltaQueryTimeframe" />
+              </mat-form-field>
+            </div>
+
+            <div class="param-group">
+              <button mat-stroked-button type="button" (click)="loadDeltaRanges()" [disabled]="deltaRangesLoading()">
+                Charger presets Delta
+              </button>
+            </div>
+
+            <div class="param-hint" *ngIf="deltaRangesLoading()">Chargement des plages Delta...</div>
+            <div class="param-hint" *ngIf="deltaRangesError()">{{ deltaRangesError() }}</div>
+            <div class="param-hint" *ngIf="!deltaRangesLoading() && !deltaRangesError() && deltaRanges().length === 0">
+              Aucune donnee Delta.
+            </div>
+
+            <div class="param-group" *ngIf="deltaRanges().length > 0">
+              <div class="param-hint">Plages Delta (insertedAt desc)</div>
+              <ul class="error-body">
+                <li *ngFor="let item of deltaRanges()">
+                  {{ item.symbol }} | {{ item.insertedType }} | {{ item.timeframe }} |
+                  {{ item.startDate }} -> {{ item.endDate }} | {{ item.insertedAt }}
+                </li>
+              </ul>
+            </div>
+
+            <div class="row-3 row-delta-selection" *ngIf="deltaRanges().length > 0">
+              <mat-form-field appearance="outline">
+                <mat-label>Symbole</mat-label>
+                <mat-select formControlName="deltaPresetSymbol">
+                  <mat-option *ngFor="let symbol of deltaAvailableSymbols()" [value]="symbol">{{ symbol }}</mat-option>
+                </mat-select>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Timeframe</mat-label>
+                <mat-select formControlName="deltaPresetTimeframe">
+                  <mat-option *ngFor="let tf of deltaAvailableTimeframes()" [value]="tf">{{ tf }}</mat-option>
+                </mat-select>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Periode</mat-label>
+                <input matInput readonly [value]="selectedDeltaPeriodLabel()" />
+              </mat-form-field>
+            </div>
+          </ng-container>
 
           <section class="section-block">
             <div class="section-title">Parametres</div>

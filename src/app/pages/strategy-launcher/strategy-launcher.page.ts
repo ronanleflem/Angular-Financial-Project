@@ -5,6 +5,7 @@ import { AbstractControl, FormBuilder, ReactiveFormsModule, UntypedFormGroup, Va
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatCheckboxChange } from '@angular/material/checkbox';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatDatepickerModule } from '@angular/material/datepicker';
@@ -39,6 +40,7 @@ import { SpecsPreviewService, SpecPreviewResponse } from '../../services/specs-p
 import { PresetsService, RunPreset } from '../../services/presets.service';
 import { RunsService } from '../../services/runs.service';
 import { ParameterCatalogService } from '../../services/parameter-catalog.service';
+import { DataImportRangesApiService } from '../../services/data-import-ranges-api.service';
 import { catchError, finalize, of } from 'rxjs';
 import { buildCanonicalRunPayload, CanonicalRunRequest } from '../../services/run-request-adapter';
 import {
@@ -50,6 +52,11 @@ import {
 } from '../../utils/backend-validation';
 import { mergePresetFormValue } from '../../utils/preset-form-fallback';
 import { PresetCompatibility, evaluatePresetCompatibility } from '../../utils/preset-version';
+import {
+  DeltaIngestionRange,
+  DeltaIngestionRangeFilters,
+  DeltaInsertedType
+} from '../../models/delta-ingestion-range.model';
 
 const NUMBER_FORMAT = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 });
 const CURRENCY_FORMAT = new Intl.NumberFormat('en-US', {
@@ -165,6 +172,11 @@ interface SeasonalityOption {
   params: FilterParam[];
 }
 
+interface DeltaPresetPeriod {
+  startDate: string;
+  endDate: string;
+}
+
 const DEFAULT_FILTER_OPTIONS: FilterOption[] = [
   {
     id: 'volatility_guard',
@@ -233,6 +245,7 @@ export class StrategyLauncherPageComponent {
   private readonly router = inject(Router);
   private readonly presetsService = inject(PresetsService);
   private readonly catalogService = inject(ParameterCatalogService);
+  private readonly dataImportRangesApi = inject(DataImportRangesApiService);
 
   readonly runOptions: Array<{ key: RunKey; label: string; description: string }> = [
     { key: 'dca', label: 'DCA grid', description: 'Accumulation periodique' },
@@ -261,6 +274,7 @@ export class StrategyLauncherPageComponent {
   readonly dcaDrawdownRefs = [...DCA_ALLOWED_DRAWDOWN_REFERENCES];
   readonly dcaAssetClasses = [...DCA_ALLOWED_ASSET_CLASSES];
   readonly dcaTpSlModes = ['rule_based'];
+  readonly deltaInsertedTypes: DeltaInsertedType[] = ['CRYPTO', 'ETF', 'FOREX', 'STOCK'];
   readonly dcaTpSlPresets = ['none', 'tp_2_sl_1', 'tp_3_sl_1.5'];
   readonly dcaUniverseOptions = [
     { id: 'SPY', label: 'SPY', assetClass: 'ETF', exchange: 'NYSE', broker: 'IBKR' },
@@ -425,6 +439,12 @@ export class StrategyLauncherPageComponent {
     amount: 200,
     startDate: new Date(2023, 0, 1),
     endDate: new Date(2024, 11, 31),
+    useDeltaPreset: false,
+    deltaQuerySymbol: '',
+    deltaQueryInsertedType: 'CRYPTO' as DeltaInsertedType,
+    deltaQueryTimeframe: '',
+    deltaPresetSymbol: '',
+    deltaPresetTimeframe: '',
     feePct: 0.1,
     reinvestDividends: true,
     broker: 'BINANCE',
@@ -676,6 +696,12 @@ export class StrategyLauncherPageComponent {
       amount: [this.dcaDefaults.amount, [Validators.required, Validators.min(10)]],
       startDate: [this.dcaDefaults.startDate, Validators.required],
       endDate: [this.dcaDefaults.endDate, Validators.required],
+      useDeltaPreset: [this.dcaDefaults.useDeltaPreset],
+      deltaQuerySymbol: [this.dcaDefaults.deltaQuerySymbol],
+      deltaQueryInsertedType: [this.dcaDefaults.deltaQueryInsertedType],
+      deltaQueryTimeframe: [this.dcaDefaults.deltaQueryTimeframe],
+      deltaPresetSymbol: [this.dcaDefaults.deltaPresetSymbol],
+      deltaPresetTimeframe: [this.dcaDefaults.deltaPresetTimeframe],
       feePct: [this.dcaDefaults.feePct, [Validators.min(0)]],
       reinvestDividends: [this.dcaDefaults.reinvestDividends],
       broker: [this.dcaDefaults.broker],
@@ -963,6 +989,9 @@ export class StrategyLauncherPageComponent {
   readonly presets = signal<RunPreset[]>([]);
   readonly catalogReady = signal(false);
   readonly dcaCapabilitiesInfo = signal<string | null>(null);
+  readonly deltaRangesLoading = signal(false);
+  readonly deltaRangesError = signal<string | null>(null);
+  readonly deltaRanges = signal<DeltaIngestionRange[]>([]);
   readonly dcaCanonicalSupportedFields = signal<string[]>([]);
   readonly dcaCanonicalAcceptedButNotWiredFields = signal<string[]>([]);
   readonly dcaPresetSupportedEntries = signal<string[]>([]);
@@ -985,6 +1014,7 @@ export class StrategyLauncherPageComponent {
 
   constructor() {
     this.bindStressAdvancedControls();
+    this.bindDcaDeltaPresetControls();
     this.runForSelection(this.selectedRun());
     this.loadPresets();
     this.loadCatalog();
@@ -1008,6 +1038,167 @@ export class StrategyLauncherPageComponent {
 
     applyState(Boolean(includeAdvancedControl.value));
     includeAdvancedControl.valueChanges.subscribe(value => applyState(Boolean(value)));
+  }
+
+  private bindDcaDeltaPresetControls(): void {
+    const useDeltaPreset = this.dcaForm.get('useDeltaPreset');
+    const deltaPresetSymbol = this.dcaForm.get('deltaPresetSymbol');
+    const deltaPresetTimeframe = this.dcaForm.get('deltaPresetTimeframe');
+    const symbol = this.dcaForm.get('symbol');
+    const timeframe = this.dcaForm.get('timeframe');
+    const startDate = this.dcaForm.get('startDate');
+    const endDate = this.dcaForm.get('endDate');
+    if (!useDeltaPreset || !deltaPresetSymbol || !deltaPresetTimeframe || !symbol || !timeframe || !startDate || !endDate) {
+      return;
+    }
+
+    const applyState = (enabled: boolean) => {
+      if (enabled) {
+        symbol.disable({ emitEvent: false });
+        timeframe.disable({ emitEvent: false });
+        startDate.disable({ emitEvent: false });
+        endDate.disable({ emitEvent: false });
+        deltaPresetSymbol.setValidators([Validators.required]);
+        deltaPresetTimeframe.setValidators([Validators.required]);
+      } else {
+        symbol.enable({ emitEvent: false });
+        timeframe.enable({ emitEvent: false });
+        startDate.enable({ emitEvent: false });
+        endDate.enable({ emitEvent: false });
+        deltaPresetSymbol.clearValidators();
+        deltaPresetTimeframe.clearValidators();
+      }
+      deltaPresetSymbol.updateValueAndValidity({ emitEvent: false });
+      deltaPresetTimeframe.updateValueAndValidity({ emitEvent: false });
+    };
+
+    applyState(Boolean(useDeltaPreset.value));
+    useDeltaPreset.valueChanges.subscribe(value => applyState(Boolean(value)));
+    deltaPresetSymbol.valueChanges.subscribe(() => this.syncDeltaPresetSelection());
+    deltaPresetTimeframe.valueChanges.subscribe(() => this.syncDeltaPresetSelection());
+  }
+
+  onDcaUseDeltaPresetChange(event: MatCheckboxChange): void {
+    if (!event.checked) {
+      return;
+    }
+    if (this.deltaRanges().length > 0 || this.deltaRangesLoading()) {
+      return;
+    }
+    this.loadDeltaRanges();
+  }
+
+  loadDeltaRanges(): void {
+    if (this.deltaRangesLoading()) {
+      return;
+    }
+    const raw = this.dcaForm.getRawValue();
+    const filters: DeltaIngestionRangeFilters = {
+      symbol: String(raw.deltaQuerySymbol ?? '').trim() || undefined,
+      insertedType: (String(raw.deltaQueryInsertedType ?? '').trim() as DeltaInsertedType) || undefined,
+      timeframe: String(raw.deltaQueryTimeframe ?? '').trim() || undefined,
+      limit: 200
+    };
+
+    this.deltaRangesLoading.set(true);
+    this.deltaRangesError.set(null);
+    this.dataImportRangesApi
+      .getRanges(filters)
+      .pipe(finalize(() => this.deltaRangesLoading.set(false)))
+      .subscribe({
+        next: ranges => {
+          const sorted = [...ranges].sort((a, b) => {
+            const left = new Date(a.insertedAt).getTime();
+            const right = new Date(b.insertedAt).getTime();
+            return right - left;
+          });
+          this.deltaRanges.set(sorted);
+          this.syncDeltaPresetSelection();
+        },
+        error: err => {
+          console.error('[StrategyLauncher] Failed to load delta ranges', err);
+          this.deltaRanges.set([]);
+          this.deltaRangesError.set('Impossible de charger les presets Delta.');
+        }
+      });
+  }
+
+  deltaAvailableSymbols(): string[] {
+    return Array.from(new Set(this.deltaRanges().map(item => item.symbol).filter(Boolean))).sort();
+  }
+
+  deltaAvailableTimeframes(): string[] {
+    const symbol = String(this.dcaForm.get('deltaPresetSymbol')?.value ?? '').trim();
+    if (!symbol) {
+      return [];
+    }
+    return Array.from(
+      new Set(
+        this.deltaRanges()
+          .filter(item => item.symbol === symbol)
+          .map(item => item.timeframe)
+          .filter(Boolean)
+      )
+    ).sort();
+  }
+
+  selectedDeltaPeriod(): DeltaPresetPeriod | null {
+    const symbol = String(this.dcaForm.get('deltaPresetSymbol')?.value ?? '').trim();
+    const timeframe = String(this.dcaForm.get('deltaPresetTimeframe')?.value ?? '').trim();
+    if (!symbol || !timeframe) {
+      return null;
+    }
+    const rows = this.deltaRanges().filter(item => item.symbol === symbol && item.timeframe === timeframe);
+    if (rows.length === 0) {
+      return null;
+    }
+    const starts = rows.map(item => new Date(item.startDate).getTime()).filter(Number.isFinite);
+    const ends = rows.map(item => new Date(item.endDate).getTime()).filter(Number.isFinite);
+    if (starts.length === 0 || ends.length === 0) {
+      return null;
+    }
+    return {
+      startDate: new Date(Math.min(...starts)).toISOString(),
+      endDate: new Date(Math.max(...ends)).toISOString()
+    };
+  }
+
+  selectedDeltaPeriodLabel(): string {
+    const period = this.selectedDeltaPeriod();
+    if (!period) {
+      return '';
+    }
+    return `${period.startDate} -> ${period.endDate}`;
+  }
+
+  private syncDeltaPresetSelection(): void {
+    const symbolControl = this.dcaForm.get('deltaPresetSymbol');
+    const timeframeControl = this.dcaForm.get('deltaPresetTimeframe');
+    const startControl = this.dcaForm.get('startDate');
+    const endControl = this.dcaForm.get('endDate');
+    if (!symbolControl || !timeframeControl || !startControl || !endControl) {
+      return;
+    }
+
+    const symbols = this.deltaAvailableSymbols();
+    const currentSymbol = String(symbolControl.value ?? '').trim();
+    if (symbols.length > 0 && !symbols.includes(currentSymbol)) {
+      symbolControl.setValue(symbols[0] as any, { emitEvent: false });
+    }
+
+    const timeframes = this.deltaAvailableTimeframes();
+    const currentTimeframe = String(timeframeControl.value ?? '').trim();
+    if (timeframes.length > 0 && !timeframes.includes(currentTimeframe)) {
+      timeframeControl.setValue(timeframes[0] as any, { emitEvent: false });
+    }
+
+    if (Boolean(this.dcaForm.get('useDeltaPreset')?.value)) {
+      const period = this.selectedDeltaPeriod();
+      if (period) {
+        startControl.setValue(new Date(period.startDate) as any, { emitEvent: false });
+        endControl.setValue(new Date(period.endDate) as any, { emitEvent: false });
+      }
+    }
   }
 
   selectRun(key: RunKey): void {
@@ -1830,6 +2021,21 @@ export class StrategyLauncherPageComponent {
 
   private buildDcaRequest(): RunRequestInput {
     const v = this.dcaForm.getRawValue();
+    const useDeltaPreset = Boolean(v.useDeltaPreset);
+    const deltaPeriod = useDeltaPreset ? this.selectedDeltaPeriod() : null;
+    const effectiveSymbol = useDeltaPreset
+      ? String(v.deltaPresetSymbol ?? '').trim()
+      : String(v.symbol ?? this.dcaDefaults.symbol);
+    const effectiveTimeframe = useDeltaPreset
+      ? String(v.deltaPresetTimeframe ?? '').trim()
+      : String(v.timeframe ?? this.dcaDefaults.timeframe);
+    const effectiveStartDate = useDeltaPreset && deltaPeriod
+      ? deltaPeriod.startDate
+      : toIsoDate(v.startDate ?? this.dcaDefaults.startDate);
+    const effectiveEndDate = useDeltaPreset && deltaPeriod
+      ? deltaPeriod.endDate
+      : toIsoDate(v.endDate ?? this.dcaDefaults.endDate);
+
     const params: DcaStrategyCore = {
       type: (v.strategyType ?? this.dcaDefaults.strategyType) as DcaStrategyType,
       params: this.buildDcaParams(v)
@@ -1838,10 +2044,10 @@ export class StrategyLauncherPageComponent {
     return {
       runType: 'dca',
       data: {
-        symbol: String(v.symbol ?? this.dcaDefaults.symbol),
-        timeframe: String(v.timeframe ?? this.dcaDefaults.timeframe),
-        startDate: toIsoDate(v.startDate ?? this.dcaDefaults.startDate),
-        endDate: toIsoDate(v.endDate ?? this.dcaDefaults.endDate),
+        symbol: effectiveSymbol || this.dcaDefaults.symbol,
+        timeframe: effectiveTimeframe || this.dcaDefaults.timeframe,
+        startDate: effectiveStartDate,
+        endDate: effectiveEndDate,
         universe: v.includeDcaUniverse ? this.buildDcaUniverse(v) : undefined
       },
       strategy: params,

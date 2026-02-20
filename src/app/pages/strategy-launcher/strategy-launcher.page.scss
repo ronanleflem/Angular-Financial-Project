@@ -337,6 +337,14 @@
   border-radius: 14px;
 }
 
+.row-3 {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem 1.25rem;
+  align-items: end;
+}
+
 .checkbox-row {
   display: flex;
   align-items: center;
@@ -562,6 +570,10 @@
 
   .strategy-actions button {
     flex: 1;
+  }
+
+  .row-3 {
+    grid-template-columns: 1fr;
   }
 }
 

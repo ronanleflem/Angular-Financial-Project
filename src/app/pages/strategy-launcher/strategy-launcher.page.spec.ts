@@ -428,4 +428,149 @@ describe('StrategyLauncherPageComponent', () => {
     expect(component.dcaLegacyOnlyFields()).toEqual([]);
     expect(component.dcaLegacySupportedFields()).toEqual([]);
   });
+
+  it('loads delta ranges with loading and empty states', () => {
+    fixture.detectChanges();
+    flushInitRequests();
+
+    component.dcaForm.patchValue({
+      useDeltaPreset: true,
+      deltaQuerySymbol: 'BTCUSDT',
+      deltaQueryInsertedType: 'CRYPTO',
+      deltaQueryTimeframe: '1h'
+    } as any);
+
+    component.loadDeltaRanges();
+    expect(component.deltaRangesLoading()).toBeTrue();
+
+    const req = httpMock.expectOne(
+      `${environment.apiUrl}/api/data-import/ranges?symbol=BTCUSDT&insertedType=CRYPTO&timeframe=1h&limit=200`
+    );
+    expect(req.request.method).toBe('GET');
+    req.flush([]);
+
+    expect(component.deltaRangesLoading()).toBeFalse();
+    expect(component.deltaRangesError()).toBeNull();
+    expect(component.deltaRanges()).toEqual([]);
+  });
+
+  it('handles delta ranges http error without crashing UI', () => {
+    fixture.detectChanges();
+    flushInitRequests();
+
+    component.dcaForm.patchValue({ useDeltaPreset: true } as any);
+    component.loadDeltaRanges();
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/api/data-import/ranges?insertedType=CRYPTO&limit=200`);
+    req.flush({}, { status: 500, statusText: 'Server Error' });
+
+    expect(component.deltaRangesLoading()).toBeFalse();
+    expect(component.deltaRanges()).toEqual([]);
+    expect(component.deltaRangesError()).toContain('Impossible de charger');
+  });
+
+  it('sorts delta ranges by insertedAt descending', () => {
+    fixture.detectChanges();
+    flushInitRequests();
+
+    component.loadDeltaRanges();
+    const req = httpMock.expectOne(`${environment.apiUrl}/api/data-import/ranges?insertedType=CRYPTO&limit=200`);
+    req.flush([
+      {
+        symbol: 'BTCUSDT',
+        insertedType: 'CRYPTO',
+        startDate: '2024-01-01T00:00:00Z',
+        endDate: '2024-01-05T00:00:00Z',
+        timeframe: '1h',
+        insertedAt: '2026-02-20T09:00:00Z'
+      },
+      {
+        symbol: 'BTCUSDT',
+        insertedType: 'CRYPTO',
+        startDate: '2024-01-06T00:00:00Z',
+        endDate: '2024-01-10T00:00:00Z',
+        timeframe: '1h',
+        insertedAt: '2026-02-20T10:00:00Z'
+      }
+    ]);
+
+    expect(component.deltaRanges()[0].insertedAt).toBe('2026-02-20T10:00:00.000Z');
+    expect(component.deltaRanges()[1].insertedAt).toBe('2026-02-20T09:00:00.000Z');
+  });
+
+  it('uses delta preset symbol/timeframe/period when enabled', () => {
+    fixture.detectChanges();
+    flushInitRequests();
+
+    component.dcaForm.patchValue({
+      symbol: 'ETHUSD',
+      timeframe: '4h',
+      startDate: new Date('2023-01-01T00:00:00Z'),
+      endDate: new Date('2023-02-01T00:00:00Z'),
+      useDeltaPreset: true
+    } as any);
+
+    component.loadDeltaRanges();
+    const req = httpMock.expectOne(`${environment.apiUrl}/api/data-import/ranges?insertedType=CRYPTO&limit=200`);
+    req.flush([
+      {
+        symbol: 'BTCUSDT',
+        insertedType: 'CRYPTO',
+        startDate: '2024-01-01T00:00:00Z',
+        endDate: '2024-01-05T00:00:00Z',
+        timeframe: '1h',
+        insertedAt: '2026-02-20T09:00:00Z'
+      },
+      {
+        symbol: 'BTCUSDT',
+        insertedType: 'CRYPTO',
+        startDate: '2024-01-06T00:00:00Z',
+        endDate: '2024-01-10T00:00:00Z',
+        timeframe: '1h',
+        insertedAt: '2026-02-20T10:00:00Z'
+      }
+    ]);
+
+    component.dcaForm.patchValue({
+      deltaPresetSymbol: 'BTCUSDT',
+      deltaPresetTimeframe: '1h'
+    } as any);
+
+    const payload = component.buildRunRequest() as any;
+    expect(payload.data.symbol).toBe('BTCUSDT');
+    expect(payload.data.timeframe).toBe('1h');
+    expect(payload.data.startDate).toBe('2024-01-01T00:00:00.000Z');
+    expect(payload.data.endDate).toBe('2024-01-10T00:00:00.000Z');
+  });
+
+  it('pre-fills period with min/max dates for selected delta symbol/timeframe', () => {
+    fixture.detectChanges();
+    flushInitRequests();
+
+    component.dcaForm.patchValue({ useDeltaPreset: true } as any);
+    component.loadDeltaRanges();
+    const req = httpMock.expectOne(`${environment.apiUrl}/api/data-import/ranges?insertedType=CRYPTO&limit=200`);
+    req.flush([
+      {
+        symbol: 'BTCUSDT',
+        insertedType: 'CRYPTO',
+        startDate: '2024-01-03T00:00:00Z',
+        endDate: '2024-01-08T00:00:00Z',
+        timeframe: '1h',
+        insertedAt: '2026-02-20T09:00:00Z'
+      },
+      {
+        symbol: 'BTCUSDT',
+        insertedType: 'CRYPTO',
+        startDate: '2024-01-01T00:00:00Z',
+        endDate: '2024-01-10T00:00:00Z',
+        timeframe: '1h',
+        insertedAt: '2026-02-20T10:00:00Z'
+      }
+    ]);
+
+    expect(component.selectedDeltaPeriodLabel()).toBe('2024-01-01T00:00:00.000Z -> 2024-01-10T00:00:00.000Z');
+    expect(new Date(component.dcaForm.get('startDate')?.value as Date).toISOString()).toBe('2024-01-01T00:00:00.000Z');
+    expect(new Date(component.dcaForm.get('endDate')?.value as Date).toISOString()).toBe('2024-01-10T00:00:00.000Z');
+  });
 });
