@@ -47,6 +47,70 @@ describe('RunStatusPageComponent', () => {
     expect(component.result()).toEqual(jasmine.objectContaining({ runId: 'run-1' }));
   }));
 
+  it('handles lifecycle QUEUED -> RUNNING -> SUCCEEDED', fakeAsync(() => {
+    fixture.detectChanges();
+    tick(0);
+
+    const queuedReq = httpMock.expectOne(`${environment.apiUrl}/api/runs/run-1`);
+    queuedReq.flush({ run_id: 'run-1', request_id: 'run-1', status: 'QUEUED' });
+    expect(component.uiStatus()).toBe('queued');
+    expect(component.polling()).toBeTrue();
+
+    tick(5000);
+    const runningReq = httpMock.expectOne(`${environment.apiUrl}/api/runs/run-1`);
+    runningReq.flush({ run_id: 'run-1', request_id: 'run-1', status: 'RUNNING' });
+    expect(component.uiStatus()).toBe('running');
+
+    tick(5000);
+    const successReq = httpMock.expectOne(`${environment.apiUrl}/api/runs/run-1`);
+    successReq.flush({ run_id: 'run-1', request_id: 'run-1', status: 'SUCCEEDED' });
+
+    const resultReq = httpMock.expectOne(`${environment.apiUrl}/api/runs/run-1/result`);
+    resultReq.flush({ run_id: 'run-1', request_id: 'run-1', status: 'SUCCEEDED', result: { ok: true } });
+
+    expect(component.uiStatus()).toBe('succeeded');
+    expect(component.polling()).toBeFalse();
+    expect(component.result()?.result).toEqual({ ok: true });
+    expect(component.status()?.runId).toBe('run-1');
+    expect(component.status()?.requestId).toBe('run-1');
+  }));
+
+  it('shows non-blocking info when /result is not terminal yet', fakeAsync(() => {
+    fixture.detectChanges();
+    tick(0);
+
+    const statusReq = httpMock.expectOne(`${environment.apiUrl}/api/runs/run-1`);
+    statusReq.flush({ run_id: 'run-1', status: 'SUCCEEDED' });
+
+    const resultReq = httpMock.expectOne(`${environment.apiUrl}/api/runs/run-1/result`);
+    resultReq.flush({ run_id: 'run-1', status: 'RUNNING' });
+
+    fixture.detectChanges();
+    expect(component.result()).toBeNull();
+    expect(component.resultError()).toBeNull();
+    expect(component.resultInfo()).toBe('Result not available yet');
+  }));
+
+  it('handles cancel 200 idempotent path', fakeAsync(() => {
+    fixture.detectChanges();
+    tick(0);
+
+    const initialReq = httpMock.expectOne(`${environment.apiUrl}/api/runs/run-1`);
+    initialReq.flush({ run_id: 'run-1', status: 'RUNNING' });
+
+    component.cancelRun();
+
+    const cancelReq = httpMock.expectOne(`${environment.apiUrl}/api/runs/run-1/cancel`);
+    cancelReq.flush({ run_id: 'run-1', request_id: 'run-1', status: 'CANCELED' });
+
+    const resultReq = httpMock.expectOne(`${environment.apiUrl}/api/runs/run-1/result`);
+    resultReq.flush({ run_id: 'run-1', status: 'CANCELED', result: { canceled: true } });
+
+    expect(component.uiStatus()).toBe('canceled');
+    expect(component.infoMessage()).toBe('Cancel accepte.');
+    expect(component.errorMessage()).toBeNull();
+  }));
+
   it('handles cancel 409 by refreshing status', fakeAsync(() => {
     fixture.detectChanges();
     tick(0);
@@ -66,6 +130,7 @@ describe('RunStatusPageComponent', () => {
     resultReq.flush({ run_id: 'run-1', result: { canceled: true } });
 
     expect(component.errorMessage()).toBeNull();
+    expect(component.infoMessage()).toContain('already_finished');
     expect(component.uiStatus()).toBe('canceled');
   }));
 
@@ -81,8 +146,8 @@ describe('RunStatusPageComponent', () => {
         code: 'not_implemented_feature',
         message: 'Feature not wired',
         details: [
-          { field: 'signal.type', message: 'not wired' },
-          { field: 'strategy.params.tp_sl', message: 'not wired' }
+          { field: 'signal.type', reason: 'accepted_but_not_wired', message: 'not wired' },
+          { field: 'strategy.params.tp_sl', reason: 'accepted_but_not_wired', message: 'not wired' }
         ]
       }
     });
@@ -92,7 +157,7 @@ describe('RunStatusPageComponent', () => {
 
     fixture.detectChanges();
     const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
-    expect(component.terminalMessage()).toBe('Not implemented yet');
+    expect(component.terminalMessage()).toBe('Feature not wired');
     expect(component.notImplementedFields()).toEqual(['signal.type', 'strategy.params.tp_sl']);
     expect(text).toContain('Champs non cables');
     expect(text).toContain('signal.type');

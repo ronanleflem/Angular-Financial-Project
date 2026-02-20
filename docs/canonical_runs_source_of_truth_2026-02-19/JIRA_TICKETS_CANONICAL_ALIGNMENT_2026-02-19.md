@@ -86,6 +86,23 @@ Ameliorer la gestion UI des erreurs backend runs: distinction claire entre erreu
 - Un 422 montre les champs invalides lies aux controles.
 - Tests unitaires + composants couvrent les 2 cas.
 
+### Story Detail - ANG-2 (lifecycle `/runs` + erreurs metier)
+
+#### Regles UI
+- Statuts explicitement geres: `QUEUED`, `RUNNING`, `SUCCEEDED`, `FAILED`, `CANCELED`.
+- Si `GET /runs/{id}/result` retourne un statut non terminal: afficher `Result not available yet` (non bloquant).
+- Si `FAILED` + `error.code=not_implemented_feature`: afficher le message metier et les champs non cables issus de `details[].reason=accepted_but_not_wired`.
+- Cancel:
+  - `200`: message info `Cancel accepte.`
+  - `409 already_finished`: message info non bloquant + refresh statut.
+- Conserver et afficher `run_id` et `request_id` dans la page statut.
+
+#### Couverture tests UI
+- Transition `QUEUED -> RUNNING -> SUCCEEDED`.
+- `FAILED + not_implemented_feature + details`.
+- `result not available yet`.
+- cancel `200` et `409`.
+
 ---
 
 ## TICKET C - Seasonality Contract Cleanup + Session Clarity

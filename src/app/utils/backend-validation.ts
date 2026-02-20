@@ -17,6 +17,7 @@ export interface RuntimeRunErrorDetail {
   field?: string;
   code?: string;
   message?: string;
+  reason?: string;
 }
 
 export interface RuntimeRunError {
@@ -74,13 +75,15 @@ export function parseRunRuntimeError(payload: unknown): RuntimeRunError | null {
         const field = entry['field'] !== undefined ? String(entry['field']) : undefined;
         const detailCode = entry['code'] !== undefined ? String(entry['code']) : undefined;
         const detailMessage = entry['message'] !== undefined ? String(entry['message']) : undefined;
-        if (!field && !detailCode && !detailMessage) {
+        const detailReason = entry['reason'] !== undefined ? String(entry['reason']) : undefined;
+        if (!field && !detailCode && !detailMessage && !detailReason) {
           return null;
         }
         return {
           field,
           code: detailCode,
-          message: detailMessage
+          message: detailMessage,
+          reason: detailReason
         } as RuntimeRunErrorDetail;
       })
       .filter((item): item is RuntimeRunErrorDetail => Boolean(item))

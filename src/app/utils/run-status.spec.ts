@@ -9,6 +9,8 @@ describe('run-status utils', () => {
   });
 
   it('normalizes extended backend statuses', () => {
+    expect(normalizeRunStatus('QUEUED')).toBe('queued');
+    expect(normalizeRunStatus('SUCCEEDED')).toBe('succeeded');
     expect(normalizeRunStatus('COMPLETED')).toBe('succeeded');
     expect(normalizeRunStatus('CANCELED')).toBe('canceled');
     expect(normalizeRunStatus('ABORTED')).toBe('canceled');

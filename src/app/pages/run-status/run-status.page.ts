@@ -35,10 +35,12 @@ export class RunStatusPageComponent implements OnInit {
   readonly uiStatus = signal<UiRunStatus>('unknown');
   readonly loading = signal(false);
   readonly errorMessage = signal<string | null>(null);
+  readonly infoMessage = signal<string | null>(null);
   readonly polling = signal(false);
   readonly result = signal<RunResultResponse | null>(null);
   readonly resultLoading = signal(false);
   readonly resultError = signal<string | null>(null);
+  readonly resultInfo = signal<string | null>(null);
   readonly terminalMessage = signal<string | null>(null);
   readonly runtimeError = signal<RuntimeRunError | null>(null);
   readonly canceling = signal(false);
@@ -52,9 +54,11 @@ export class RunStatusPageComponent implements OnInit {
         this.status.set(null);
         this.uiStatus.set('unknown');
         this.resetResultState();
+        this.infoMessage.set(null);
         this.errorMessage.set('requestId manquant.');
         return;
       }
+      this.infoMessage.set(null);
       this.resetResultState();
       this.startPolling(this.requestId);
     });
@@ -147,7 +151,8 @@ export class RunStatusPageComponent implements OnInit {
       .pipe(
         catchError(err => {
           if (err?.status === 409) {
-            this.errorMessage.set('Run deja termine, statut actualise.');
+            this.infoMessage.set('Cancel non bloquant: run deja termine (already_finished).');
+            this.errorMessage.set(null);
             this.refreshStatus();
             return of(null);
           }
@@ -164,6 +169,7 @@ export class RunStatusPageComponent implements OnInit {
         if (!response) {
           return;
         }
+        this.infoMessage.set('Cancel accepte.');
         this.applyStatus(response as RunStatusResponse);
         if (this.checkTerminalAndLoadResult()) {
           this.stopPolling();
@@ -177,6 +183,13 @@ export class RunStatusPageComponent implements OnInit {
 
   formatStatusLabel(): string {
     return formatRunStatusLabel(this.uiStatus(), this.status()?.status ?? null);
+  }
+
+  statusSubtitle(): string {
+    if (this.loading() && !this.status()) {
+      return 'Soumission en cours';
+    }
+    return `Statut: ${this.formatStatusLabel()}`;
   }
 
   private applyStatus(response: RunStatusResponse): void {
@@ -206,6 +219,11 @@ export class RunStatusPageComponent implements OnInit {
       .getRunResult(requestId)
       .pipe(
         catchError(err => {
+          if (err?.status === 409 || err?.status === 425) {
+            this.resultInfo.set('Result not available yet');
+            this.resultError.set(null);
+            return of(null);
+          }
           const status = err?.status ? `HTTP ${err.status}` : 'HTTP error';
           const message = err?.message ?? 'Erreur inconnue';
           this.resultError.set(`[${status}] ${message}`);
@@ -219,7 +237,15 @@ export class RunStatusPageComponent implements OnInit {
         if (!response) {
           return;
         }
+        if (response.status && !isTerminalStatus(normalizeRunStatus(response.status))) {
+          this.result.set(null);
+          this.resultError.set(null);
+          this.resultInfo.set('Result not available yet');
+          this.resultForRequestId = requestId;
+          return;
+        }
         this.result.set(response);
+        this.resultInfo.set(null);
         this.updateRuntimeError(parseRunRuntimeError(response));
         this.resultForRequestId = requestId;
       });
@@ -228,6 +254,7 @@ export class RunStatusPageComponent implements OnInit {
   private resetResultState(): void {
     this.result.set(null);
     this.resultError.set(null);
+    this.resultInfo.set(null);
     this.resultLoading.set(false);
     this.resultForRequestId = null;
     this.terminalMessage.set(null);
@@ -241,7 +268,7 @@ export class RunStatusPageComponent implements OnInit {
     const runtimeError = this.runtimeError();
     const runtimeCode = String(runtimeError?.code ?? '').trim().toLowerCase();
     if (status === 'failed' && runtimeCode === 'not_implemented_feature') {
-      return NOT_IMPLEMENTED_YET_MESSAGE;
+      return runtimeError?.message?.trim() || NOT_IMPLEMENTED_YET_MESSAGE;
     }
     if (response?.message) {
       return response.message;
@@ -264,9 +291,14 @@ export class RunStatusPageComponent implements OnInit {
     if (runtimeCode !== 'not_implemented_feature') {
       return [];
     }
-    const fields = runtime?.details
+    const wiredFields = runtime?.details
+      .filter(detail => String(detail.reason ?? '').trim().toLowerCase() === 'accepted_but_not_wired')
       .map(detail => detail.field?.trim())
       .filter((field): field is string => Boolean(field)) ?? [];
+    const fallbackFields = runtime?.details
+      .map(detail => detail.field?.trim())
+      .filter((field): field is string => Boolean(field)) ?? [];
+    const fields = wiredFields.length > 0 ? wiredFields : fallbackFields;
     return Array.from(new Set(fields));
   }
 
@@ -280,8 +312,12 @@ export class RunStatusPageComponent implements OnInit {
         const field = detail.field?.trim();
         const message = detail.message?.trim();
         const code = detail.code?.trim();
+        const reason = detail.reason?.trim();
         if (field && message) {
           return `${field} - ${message}`;
+        }
+        if (field && reason) {
+          return `${field} - ${reason}`;
         }
         if (field && code) {
           return `${field} - ${code}`;

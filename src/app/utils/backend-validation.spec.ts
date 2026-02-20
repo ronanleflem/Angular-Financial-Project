@@ -37,7 +37,7 @@ describe('backend-validation', () => {
     expect(runtime).toEqual({
       code: 'not_implemented_feature',
       message: 'Feature not implemented',
-      details: [{ field: 'signal.type', message: 'not wired', code: undefined }]
+      details: [{ field: 'signal.type', message: 'not wired', code: undefined, reason: undefined }]
     });
   });
 

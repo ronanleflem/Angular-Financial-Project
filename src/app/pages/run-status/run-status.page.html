@@ -2,12 +2,20 @@
   <mat-card class="status-card">
     <mat-card-header>
       <mat-card-title>Run status</mat-card-title>
-      <mat-card-subtitle>Soumission en cours</mat-card-subtitle>
+      <mat-card-subtitle>{{ statusSubtitle() }}</mat-card-subtitle>
     </mat-card-header>
     <mat-card-content>
       <div class="status-row">
-        <span class="label">requestId</span>
+        <span class="label">route requestId</span>
         <span class="value">{{ requestId || 'N/A' }}</span>
+      </div>
+      <div class="status-row">
+        <span class="label">run_id</span>
+        <span class="value">{{ status()?.runId || result()?.runId || requestId || 'N/A' }}</span>
+      </div>
+      <div class="status-row">
+        <span class="label">request_id</span>
+        <span class="value">{{ status()?.requestId || result()?.requestId || requestId || 'N/A' }}</span>
       </div>
       <div class="status-row">
         <span class="label">status</span>
@@ -53,14 +61,19 @@
         <div class="error-title">Erreur</div>
         <div class="error-body">{{ errorMessage() }}</div>
       </div>
-      <div class="result-panel" *ngIf="result() || resultLoading() || resultError()">
+      <div class="result-panel" *ngIf="result() || resultLoading() || resultError() || resultInfo()">
         <div class="result-title">Resultat</div>
         <div class="result-body" *ngIf="resultLoading()">Chargement du resultat...</div>
+        <div class="result-body" *ngIf="resultInfo()">{{ resultInfo() }}</div>
         <div class="result-body" *ngIf="resultError()">{{ resultError() }}</div>
-        <div class="result-body" *ngIf="!result() && !resultLoading() && !resultError()">
+        <div class="result-body" *ngIf="!result() && !resultLoading() && !resultError() && !resultInfo()">
           Aucun resultat disponible pour ce statut terminal.
         </div>
         <pre class="result-json" *ngIf="result()">{{ result() | json }}</pre>
+      </div>
+      <div class="status-row" *ngIf="infoMessage()">
+        <span class="label">info</span>
+        <span class="value">{{ infoMessage() }}</span>
       </div>
       <p class="hint">Le backend publiera prochainement le statut detaille.</p>
       <div class="actions">

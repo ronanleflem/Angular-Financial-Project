@@ -8,7 +8,15 @@ import {
 } from './run-request-adapter';
 import { map } from 'rxjs';
 
-export type RunStatus = 'PENDING' | 'RUNNING' | 'FAILED' | 'DONE' | string;
+export type RunStatus =
+  | 'QUEUED'
+  | 'RUNNING'
+  | 'SUCCEEDED'
+  | 'FAILED'
+  | 'CANCELED'
+  | 'PENDING'
+  | 'DONE'
+  | string;
 
 export interface RunResponseBase {
   runId: string;
