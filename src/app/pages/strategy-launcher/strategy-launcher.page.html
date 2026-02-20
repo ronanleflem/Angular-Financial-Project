@@ -63,6 +63,14 @@
               <mat-date-range-picker #dcaRangePicker></mat-date-range-picker>
             </mat-form-field>
           </div>
+          <div class="param-group">
+            <mat-form-field appearance="outline">
+              <mat-label>Symboles (multi)</mat-label>
+              <mat-select multiple formControlName="symbols">
+                <mat-option *ngFor="let symbol of symbols" [value]="symbol">{{ symbol }}</mat-option>
+              </mat-select>
+            </mat-form-field>
+          </div>
 
           <div class="checkbox-row checkbox-full">
             <mat-checkbox formControlName="useDeltaPreset" (change)="onDcaUseDeltaPresetChange($event)">
@@ -115,8 +123,8 @@
 
             <div class="row-3 row-delta-selection" *ngIf="deltaRanges().length > 0">
               <mat-form-field appearance="outline">
-                <mat-label>Symbole</mat-label>
-                <mat-select formControlName="deltaPresetSymbol">
+                <mat-label>Symboles</mat-label>
+                <mat-select multiple formControlName="deltaPresetSymbols">
                   <mat-option *ngFor="let symbol of deltaAvailableSymbols()" [value]="symbol">{{ symbol }}</mat-option>
                 </mat-select>
               </mat-form-field>

@@ -444,7 +444,9 @@ export class StrategyLauncherPageComponent {
     deltaQuerySymbol: '',
     deltaQueryInsertedType: 'CRYPTO' as DeltaInsertedType,
     deltaQueryTimeframe: '',
+    symbols: [] as string[],
     deltaPresetSymbol: '',
+    deltaPresetSymbols: [] as string[],
     deltaPresetTimeframe: '',
     feePct: 0.1,
     reinvestDividends: true,
@@ -701,7 +703,9 @@ export class StrategyLauncherPageComponent {
       deltaQuerySymbol: [this.dcaDefaults.deltaQuerySymbol],
       deltaQueryInsertedType: [this.dcaDefaults.deltaQueryInsertedType],
       deltaQueryTimeframe: [this.dcaDefaults.deltaQueryTimeframe],
+      symbols: [this.dcaDefaults.symbols],
       deltaPresetSymbol: [this.dcaDefaults.deltaPresetSymbol],
+      deltaPresetSymbols: [this.dcaDefaults.deltaPresetSymbols],
       deltaPresetTimeframe: [this.dcaDefaults.deltaPresetTimeframe],
       feePct: [this.dcaDefaults.feePct, [Validators.min(0)]],
       reinvestDividends: [this.dcaDefaults.reinvestDividends],
@@ -1045,39 +1049,42 @@ export class StrategyLauncherPageComponent {
 
   private bindDcaDeltaPresetControls(): void {
     const useDeltaPreset = this.dcaForm.get('useDeltaPreset');
-    const deltaPresetSymbol = this.dcaForm.get('deltaPresetSymbol');
+    const deltaPresetSymbols = this.dcaForm.get('deltaPresetSymbols');
+    const symbolsControl = this.dcaForm.get('symbols');
     const deltaPresetTimeframe = this.dcaForm.get('deltaPresetTimeframe');
     const symbol = this.dcaForm.get('symbol');
     const timeframe = this.dcaForm.get('timeframe');
     const startDate = this.dcaForm.get('startDate');
     const endDate = this.dcaForm.get('endDate');
-    if (!useDeltaPreset || !deltaPresetSymbol || !deltaPresetTimeframe || !symbol || !timeframe || !startDate || !endDate) {
+    if (!useDeltaPreset || !deltaPresetSymbols || !symbolsControl || !deltaPresetTimeframe || !symbol || !timeframe || !startDate || !endDate) {
       return;
     }
 
     const applyState = (enabled: boolean) => {
       if (enabled) {
         symbol.disable({ emitEvent: false });
+        symbolsControl.disable({ emitEvent: false });
         timeframe.disable({ emitEvent: false });
         startDate.disable({ emitEvent: false });
         endDate.disable({ emitEvent: false });
-        deltaPresetSymbol.setValidators([Validators.required]);
+        deltaPresetSymbols.setValidators([Validators.required]);
         deltaPresetTimeframe.setValidators([Validators.required]);
       } else {
         symbol.enable({ emitEvent: false });
+        symbolsControl.enable({ emitEvent: false });
         timeframe.enable({ emitEvent: false });
         startDate.enable({ emitEvent: false });
         endDate.enable({ emitEvent: false });
-        deltaPresetSymbol.clearValidators();
+        deltaPresetSymbols.clearValidators();
         deltaPresetTimeframe.clearValidators();
       }
-      deltaPresetSymbol.updateValueAndValidity({ emitEvent: false });
+      deltaPresetSymbols.updateValueAndValidity({ emitEvent: false });
       deltaPresetTimeframe.updateValueAndValidity({ emitEvent: false });
     };
 
     applyState(Boolean(useDeltaPreset.value));
     useDeltaPreset.valueChanges.subscribe(value => applyState(Boolean(value)));
-    deltaPresetSymbol.valueChanges.subscribe(() => this.syncDeltaPresetSelection());
+    deltaPresetSymbols.valueChanges.subscribe(() => this.syncDeltaPresetSelection());
     deltaPresetTimeframe.valueChanges.subscribe(() => this.syncDeltaPresetSelection());
   }
 
@@ -1131,14 +1138,14 @@ export class StrategyLauncherPageComponent {
   }
 
   deltaAvailableTimeframes(): string[] {
-    const symbol = String(this.dcaForm.get('deltaPresetSymbol')?.value ?? '').trim();
-    if (!symbol) {
+    const symbols = this.selectedDeltaSymbols();
+    if (symbols.length === 0) {
       return [];
     }
     return Array.from(
       new Set(
         this.deltaRanges()
-          .filter(item => item.symbol === symbol)
+          .filter(item => symbols.includes(item.symbol))
           .map(item => item.timeframe)
           .filter(Boolean)
       )
@@ -1146,12 +1153,12 @@ export class StrategyLauncherPageComponent {
   }
 
   selectedDeltaPeriod(): DeltaPresetPeriod | null {
-    const symbol = String(this.dcaForm.get('deltaPresetSymbol')?.value ?? '').trim();
+    const symbols = this.selectedDeltaSymbols();
     const timeframe = String(this.dcaForm.get('deltaPresetTimeframe')?.value ?? '').trim();
-    if (!symbol || !timeframe) {
+    if (symbols.length === 0 || !timeframe) {
       return null;
     }
-    const rows = this.deltaRanges().filter(item => item.symbol === symbol && item.timeframe === timeframe);
+    const rows = this.deltaRanges().filter(item => symbols.includes(item.symbol) && item.timeframe === timeframe);
     if (rows.length === 0) {
       return null;
     }
@@ -1175,7 +1182,7 @@ export class StrategyLauncherPageComponent {
   }
 
   private syncDeltaPresetSelection(): void {
-    const symbolControl = this.dcaForm.get('deltaPresetSymbol');
+    const symbolControl = this.dcaForm.get('deltaPresetSymbols');
     const timeframeControl = this.dcaForm.get('deltaPresetTimeframe');
     const startControl = this.dcaForm.get('startDate');
     const endControl = this.dcaForm.get('endDate');
@@ -1184,9 +1191,12 @@ export class StrategyLauncherPageComponent {
     }
 
     const symbols = this.deltaAvailableSymbols();
-    const currentSymbol = String(symbolControl.value ?? '').trim();
-    if (symbols.length > 0 && !symbols.includes(currentSymbol)) {
-      symbolControl.setValue(symbols[0] as any, { emitEvent: false });
+    const selectedSymbols = this.selectedDeltaSymbols();
+    const validSymbols = selectedSymbols.filter(symbol => symbols.includes(symbol));
+    if (symbols.length > 0 && validSymbols.length === 0) {
+      symbolControl.setValue([symbols[0]] as any, { emitEvent: false });
+    } else if (selectedSymbols.length !== validSymbols.length) {
+      symbolControl.setValue(validSymbols as any, { emitEvent: false });
     }
 
     const timeframes = this.deltaAvailableTimeframes();
@@ -1202,6 +1212,15 @@ export class StrategyLauncherPageComponent {
         endControl.setValue(new Date(period.endDate) as any, { emitEvent: false });
       }
     }
+  }
+
+  private selectedDeltaSymbols(): string[] {
+    const value = this.dcaForm.get('deltaPresetSymbols')?.value as ReadonlyArray<string> | string | null | undefined;
+    if (Array.isArray(value)) {
+      return Array.from(new Set(value.map(item => String(item).trim()).filter(Boolean)));
+    }
+    const single = String(value ?? '').trim();
+    return single ? [single] : [];
   }
 
   selectRun(key: RunKey): void {
@@ -1619,7 +1638,12 @@ export class StrategyLauncherPageComponent {
 
   private isCanonicalUniverseField(fieldPath: string): boolean {
     const normalized = String(fieldPath).trim().toLowerCase();
-    return normalized === 'data.universe' || normalized.startsWith('data.universe.');
+    return (
+      normalized === 'universe' ||
+      normalized.startsWith('universe.') ||
+      normalized === 'data.universe' ||
+      normalized.startsWith('data.universe.')
+    );
   }
 
   private setUniverseControlAvailability(enabled: boolean): void {
@@ -2119,11 +2143,21 @@ export class StrategyLauncherPageComponent {
     const useDeltaPreset = Boolean(v.useDeltaPreset);
     const deltaPeriod = useDeltaPreset ? this.selectedDeltaPeriod() : null;
     const canUseUniverse = this.canUseCanonicalUniverse();
-    const selectedUniverse = canUseUniverse && Boolean(v.includeDcaUniverse) ? this.buildDcaUniverse(v) : undefined;
+    const explicitUniverse = canUseUniverse && Boolean(v.includeDcaUniverse) ? this.buildDcaUniverse(v) : undefined;
+    const selectedSymbols = Array.from(new Set(((v.symbols ?? []) as ReadonlyArray<string>).map(item => String(item).trim()).filter(Boolean)));
+    const deltaSymbols = useDeltaPreset
+      ? Array.from(new Set(((v.deltaPresetSymbols ?? []) as ReadonlyArray<string>).map(item => String(item).trim()).filter(Boolean)))
+      : [];
+    const autoUniverseSymbols = useDeltaPreset ? deltaSymbols : selectedSymbols;
+    const autoUniverse = canUseUniverse && autoUniverseSymbols.length > 1
+      ? this.buildUniverseFromSymbols(autoUniverseSymbols, String(v.assetClass ?? this.dcaDefaults.assetClass))
+      : undefined;
+    const selectedUniverse = explicitUniverse ?? autoUniverse;
     const universePrimarySymbol = canUseUniverse ? (selectedUniverse?.[0]?.symbol?.trim() ?? '') : '';
+    const autoSingleSymbol = autoUniverseSymbols.length === 1 ? autoUniverseSymbols[0] : '';
     const effectiveSymbol = universePrimarySymbol || (useDeltaPreset
-      ? String(v.deltaPresetSymbol ?? '').trim()
-      : String(v.symbol ?? this.dcaDefaults.symbol));
+      ? (autoSingleSymbol || String(v.deltaPresetSymbol ?? '').trim())
+      : (autoSingleSymbol || String(v.symbol ?? this.dcaDefaults.symbol)));
     const effectiveTimeframe = useDeltaPreset
       ? String(v.deltaPresetTimeframe ?? '').trim()
       : String(v.timeframe ?? this.dcaDefaults.timeframe);
@@ -2467,6 +2501,24 @@ export class StrategyLauncherPageComponent {
       result[param.key] = coerceParamValue(this.getControlValue(controlName));
     });
     return result;
+  }
+
+  private buildUniverseFromSymbols(symbols: ReadonlyArray<string>, defaultAssetClass: string) {
+    if (!symbols.length) {
+      return undefined;
+    }
+    return symbols.map(symbol => {
+      const item = this.dcaUniverseOptions.find(option => option.id === symbol);
+      if (!item) {
+        return { symbol, assetClass: defaultAssetClass || 'Unknown' };
+      }
+      return {
+        symbol: item.id,
+        assetClass: item.assetClass,
+        exchange: item.exchange,
+        broker: item.broker
+      };
+    });
   }
 
   private buildRuleParams(id: string, prefix: string): Record<string, number | string | boolean> {

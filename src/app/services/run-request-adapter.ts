@@ -19,8 +19,10 @@ export function buildCanonicalRunPayload(
   specType: RunType = uiModel.runType,
   options: CanonicalRunRequestOptions = {}
 ): CanonicalRunRequest {
-  const hasUniverseEntries = Array.isArray((uiModel as any)?.data?.universe)
-    && ((uiModel as any)?.data?.universe as unknown[]).length > 0;
+  const hasUniverseEntries = (
+    (Array.isArray((uiModel as any)?.universe) && ((uiModel as any)?.universe as unknown[]).length > 0) ||
+    (Array.isArray((uiModel as any)?.data?.universe) && ((uiModel as any)?.data?.universe as unknown[]).length > 0)
+  );
   if ((!uiModel?.data?.symbol || !String(uiModel.data.symbol).trim()) && !hasUniverseEntries) {
     throw new Error('canonical_builder_error:data.symbol is required');
   }
@@ -62,16 +64,23 @@ function normalizeCanonicalInput(input: RunRequestInput): Record<string, unknown
   const data = (rest['data'] ?? {}) as unknown as Record<string, unknown>;
   const params = ((strategy['params'] ?? {}) as Record<string, unknown>);
   const normalizedParams: Record<string, unknown> = { ...params };
-  const dataWithCompatSymbol = { ...data };
-  const universeEntries = Array.isArray(dataWithCompatSymbol['universe'])
-    ? (dataWithCompatSymbol['universe'] as unknown[])
+  const existingTopLevelUniverse = Array.isArray((rest as any)['universe'])
+    ? ((rest as any)['universe'] as unknown[])
     : [];
+  const dataUniverse = Array.isArray(data['universe']) ? (data['universe'] as unknown[]) : [];
+  const universeEntries = existingTopLevelUniverse.length > 0 ? existingTopLevelUniverse : dataUniverse;
+  const { universe, ...dataWithoutUniverse } = data as Record<string, unknown>;
+  void universe;
+  const dataWithCompatSymbol = { ...dataWithoutUniverse };
   if ((!dataWithCompatSymbol['symbol'] || !String(dataWithCompatSymbol['symbol']).trim()) && universeEntries.length > 0) {
     const first = universeEntries[0] as Record<string, unknown> | undefined;
     const firstSymbol = String(first?.['symbol'] ?? '').trim();
     if (firstSymbol) {
       dataWithCompatSymbol['symbol'] = firstSymbol;
     }
+  }
+  if (universeEntries.length > 0) {
+    delete dataWithCompatSymbol['symbol'];
   }
 
   // Backward compatibility: strategy.grid preset string list -> strategy.params.grid.
@@ -90,6 +99,7 @@ function normalizeCanonicalInput(input: RunRequestInput): Record<string, unknown
   return {
     ...rest,
     data: dataWithCompatSymbol,
+    universe: universeEntries.length > 0 ? universeEntries : undefined,
     strategy: {
       ...strategy,
       params: normalizedParams

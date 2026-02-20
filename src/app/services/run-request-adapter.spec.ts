@@ -2,7 +2,7 @@ import { RunRequestInput } from '../models/run-request-input.model';
 import { buildCanonicalRunPayload } from './run-request-adapter';
 
 describe('run-request-adapter', () => {
-  it('builds canonical dca payload and keeps universe', () => {
+  it('builds canonical dca payload and moves universe to top-level', () => {
     const payload: RunRequestInput = {
       runType: 'dca',
       data: {
@@ -35,8 +35,9 @@ describe('run-request-adapter', () => {
     const canonical = buildCanonicalRunPayload(payload, 'dca', { catalogVersion: '2026-02-02' }) as any;
     expect(canonical.spec_type).toBe('dca');
     expect(canonical.catalog_version).toBe('2026-02-02');
-    expect(canonical.data.symbol).toBe('BTCUSD');
-    expect(canonical.data.universe).toEqual([{ symbol: 'BTCUSD', asset_class: 'Crypto' }]);
+    expect(canonical.data.symbol).toBeUndefined();
+    expect(canonical.data.universe).toBeUndefined();
+    expect(canonical.universe).toEqual([{ symbol: 'BTCUSD', asset_class: 'Crypto' }]);
     expect(canonical.strategy.params.grid).toEqual([{ dd: -5, weight: 1 }]);
     expect(canonical.strategy.params.asset_class).toBe('CRYPTO');
     expect(canonical.strategy.params.tp_sl).toEqual({
@@ -111,7 +112,7 @@ describe('run-request-adapter', () => {
     expect(() => buildCanonicalRunPayload(payload, 'dca')).toThrowError(/data\.symbol is required/);
   });
 
-  it('accepts dca payload without data.symbol when universe is provided and derives symbol', () => {
+  it('accepts dca payload without data.symbol when universe is provided', () => {
     const payload = {
       runType: 'dca',
       data: {
@@ -138,8 +139,9 @@ describe('run-request-adapter', () => {
     } as RunRequestInput;
 
     const canonical = buildCanonicalRunPayload(payload, 'dca') as any;
-    expect(canonical.data.symbol).toBe('BTCUSDT');
-    expect(canonical.data.universe).toEqual([
+    expect(canonical.data.symbol).toBeUndefined();
+    expect(canonical.data.universe).toBeUndefined();
+    expect(canonical.universe).toEqual([
       { symbol: 'BTCUSDT', asset_class: 'CRYPTO' },
       { symbol: 'ETHUSD', asset_class: 'CRYPTO' }
     ]);

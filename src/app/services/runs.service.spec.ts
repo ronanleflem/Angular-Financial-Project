@@ -181,7 +181,7 @@ describe('RunsService', () => {
     req.flush({ request_id: 'req-stress', status: 'PENDING' });
   });
 
-  it('submits dca canonical payload with universe field', () => {
+  it('submits dca canonical payload with top-level universe field', () => {
     service.submitRun({
       runType: 'dca',
       data: {
@@ -213,7 +213,8 @@ describe('RunsService', () => {
 
     const req = httpMock.expectOne(`${environment.apiUrl}/api/runs`);
     expect(req.request.method).toBe('POST');
-    expect(req.request.body.data.universe).toEqual([{ symbol: 'BTCUSD', asset_class: 'Crypto' }]);
+    expect(req.request.body.data.universe).toBeUndefined();
+    expect(req.request.body.universe).toEqual([{ symbol: 'BTCUSD', asset_class: 'Crypto' }]);
     req.flush({ request_id: 'req-dca', status: 'QUEUED' });
   });
 

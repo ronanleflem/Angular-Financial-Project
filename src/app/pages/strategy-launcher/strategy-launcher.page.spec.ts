@@ -435,6 +435,41 @@ describe('StrategyLauncherPageComponent', () => {
     ]);
   });
 
+  it('builds dca payload with auto universe from manual symbols when more than one is selected', () => {
+    fixture.detectChanges();
+    flushInitRequests({
+      fields: {
+        supported: ['data.symbol', 'universe', 'strategy.params.grid']
+      }
+    });
+
+    component.selectRun('dca');
+    component.dcaForm.patchValue({
+      includeDcaUniverse: false,
+      symbols: ['BTCUSD', 'AAPL'],
+      symbol: 'ETHUSD'
+    } as any);
+
+    const payload = component.buildRunRequest() as any;
+    expect(payload.data.symbol).toBe('BTCUSD');
+    expect(payload.data.universe).toEqual([
+      jasmine.objectContaining({ symbol: 'BTCUSD' }),
+      jasmine.objectContaining({ symbol: 'AAPL' })
+    ]);
+  });
+
+  it('enables universe when capabilities expose top-level universe field', () => {
+    fixture.detectChanges();
+    flushInitRequests({
+      fields: {
+        supported: ['data.symbol', 'universe', 'strategy.params.grid']
+      }
+    });
+
+    expect(component.canUseCanonicalUniverse()).toBeTrue();
+    expect(component.dcaForm.get('includeDcaUniverse')?.disabled).toBeFalse();
+  });
+
   it('builds dca payload with canonical universe for multiple selected symbols', () => {
     fixture.detectChanges();
     flushInitRequests({
@@ -667,6 +702,7 @@ describe('StrategyLauncherPageComponent', () => {
 
     component.dcaForm.patchValue({
       deltaPresetSymbol: 'BTCUSDT',
+      deltaPresetSymbols: ['BTCUSDT'],
       deltaPresetTimeframe: '1h'
     } as any);
 
@@ -675,6 +711,51 @@ describe('StrategyLauncherPageComponent', () => {
     expect(payload.data.timeframe).toBe('1h');
     expect(payload.data.startDate).toBe('2024-01-01T00:00:00.000Z');
     expect(payload.data.endDate).toBe('2024-01-10T00:00:00.000Z');
+  });
+
+  it('builds dca payload with auto universe from delta preset symbols when more than one is selected', () => {
+    fixture.detectChanges();
+    flushInitRequests({
+      fields: {
+        supported: ['data.symbol', 'universe', 'strategy.params.grid']
+      }
+    });
+
+    component.dcaForm.patchValue({
+      useDeltaPreset: true
+    } as any);
+
+    component.loadDeltaRanges();
+    const req = httpMock.expectOne(`${environment.apiUrl}/api/data-import/ranges?insertedType=CRYPTO&limit=200`);
+    req.flush([
+      {
+        symbol: 'BTCUSDT',
+        insertedType: 'CRYPTO',
+        startDate: '2024-01-01T00:00:00Z',
+        endDate: '2024-01-10T00:00:00Z',
+        timeframe: '1h',
+        insertedAt: '2026-02-20T10:00:00Z'
+      },
+      {
+        symbol: 'ETHUSD',
+        insertedType: 'CRYPTO',
+        startDate: '2024-01-03T00:00:00Z',
+        endDate: '2024-01-12T00:00:00Z',
+        timeframe: '1h',
+        insertedAt: '2026-02-20T09:00:00Z'
+      }
+    ]);
+
+    component.dcaForm.patchValue({
+      deltaPresetSymbols: ['BTCUSDT', 'ETHUSD'],
+      deltaPresetTimeframe: '1h'
+    } as any);
+
+    const payload = component.buildRunRequest() as any;
+    expect(payload.data.universe).toEqual([
+      jasmine.objectContaining({ symbol: 'BTCUSDT' }),
+      jasmine.objectContaining({ symbol: 'ETHUSD' })
+    ]);
   });
 
   it('pre-fills period with min/max dates for selected delta symbol/timeframe', () => {
