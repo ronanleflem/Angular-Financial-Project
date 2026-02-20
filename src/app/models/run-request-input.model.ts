@@ -45,17 +45,22 @@ export interface DcaGridLevel {
   weight: number;
 }
 
-export interface DcaTpSlRule {
-  maxDdReached: number;
-  tpPct: number;
-  bePct: number;
+export interface DcaTpSlLeg {
+  type: 'percent' | string;
+  value: number;
+}
+
+export interface DcaBreakEvenBlock {
+  enabled: boolean;
+  triggerPct?: number;
 }
 
 export interface DcaTpSlBlock {
   enabled: boolean;
-  mode: string;
-  rules: DcaTpSlRule[];
-  slDd: number;
+  mode: 'rule_based' | string;
+  tp: DcaTpSlLeg;
+  sl: DcaTpSlLeg;
+  breakEven?: DcaBreakEvenBlock;
 }
 
 export interface DcaStrategyCore {
@@ -67,7 +72,7 @@ export interface DcaEquityParams {
   kind: 'dca_equity';
   drawdownReference: DcaDrawdownReference | string;
   executionMode: DcaExecutionMode | string;
-  tpSl?: DcaTpSlBlock;
+  tpSl?: DcaTpSlBlock | string;
   grid: DcaGridLevel[];
   requireCrossing: boolean;
 }
@@ -82,7 +87,7 @@ export interface DcaEtfParams {
 
 export interface CryptoGridParams {
   kind: 'crypto_grid';
-  tpSl?: DcaTpSlBlock;
+  tpSl?: DcaTpSlBlock | string;
 }
 
 export interface DcaDataBlock extends DataBlockBase, PeriodBlock {
@@ -448,6 +453,20 @@ function validateDcaStrategy(errors: ValidationError[], strategy: DcaStrategyCor
       errors.push({ path: 'strategy.params.executionMode', message: 'required' });
     } else if (!['bar_close', 'intracandle'].includes(params.executionMode)) {
       errors.push({ path: 'strategy.params.executionMode', message: 'must be one of: bar_close, intracandle' });
+    }
+    const tpSl = params.tpSl;
+    if (tpSl && typeof tpSl === 'object') {
+      if (!tpSl.mode || tpSl.mode !== 'rule_based') {
+        errors.push({ path: 'strategy.params.tpSl.mode', message: 'must be rule_based' });
+      }
+      if (tpSl.enabled) {
+        if (!tpSl.tp || tpSl.tp.value <= 0) {
+          errors.push({ path: 'strategy.params.tpSl.tp.value', message: 'must be > 0' });
+        }
+        if (!tpSl.sl || tpSl.sl.value <= 0) {
+          errors.push({ path: 'strategy.params.tpSl.sl.value', message: 'must be > 0' });
+        }
+      }
     }
   }
 }

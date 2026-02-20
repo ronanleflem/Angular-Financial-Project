@@ -12,17 +12,27 @@ export interface CanonicalRunRequestOptions {
   requestId?: string;
 }
 
-export function mapRunRequestToCanonical(
-  input: RunRequestInput,
+const DEFAULT_CATALOG_VERSION = '2026-02-02';
+
+export function buildCanonicalRunPayload(
+  uiModel: RunRequestInput,
+  specType: RunType = uiModel.runType,
   options: CanonicalRunRequestOptions = {}
 ): CanonicalRunRequest {
-  const catalogVersion = options.catalogVersion?.trim() || 'v1';
+  if (!uiModel?.data?.symbol || !String(uiModel.data.symbol).trim()) {
+    throw new Error('canonical_builder_error:data.symbol is required');
+  }
+  if (uiModel.runType !== specType) {
+    throw new Error('canonical_builder_error:spec_type mismatch');
+  }
+
+  const catalogVersion = options.catalogVersion?.trim() || DEFAULT_CATALOG_VERSION;
   const requestId = options.requestId?.trim();
-  const { runType, ...rest } = input as RunRequestInput & Record<string, unknown>;
-  const payload = toSnakeCaseValue(rest) as Record<string, unknown>;
+  const normalizedInput = normalizeCanonicalInput(uiModel);
+  const payload = toSnakeCaseValue(normalizedInput) as Record<string, unknown>;
 
   const canonical: CanonicalRunRequest = {
-    spec_type: runType,
+    spec_type: specType,
     catalog_version: catalogVersion
   };
 
@@ -31,6 +41,122 @@ export function mapRunRequestToCanonical(
   }
 
   return { ...canonical, ...payload };
+}
+
+export function mapRunRequestToCanonical(
+  input: RunRequestInput,
+  options: CanonicalRunRequestOptions = {}
+): CanonicalRunRequest {
+  return buildCanonicalRunPayload(input, input.runType, options);
+}
+
+function normalizeCanonicalInput(input: RunRequestInput): Record<string, unknown> {
+  const { runType, ...rest } = input as RunRequestInput & Record<string, unknown>;
+  if (runType !== 'dca') {
+    return rest;
+  }
+
+  const strategy = ((rest['strategy'] ?? {}) as Record<string, unknown>);
+  const data = (rest['data'] ?? {}) as unknown as Record<string, unknown>;
+  const params = ((strategy['params'] ?? {}) as Record<string, unknown>);
+  const normalizedParams: Record<string, unknown> = { ...params };
+
+  // En canonical DCA, universe ne doit pas etre present.
+  const { universe, ...dataWithoutUniverse } = data as Record<string, unknown>;
+  void universe;
+
+  // Backward compatibility: strategy.grid preset string list -> strategy.params.grid.
+  if ((!Array.isArray(normalizedParams['grid']) || normalizedParams['grid'].length === 0) && Array.isArray(strategy['grid'])) {
+    normalizedParams['grid'] = convertGridPresetsToCanonical(strategy['grid'] as unknown[]);
+  }
+
+  // Backward compatibility: tp_sl preset string -> explicit object.
+  if (typeof normalizedParams['tpSl'] === 'string') {
+    normalizedParams['tpSl'] = convertLegacyDcaTpSlPreset(normalizedParams['tpSl'] as string);
+  }
+  if (typeof normalizedParams['tp_sl'] === 'string') {
+    normalizedParams['tp_sl'] = convertLegacyDcaTpSlPreset(normalizedParams['tp_sl'] as string);
+  }
+
+  return {
+    ...rest,
+    data: dataWithoutUniverse,
+    strategy: {
+      ...strategy,
+      params: normalizedParams
+    }
+  };
+}
+
+function convertGridPresetsToCanonical(gridPresets: unknown[]): Array<{ dd: number; weight: number }> {
+  const levels = gridPresets
+    .flatMap(preset => gridPresetToLevels(String(preset)))
+    .filter(level => Number.isFinite(level.dd) && Number.isFinite(level.weight));
+  if (!levels.length) {
+    return [{ dd: -5, weight: 1 }];
+  }
+  const seen = new Set<number>();
+  return levels.filter(level => {
+    if (seen.has(level.dd)) {
+      return false;
+    }
+    seen.add(level.dd);
+    return true;
+  });
+}
+
+function gridPresetToLevels(preset: string): Array<{ dd: number; weight: number }> {
+  switch (preset) {
+    case 'grid_conservative':
+      return [
+        { dd: -3, weight: 0.8 },
+        { dd: -6, weight: 1 },
+        { dd: -10, weight: 1.2 }
+      ];
+    case 'grid_aggressive':
+      return [
+        { dd: -4, weight: 1.2 },
+        { dd: -8, weight: 1 },
+        { dd: -12, weight: 0.8 }
+      ];
+    case 'grid_balanced':
+    default:
+      return [
+        { dd: -5, weight: 1 },
+        { dd: -10, weight: 1 },
+        { dd: -15, weight: 1 }
+      ];
+  }
+}
+
+function convertLegacyDcaTpSlPreset(preset: string): Record<string, unknown> {
+  switch (preset) {
+    case 'none':
+      return {
+        enabled: false,
+        mode: 'rule_based',
+        tp: { type: 'percent', value: 0 },
+        sl: { type: 'percent', value: 0 },
+        breakEven: { enabled: false, triggerPct: 0 }
+      };
+    case 'tp_3_sl_1.5':
+      return {
+        enabled: true,
+        mode: 'rule_based',
+        tp: { type: 'percent', value: 3 },
+        sl: { type: 'percent', value: 1.5 },
+        breakEven: { enabled: true, triggerPct: 1.5 }
+      };
+    case 'tp_2_sl_1':
+    default:
+      return {
+        enabled: true,
+        mode: 'rule_based',
+        tp: { type: 'percent', value: 2 },
+        sl: { type: 'percent', value: 1 },
+        breakEven: { enabled: true, triggerPct: 1 }
+      };
+  }
 }
 
 function toSnakeCaseValue(value: unknown): unknown {

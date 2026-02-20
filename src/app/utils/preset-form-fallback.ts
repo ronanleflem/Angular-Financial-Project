@@ -69,7 +69,7 @@ function mapDcaPayload(payload: RunRequestInput): Record<string, unknown> {
     gridPresets: inferDcaGridPresets(params.grid),
     drawdownReference: params.drawdownReference,
     executionMode: params.executionMode,
-    tpSlPreset: inferDcaTpSlPreset(params.tpSl),
+    ...mapDcaTpSlToForm(params.tpSl),
     requireCrossing: params.requireCrossing,
     activationLimit: params.activationLimit,
     resetOnNewHigh: params.resetOnNewHigh,
@@ -106,19 +106,56 @@ function inferDcaGridPresets(grid: unknown): string[] {
   return ['grid_balanced'];
 }
 
-function inferDcaTpSlPreset(tpSl: unknown): string {
+function mapDcaTpSlToForm(tpSl: unknown): Record<string, unknown> {
+  if (typeof tpSl === 'string') {
+    return mapLegacyDcaTpSlPresetToForm(tpSl);
+  }
   if (!tpSl || typeof tpSl !== 'object') {
-    return 'none';
+    return mapLegacyDcaTpSlPresetToForm('tp_2_sl_1');
   }
-  if ((tpSl as any).enabled === false) {
-    return 'none';
+  const raw = tpSl as any;
+  const breakEven = raw.breakEven ?? raw.break_even ?? {};
+  return {
+    tpSlEnabled: raw.enabled ?? true,
+    tpSlMode: raw.mode ?? 'rule_based',
+    tpValue: raw.tp?.value ?? 2,
+    slValue: raw.sl?.value ?? 1,
+    breakEvenEnabled: breakEven.enabled ?? false,
+    breakEvenTriggerPct: breakEven.triggerPct ?? breakEven.trigger_pct ?? 1
+  };
+}
+
+function mapLegacyDcaTpSlPresetToForm(preset: string): Record<string, unknown> {
+  switch (preset) {
+    case 'none':
+      return {
+        tpSlEnabled: false,
+        tpSlMode: 'rule_based',
+        tpValue: 2,
+        slValue: 1,
+        breakEvenEnabled: false,
+        breakEvenTriggerPct: 1
+      };
+    case 'tp_3_sl_1.5':
+      return {
+        tpSlEnabled: true,
+        tpSlMode: 'rule_based',
+        tpValue: 3,
+        slValue: 1.5,
+        breakEvenEnabled: true,
+        breakEvenTriggerPct: 1.5
+      };
+    case 'tp_2_sl_1':
+    default:
+      return {
+        tpSlEnabled: true,
+        tpSlMode: 'rule_based',
+        tpValue: 2,
+        slValue: 1,
+        breakEvenEnabled: true,
+        breakEvenTriggerPct: 1
+      };
   }
-  const firstRule = Array.isArray((tpSl as any).rules) ? (tpSl as any).rules[0] : undefined;
-  const tpPct = Number((firstRule as any)?.tpPct ?? 0);
-  if (tpPct >= 20) {
-    return 'tp_3_sl_1.5';
-  }
-  return 'tp_2_sl_1';
 }
 
 function mapBacktestPayload(payload: RunRequestInput): Record<string, unknown> {

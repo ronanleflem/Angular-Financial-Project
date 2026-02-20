@@ -257,7 +257,7 @@ function mapDcaParamsField(segments: string[]): string | null {
     case 'execution_mode':
       return 'executionMode';
     case 'tp_sl':
-      return 'tpSlPreset';
+      return mapDcaTpSlField(segments.slice(1));
     case 'require_crossing':
       return 'requireCrossing';
     case 'activation_limit':
@@ -268,6 +268,30 @@ function mapDcaParamsField(segments: string[]): string | null {
       return 'rearmOnReboundPct';
     case 'force_close_end':
       return 'forceCloseEnd';
+    default:
+      return null;
+  }
+}
+
+function mapDcaTpSlField(segments: string[]): string | null {
+  const key = segments[0];
+  switch (key) {
+    case 'enabled':
+      return 'tpSlEnabled';
+    case 'mode':
+      return 'tpSlMode';
+    case 'tp':
+      return segments[1] === 'value' ? 'tpValue' : null;
+    case 'sl':
+      return segments[1] === 'value' ? 'slValue' : null;
+    case 'break_even':
+      if (segments[1] === 'enabled') {
+        return 'breakEvenEnabled';
+      }
+      if (segments[1] === 'trigger_pct') {
+        return 'breakEvenTriggerPct';
+      }
+      return null;
     default:
       return null;
   }

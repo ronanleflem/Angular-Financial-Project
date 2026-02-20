@@ -43,9 +43,10 @@
       "grid": [{ "dd": -5.0, "weight": 1.0 }],
       "tp_sl": {
         "enabled": true,
-        "mode": "per_grid_max_dd",
-        "rules": [{ "max_dd_reached": -20.0, "tp_pct": 15.0, "be_pct": 7.0 }],
-        "sl_dd": -70.0
+        "mode": "rule_based",
+        "tp": { "type": "percent", "value": 2.0 },
+        "sl": { "type": "percent", "value": 1.0 },
+        "break_even": { "enabled": true, "trigger_pct": 1.0 }
       },
       "require_crossing": true
     }

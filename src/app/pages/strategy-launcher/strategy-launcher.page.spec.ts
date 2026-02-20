@@ -25,9 +25,22 @@ describe('StrategyLauncherPageComponent', () => {
     httpMock.verify();
   });
 
-  function flushInitRequests() {
+  function flushInitRequests(
+    capabilities: unknown = {
+      strategy: { grid_presets: ['grid_balanced', 'grid_conservative', 'grid_aggressive'] }
+    },
+    capabilitiesStatus: { status: number; statusText: string } | null = null
+  ) {
     const catalogReq = httpMock.expectOne('/parameter_catalog.json');
     catalogReq.flush({ meta: { version: 'v1' } });
+    const capabilitiesReq = httpMock.expectOne(
+      `${environment.apiUrl}/api/runs/capabilities?spec_type=dca`
+    );
+    if (capabilitiesStatus) {
+      capabilitiesReq.flush((capabilities ?? {}) as any, capabilitiesStatus);
+      return;
+    }
+    capabilitiesReq.flush(capabilities as any);
   }
 
   it('maps backend 422 errors to form controls and global panel', () => {
@@ -199,32 +212,51 @@ describe('StrategyLauncherPageComponent', () => {
     ]);
   });
 
-  it('maps dca tp/sl preset to strategy.params.tpSl object (never string)', () => {
+  it('maps dca tp/sl form to strategy.params.tpSl object (never string)', () => {
     fixture.detectChanges();
     flushInitRequests();
 
     component.selectRun('dca');
-    component.dcaForm.patchValue({ strategyType: 'dca_equity', tpSlPreset: 'tp_2_sl_1' } as any);
+    component.dcaForm.patchValue({
+      strategyType: 'dca_equity',
+      tpSlEnabled: true,
+      tpSlMode: 'rule_based',
+      tpValue: 2,
+      slValue: 1,
+      breakEvenEnabled: true,
+      breakEvenTriggerPct: 1
+    } as any);
 
     const payload = component.buildRunRequest() as any;
     expect(typeof payload.strategy.params.tpSl).toBe('object');
     expect(payload.strategy.params.tpSl).toEqual({
       enabled: true,
-      mode: 'per_grid_max_dd',
-      rules: [{ maxDdReached: -20, tpPct: 15, bePct: 7 }],
-      slDd: -70
+      mode: 'rule_based',
+      tp: { type: 'percent', value: 2 },
+      sl: { type: 'percent', value: 1 },
+      breakEven: { enabled: true, triggerPct: 1 }
     });
   });
 
-  it('rejects invalid dca execution mode and drawdown reference in angular validation', () => {
+  it('rejects invalid dca execution/drawdown/tp-sl values in angular validation', () => {
     fixture.detectChanges();
     flushInitRequests();
 
     component.selectRun('dca');
-    component.dcaForm.patchValue({ executionMode: 'limit', drawdownReference: 'rolling_high' } as any);
+    component.dcaForm.patchValue({
+      executionMode: 'limit',
+      drawdownReference: 'rolling_high',
+      tpSlEnabled: true,
+      tpSlMode: 'invalid_mode',
+      tpValue: 0,
+      slValue: 0
+    } as any);
 
     expect(component.dcaForm.get('executionMode')?.invalid).toBeTrue();
     expect(component.dcaForm.get('drawdownReference')?.invalid).toBeTrue();
+    expect(component.dcaForm.errors?.['tpSlModeInvalid']).toBeTrue();
+    expect(component.dcaForm.errors?.['tpValueInvalid']).toBeTrue();
+    expect(component.dcaForm.errors?.['slValueInvalid']).toBeTrue();
     expect(component.dcaForm.invalid).toBeTrue();
   });
 
@@ -242,5 +274,72 @@ describe('StrategyLauncherPageComponent', () => {
     expect(text).toContain('EU_US_overlap: 12:00-15:59');
     expect(text).toContain('US: 16:00-20:59');
     expect(text).toContain('Other: 21:00-23:59');
+  });
+
+  it('disables unsupported dca grid options when capabilities are available', () => {
+    fixture.detectChanges();
+    flushInitRequests({
+      presets: {
+        supported: { strategy: { grid: ['grid_balanced'] } }
+      },
+      legacy_dca: {
+        fields: {
+          supported: ['data.frequency', 'data.amount'],
+          not_in_canonical: ['data.universe']
+        }
+      }
+    });
+
+    component.selectRun('dca');
+    fixture.detectChanges();
+
+    expect(component.isDcaGridSupported('grid_balanced')).toBeTrue();
+    expect(component.isDcaGridSupported('grid_conservative')).toBeFalse();
+    expect(component.isDcaGridSupported('grid_aggressive')).toBeFalse();
+    expect(component.dcaCapabilitiesInfo()).toContain('Mode capabilities actif');
+    expect(component.dcaLegacyOnlyFields()).toEqual(['data.universe']);
+    expect(component.dcaLegacySupportedFields()).toEqual(['data.frequency', 'data.amount']);
+    expect(component.isLegacyOnlyDcaField('data.universe')).toBeTrue();
+  });
+
+  it('computes legacy-only fields from supported_in_legacy_runner minus canonical_passthrough_supported', () => {
+    fixture.detectChanges();
+    flushInitRequests({
+      fields: {
+        supported: ['data.symbol', 'strategy.params.grid'],
+        accepted_but_not_wired: ['strategy.grid']
+      },
+      legacy_dca: {
+        fields: {
+          supported_in_legacy_runner: ['data.frequency', 'data.amount', 'data.universe'],
+          canonical_passthrough_supported: ['data.frequency', 'data.amount']
+        }
+      }
+    });
+
+    component.selectRun('dca');
+    fixture.detectChanges();
+
+    expect(component.dcaCanonicalSupportedFields()).toEqual(['data.symbol', 'strategy.params.grid']);
+    expect(component.dcaCanonicalAcceptedButNotWiredFields()).toEqual(['strategy.grid']);
+    expect(component.dcaLegacySupportedFields()).toEqual(['data.frequency', 'data.amount', 'data.universe']);
+    expect(component.dcaLegacyOnlyFields()).toEqual(['data.universe']);
+    expect(component.isLegacyOnlyDcaField('data.universe')).toBeTrue();
+    expect(component.isLegacyOnlyDcaField('data.frequency')).toBeFalse();
+  });
+
+  it('falls back to static options when capabilities endpoint is unavailable', () => {
+    fixture.detectChanges();
+    flushInitRequests({}, { status: 503, statusText: 'Service Unavailable' });
+
+    component.selectRun('dca');
+    fixture.detectChanges();
+
+    expect(component.isDcaGridSupported('grid_balanced')).toBeTrue();
+    expect(component.isDcaGridSupported('grid_conservative')).toBeTrue();
+    expect(component.isDcaGridSupported('grid_aggressive')).toBeTrue();
+    expect(component.dcaCapabilitiesInfo()).toContain('mode statique');
+    expect(component.dcaLegacyOnlyFields()).toEqual([]);
+    expect(component.dcaLegacySupportedFields()).toEqual([]);
   });
 });

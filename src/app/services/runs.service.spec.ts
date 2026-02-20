@@ -128,6 +128,19 @@ describe('RunsService', () => {
     expect(response.result).toEqual({ ok: true });
   });
 
+  it('loads run capabilities for a spec type', () => {
+    let response: any;
+    service.getRunCapabilities('dca').subscribe(value => {
+      response = value;
+    });
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/api/runs/capabilities?spec_type=dca`);
+    expect(req.request.method).toBe('GET');
+    req.flush({ strategy: { grid_presets: ['grid_balanced'] } });
+
+    expect(response.strategy.grid_presets).toEqual(['grid_balanced']);
+  });
+
   it('submits stress_tests canonical payload with only supported fields', () => {
     service.submitRun({
       runType: 'stress_tests',
@@ -168,6 +181,41 @@ describe('RunsService', () => {
     req.flush({ request_id: 'req-stress', status: 'PENDING' });
   });
 
+  it('submits dca canonical payload without universe field', () => {
+    service.submitRun({
+      runType: 'dca',
+      data: {
+        symbol: 'BTCUSD',
+        timeframe: '1h',
+        startDate: '2024-01-01',
+        endDate: '2024-12-31',
+        universe: [{ symbol: 'BTCUSD', assetClass: 'Crypto' }]
+      },
+      strategy: {
+        type: 'dca_equity',
+        params: {
+          kind: 'dca_equity',
+          drawdownReference: 'ATH',
+          executionMode: 'bar_close',
+          tpSl: {
+            enabled: true,
+            mode: 'rule_based',
+            tp: { type: 'percent', value: 2 },
+            sl: { type: 'percent', value: 1 },
+            breakEven: { enabled: true, triggerPct: 1 }
+          },
+          grid: [{ dd: -5, weight: 1 }],
+          requireCrossing: true
+        }
+      }
+    }).subscribe();
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/api/runs`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body.data.universe).toBeUndefined();
+    req.flush({ request_id: 'req-dca', status: 'QUEUED' });
+  });
+
   it('cancels run and normalizes fields', () => {
     let response: any;
 
@@ -193,7 +241,13 @@ describe('RunsService', () => {
           kind: 'dca_equity',
           drawdownReference: 'ATH',
           executionMode: 'bar_close',
-          tpSl: { enabled: true, mode: 'per_grid_max_dd', rules: [{ maxDdReached: -20, tpPct: 15, bePct: 7 }], slDd: -70 },
+          tpSl: {
+            enabled: true,
+            mode: 'rule_based',
+            tp: { type: 'percent', value: 2 },
+            sl: { type: 'percent', value: 1 },
+            breakEven: { enabled: true, triggerPct: 1 }
+          },
           grid: [{ dd: -5, weight: 1 }],
           requireCrossing: true
         }

@@ -3,8 +3,8 @@ import { HttpClient } from '@angular/common/http';
 import { environment } from '../../environments/environment';
 import { RunRequestInput } from '../models/run-request-input.model';
 import {
+  buildCanonicalRunPayload,
   CanonicalRunRequestOptions,
-  mapRunRequestToCanonical
 } from './run-request-adapter';
 import { map } from 'rxjs';
 
@@ -39,6 +39,9 @@ export interface RunResultResponse extends RunResponseBase {
 }
 
 export interface RunCancelResponse extends RunResponseBase {}
+export interface RunCapabilitiesResponse {
+  [key: string]: unknown;
+}
 
 @Injectable({ providedIn: 'root' })
 export class RunsService {
@@ -47,7 +50,7 @@ export class RunsService {
   private readonly runsUrl = `${this.apiUrl}/api/runs`;
 
   submitRun(payload: RunRequestInput, options: CanonicalRunRequestOptions = {}) {
-    const canonical = mapRunRequestToCanonical(payload, options);
+    const canonical = buildCanonicalRunPayload(payload, payload.runType, options);
     return this.http
       .post<RunResponseRaw>(this.runsUrl, canonical)
       .pipe(map(response => normalizeRunResponse(response)));
@@ -69,6 +72,13 @@ export class RunsService {
     return this.http
       .post<RunResponseRaw>(`${this.runsUrl}/${runId}/cancel`, {})
       .pipe(map(response => normalizeRunResponse(response, runId) as RunCancelResponse));
+  }
+
+  getRunCapabilities(specType: string) {
+    return this.http
+      .get<RunCapabilitiesResponse>(`${this.runsUrl}/capabilities`, {
+        params: { spec_type: specType }
+      });
   }
 }
 

@@ -44,6 +44,9 @@ describe('backend-validation', () => {
   it('maps dca fields to control names', () => {
     expect(mapBackendFieldToControlName('data.start_date', 'dca', {})).toBe('startDate');
     expect(mapBackendFieldToControlName('strategy.params.drawdown_reference', 'dca', {})).toBe('drawdownReference');
+    expect(mapBackendFieldToControlName('strategy.params.tp_sl.tp.value', 'dca', {})).toBe('tpValue');
+    expect(mapBackendFieldToControlName('strategy.params.tp_sl.sl.value', 'dca', {})).toBe('slValue');
+    expect(mapBackendFieldToControlName('strategy.params.tp_sl.break_even.trigger_pct', 'dca', {})).toBe('breakEvenTriggerPct');
   });
 
   it('maps backtest fields to control names', () => {

@@ -105,6 +105,162 @@ Ameliorer la gestion UI des erreurs backend runs: distinction claire entre erreu
 
 ---
 
+## TICKET D - DCA TP/SL explicite (objet) + compat legacy
+
+### Summary
+Remplacer `strategy.params.tp_sl` preset string opaque par un objet explicite TP/SL separe, tout en conservant la lecture legacy des anciens payloads.
+
+### Scope
+- Model front DCA:
+  - `tp_sl.enabled`
+  - `tp_sl.mode` (`rule_based`)
+  - `tp_sl.tp.{type,value}`
+  - `tp_sl.sl.{type,value}`
+  - `tp_sl.break_even.{enabled,trigger_pct}`
+- Builder canonical:
+  - emettre `strategy.params.tp_sl` objet (jamais string en creation run UI)
+- Compat legacy:
+  - accepter un ancien `tp_sl: "tp_2_sl_1"` en lecture preset/run et le convertir dans le form.
+- Validation UI:
+  - `tp.value > 0`
+  - `sl.value > 0`
+  - `mode` valide
+  - structure obligatoire quand `enabled=true`
+
+### Acceptance Criteria
+- Un run DCA cree depuis UI envoie un `strategy.params.tp_sl` objet.
+- Les erreurs de saisie TP/SL sont bloquees cote formulaire.
+- Les anciens runs avec `tp_sl` string sont lisibles et convertis.
+- Tests front passants: builder + validation form + mapping legacy->objet.
+
+---
+
+## TICKET E - Builder canonical unique `/runs`
+
+### Summary
+Centraliser la construction du payload canonical dans un seul adapter: `buildCanonicalRunPayload(uiModel, specType)`.
+
+### Scope
+- Migrer les points d'entree POST `/runs` et preview canonical vers ce builder unique.
+- Pour `dca`:
+  - convertir `strategy.grid` legacy preset -> `strategy.params.grid`
+  - convertir `strategy.params.tp_sl`/`tpSl` string legacy -> objet explicite
+  - supprimer `data.universe` du canonical
+  - forcer `catalog_version`
+  - garantir `data.symbol` obligatoire
+
+### Acceptance Criteria
+- Tout POST `/runs` passe par le builder unique.
+- Aucun payload canonical DCA avec `universe`.
+- Tests unitaires couvrent conversions DCA et erreurs (`data.symbol` manquant).
+
+---
+
+## TICKET F - ANG-4 Capabilities `/runs/capabilities`
+
+### Summary
+Piloter l'UI DCA depuis les capacites runtime Python pour eviter les hardcodes fragiles.
+
+### Scope
+- Appel `GET /runs/capabilities?spec_type=dca` au chargement du strategy-launcher.
+- Si capacites presentes:
+  - desactiver les options grid non supportees runtime.
+  - nettoyer la selection courante si une option n'est plus supportee.
+  - afficher une aide utilisateur explicite.
+- Si endpoint indisponible:
+  - fallback sur mode statique actuel (aucune option masquee).
+  - afficher une information de fallback non bloquante.
+
+### Acceptance Criteria
+- L'UI n'expose plus d'options runtime non supportees quand capabilities sont dispo.
+- Le flux reste fonctionnel en fallback.
+- Tests UI couvrent mode capabilities actif + fallback.
+
+---
+
+## TICKET G - Capabilities enrichies + migration legacy -> canonical
+
+### Summary
+Exploiter `legacy_dca.fields.*` renvoyes par capabilities pour clarifier en UI ce qui est canonical vs legacy-only, sans casser le run launcher canonical.
+
+### Scope
+- Lire `legacy_dca.fields.not_in_canonical`:
+  - affichage badge/indication `legacy-only` en UI DCA.
+- Lire `legacy_dca.fields.supported`:
+  - affichage guidance pour plan de migration progressive.
+- Continuer de construire/envoyer un payload canonical via builder unique `/runs`.
+- Fallback statique conserve si endpoint capabilities indisponible.
+
+### Acceptance Criteria
+- UI distingue clairement canonical vs legacy-only.
+- Aucun champ legacy-only envoye dans payload canonical final.
+- Fallback statique fonctionnel.
+
+---
+
+## DCA Capabilities (Snapshot Lisible)
+
+Source: `GET /api/runs/capabilities?spec_type=dca`  
+Statut observe: `200`  
+Version: `catalog_version=2026-02-02`
+
+### Canonical /runs
+
+Champs supportes (principaux):
+- `data.symbol`
+- `data.timeframe`
+- `data.start_date`
+- `data.end_date`
+- `strategy.type`
+- `strategy.params.grid`
+- `strategy.params.execution_mode`
+- `strategy.params.drawdown_reference`
+- `strategy.params.tp_sl`
+- `filters.filters`
+- `filters.rules`
+- `filters.rules_config`
+- `performance.initial_capital`
+
+Acceptes mais non cables runtime:
+- `performance.stress_tests`
+- `output`
+- `persistence`
+
+### Presets runtime
+
+Supportes:
+- `strategy.grid`: `grid_balanced`
+- `strategy.params.tp_sl`: `tp_X_sl_Y`
+
+Non supportes:
+- `strategy.grid`: `grid_conservative`, `grid_aggressive`
+
+### Legacy DCA (hors canonical strict)
+
+`legacy_dca.fields.supported` expose les champs de l'ancien flux (CLI/spec legacy), utiles pour plan de migration.
+
+`legacy_dca.fields.not_in_canonical` (extraits):
+- `strategy.strategy_id`
+- `data.source`
+- `data.start`
+- `data.end`
+- `universe`
+- `filter_rules`
+- `filter_rules_config`
+- `screening`
+- `optimization.screening`
+- `optimization.cache_features`
+- `performance.capital_per_unit`
+- `output.path`
+- `output.format`
+
+Interpretation UI:
+- Afficher ces champs comme `legacy-only`.
+- Ne jamais les envoyer dans le payload canonical `/runs`.
+- Les conserver comme guidance de roadmap migration.
+
+---
+
 ## TICKET C - Seasonality Contract Cleanup + Session Clarity
 
 ### Summary

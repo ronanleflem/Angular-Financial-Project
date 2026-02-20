@@ -39,8 +39,8 @@ import { SpecsPreviewService, SpecPreviewResponse } from '../../services/specs-p
 import { PresetsService, RunPreset } from '../../services/presets.service';
 import { RunsService } from '../../services/runs.service';
 import { ParameterCatalogService } from '../../services/parameter-catalog.service';
-import { finalize } from 'rxjs';
-import { mapRunRequestToCanonical, CanonicalRunRequest } from '../../services/run-request-adapter';
+import { catchError, finalize, of } from 'rxjs';
+import { buildCanonicalRunPayload, CanonicalRunRequest } from '../../services/run-request-adapter';
 import {
   BackendMappingContext,
   BackendValidationError,
@@ -207,7 +207,7 @@ export class StrategyLauncherPageComponent {
     { key: 'stress-tests', label: 'Stress tests', description: 'Chocs et scenarios extremes' }
   ];
 
-  readonly symbols = ['BTCUSD', 'ETHUSD', 'EURUSD', 'AAPL', 'SPY', 'XAUUSD'];
+  readonly symbols = ['BTCUSD', 'BTCUSDT', 'ETHUSD', 'EURUSD', 'AAPL', 'SPY', 'XAUUSD'];
   readonly timeframes = ['15m', '1h', '4h', '1d'];
   readonly brokers = ['BINANCE', 'COINBASE', 'IBKR', 'FXCM'];
 
@@ -224,6 +224,7 @@ export class StrategyLauncherPageComponent {
   readonly dcaGridPresets = ['grid_conservative', 'grid_balanced', 'grid_aggressive'];
   readonly dcaExecutionModes = [...DCA_ALLOWED_EXECUTION_MODES];
   readonly dcaDrawdownRefs = [...DCA_ALLOWED_DRAWDOWN_REFERENCES];
+  readonly dcaTpSlModes = ['rule_based'];
   readonly dcaTpSlPresets = ['none', 'tp_2_sl_1', 'tp_3_sl_1.5'];
   readonly dcaUniverseOptions = [
     { id: 'SPY', label: 'SPY', assetClass: 'ETF', exchange: 'NYSE', broker: 'IBKR' },
@@ -425,7 +426,12 @@ export class StrategyLauncherPageComponent {
     gridPresets: ['grid_balanced'],
     drawdownReference: 'ATH',
     executionMode: 'bar_close',
-    tpSlPreset: 'tp_2_sl_1',
+    tpSlEnabled: true,
+    tpSlMode: 'rule_based',
+    tpValue: 2.0,
+    slValue: 1.0,
+    breakEvenEnabled: true,
+    breakEvenTriggerPct: 1.0,
     requireCrossing: true,
     activationLimit: 8,
     resetOnNewHigh: true,
@@ -670,7 +676,12 @@ export class StrategyLauncherPageComponent {
       gridPresets: [this.dcaDefaults.gridPresets],
       drawdownReference: [this.dcaDefaults.drawdownReference, oneOfValidator(DCA_ALLOWED_DRAWDOWN_REFERENCES)],
       executionMode: [this.dcaDefaults.executionMode, oneOfValidator(DCA_ALLOWED_EXECUTION_MODES)],
-      tpSlPreset: [this.dcaDefaults.tpSlPreset],
+      tpSlEnabled: [this.dcaDefaults.tpSlEnabled],
+      tpSlMode: [this.dcaDefaults.tpSlMode, oneOfValidator(['rule_based'])],
+      tpValue: [this.dcaDefaults.tpValue, [Validators.min(0.000001)]],
+      slValue: [this.dcaDefaults.slValue, [Validators.min(0.000001)]],
+      breakEvenEnabled: [this.dcaDefaults.breakEvenEnabled],
+      breakEvenTriggerPct: [this.dcaDefaults.breakEvenTriggerPct, [Validators.min(0)]],
       requireCrossing: [this.dcaDefaults.requireCrossing],
       activationLimit: [this.dcaDefaults.activationLimit, [Validators.min(0)]],
       resetOnNewHigh: [this.dcaDefaults.resetOnNewHigh],
@@ -710,7 +721,7 @@ export class StrategyLauncherPageComponent {
       presetName: [''],
       presetId: ['']
     },
-    { validators: dateRangeValidator('startDate', 'endDate') }
+    { validators: [dateRangeValidator('startDate', 'endDate'), dcaTpSlValidator()] }
   );
 
   readonly backtestForm = this.fb.group(
@@ -939,6 +950,14 @@ export class StrategyLauncherPageComponent {
   readonly payloadCanonicalPaths = signal<string[]>([]);
   readonly presets = signal<RunPreset[]>([]);
   readonly catalogReady = signal(false);
+  readonly dcaCapabilitiesInfo = signal<string | null>(null);
+  readonly dcaCanonicalSupportedFields = signal<string[]>([]);
+  readonly dcaCanonicalAcceptedButNotWiredFields = signal<string[]>([]);
+  readonly dcaPresetSupportedEntries = signal<string[]>([]);
+  readonly dcaPresetNotSupportedEntries = signal<string[]>([]);
+  readonly dcaLegacySupportedFields = signal<string[]>([]);
+  readonly dcaLegacyOnlyFields = signal<string[]>([]);
+  readonly dcaLegacyNotes = signal<string[]>([]);
   readonly presetMessages = signal<Record<RunKey, string | null>>({
     'dca': null,
     'backtests': null,
@@ -948,12 +967,14 @@ export class StrategyLauncherPageComponent {
   });
   catalogVersion = 'v1';
   private supportedFilterIds = new Set<string>();
+  private supportedDcaGridPresets = new Set<string>();
 
   constructor() {
     this.bindStressAdvancedControls();
     this.runForSelection(this.selectedRun());
     this.loadPresets();
     this.loadCatalog();
+    this.loadDcaCapabilities();
   }
 
   private bindStressAdvancedControls(): void {
@@ -1005,6 +1026,36 @@ export class StrategyLauncherPageComponent {
 
   enumTooltip(enumKey: string, value?: string): string | null {
     return this.catalogService.enumTooltip(enumKey, value);
+  }
+
+  isDcaGridSupported(gridPreset: string): boolean {
+    if (this.supportedDcaGridPresets.size === 0) {
+      return true;
+    }
+    return this.supportedDcaGridPresets.has(gridPreset);
+  }
+
+  dcaGridTooltip(gridPreset: string): string | null {
+    if (this.isDcaGridSupported(gridPreset)) {
+      return null;
+    }
+    return 'Non supporte runtime (/runs/capabilities).';
+  }
+
+  isLegacyOnlyDcaField(fieldPath: string): boolean {
+    return this.dcaLegacyOnlyFields().includes(fieldPath);
+  }
+
+  hasDcaCapabilitiesDetails(): boolean {
+    return (
+      this.dcaCanonicalSupportedFields().length > 0 ||
+      this.dcaCanonicalAcceptedButNotWiredFields().length > 0 ||
+      this.dcaPresetSupportedEntries().length > 0 ||
+      this.dcaPresetNotSupportedEntries().length > 0 ||
+      this.dcaLegacySupportedFields().length > 0 ||
+      this.dcaLegacyOnlyFields().length > 0 ||
+      this.dcaLegacyNotes().length > 0
+    );
   }
 
   presetsByTheme(theme: RunKey): RunPreset[] {
@@ -1239,6 +1290,171 @@ export class StrategyLauncherPageComponent {
     return normalized;
   }
 
+  private loadDcaCapabilities(): void {
+    this.runsService
+      .getRunCapabilities('dca')
+      .pipe(
+        catchError(err => {
+          console.warn('[StrategyLauncher] /runs/capabilities unavailable, fallback static mode', err);
+          this.supportedDcaGridPresets = new Set();
+          this.dcaCapabilitiesInfo.set('Capabilities runtime indisponibles, mode statique active.');
+          this.dcaCanonicalSupportedFields.set([]);
+          this.dcaCanonicalAcceptedButNotWiredFields.set([]);
+          this.dcaPresetSupportedEntries.set([]);
+          this.dcaPresetNotSupportedEntries.set([]);
+          this.dcaLegacySupportedFields.set([]);
+          this.dcaLegacyOnlyFields.set([]);
+          this.dcaLegacyNotes.set([]);
+          return of(null);
+        })
+      )
+      .subscribe(capabilities => {
+        if (!capabilities) {
+          return;
+        }
+        const capabilitiesRecord = capabilities as Record<string, unknown>;
+        const canonicalFields = this.extractCanonicalDcaFields(capabilitiesRecord);
+        const presets = this.extractDcaPresetCapabilities(capabilitiesRecord);
+        const gridPresets = this.extractDcaGridCapabilities(capabilities);
+        const legacy = this.extractLegacyDcaFields(capabilities);
+        this.dcaCanonicalSupportedFields.set(canonicalFields.supported);
+        this.dcaCanonicalAcceptedButNotWiredFields.set(canonicalFields.acceptedButNotWired);
+        this.dcaPresetSupportedEntries.set(presets.supportedEntries);
+        this.dcaPresetNotSupportedEntries.set(presets.notSupportedEntries);
+        this.dcaLegacySupportedFields.set(legacy.supported);
+        this.dcaLegacyOnlyFields.set(legacy.notInCanonical);
+        this.dcaLegacyNotes.set(this.extractStringArray((capabilities as any)?.legacy_dca?.notes));
+        if (gridPresets.length === 0) {
+          this.supportedDcaGridPresets = new Set();
+          this.dcaCapabilitiesInfo.set(
+            legacy.notInCanonical.length > 0
+              ? 'Mode capabilities actif: UI canonical + indications legacy-only.'
+              : null
+          );
+          return;
+        }
+        this.supportedDcaGridPresets = new Set(gridPresets);
+        this.dcaCapabilitiesInfo.set(
+          'Mode capabilities actif: options runtime non supportees masquees/desactivees.'
+        );
+        this.filterUnsupportedDcaGridSelections();
+      });
+  }
+
+  private extractDcaGridCapabilities(payload: Record<string, unknown>): string[] {
+    const candidates: unknown[] = [
+      (payload as any)?.presets?.supported?.strategy?.grid,
+      (payload as any)?.strategy?.grid_presets,
+      (payload as any)?.strategy?.grid,
+      (payload as any)?.dca?.strategy?.grid_presets,
+      (payload as any)?.dca?.strategy?.grid,
+      (payload as any)?.supported?.strategy?.grid,
+      (payload as any)?.supported?.grid_presets,
+      (payload as any)?.options?.grid_presets
+    ];
+
+    for (const candidate of candidates) {
+      if (Array.isArray(candidate) && candidate.every(value => typeof value === 'string')) {
+        return Array.from(new Set(candidate.map(value => String(value).trim()).filter(Boolean)));
+      }
+      if (candidate && typeof candidate === 'object') {
+        const enabledKeys = Object.entries(candidate as Record<string, unknown>)
+          .filter(([, value]) => Boolean(value))
+          .map(([key]) => key.trim())
+          .filter(Boolean);
+        if (enabledKeys.length > 0) {
+          return Array.from(new Set(enabledKeys));
+        }
+      }
+    }
+    return [];
+  }
+
+  private extractCanonicalDcaFields(payload: Record<string, unknown>): {
+    supported: string[];
+    acceptedButNotWired: string[];
+  } {
+    const fields = ((payload as any)?.fields ?? {}) as Record<string, unknown>;
+    return {
+      supported: this.extractStringArray(fields['supported']),
+      acceptedButNotWired: this.extractStringArray(fields['accepted_but_not_wired'])
+    };
+  }
+
+  private extractDcaPresetCapabilities(payload: Record<string, unknown>): {
+    supportedEntries: string[];
+    notSupportedEntries: string[];
+  } {
+    const presets = ((payload as any)?.presets ?? {}) as Record<string, unknown>;
+    const supported = ((presets['supported'] ?? {}) as Record<string, unknown>);
+    const notSupported = ((presets['not_supported'] ?? {}) as Record<string, unknown>);
+    return {
+      supportedEntries: this.flattenPresetEntries(supported),
+      notSupportedEntries: this.flattenPresetEntries(notSupported)
+    };
+  }
+
+  private flattenPresetEntries(node: Record<string, unknown>, prefix = ''): string[] {
+    return Object.entries(node).flatMap(([key, value]) => {
+      const currentPath = prefix ? `${prefix}.${key}` : key;
+      if (Array.isArray(value)) {
+        const items = value.map(item => String(item).trim()).filter(Boolean);
+        if (items.length === 0) {
+          return [];
+        }
+        return [`${currentPath}: ${items.join(', ')}`];
+      }
+      if (value && typeof value === 'object') {
+        return this.flattenPresetEntries(value as Record<string, unknown>, currentPath);
+      }
+      return [];
+    });
+  }
+
+  private extractLegacyDcaFields(payload: Record<string, unknown>): { supported: string[]; notInCanonical: string[] } {
+    const legacyFields = ((payload as any)?.legacy_dca?.fields ?? {}) as Record<string, unknown>;
+    const legacyRunnerSupported = this.extractStringArray(legacyFields['supported_in_legacy_runner']);
+    const canonicalPassthroughSupported = this.extractStringArray(legacyFields['canonical_passthrough_supported']);
+
+    if (legacyRunnerSupported.length > 0 || canonicalPassthroughSupported.length > 0) {
+      const passthroughSet = new Set(canonicalPassthroughSupported);
+      const legacyOnly = legacyRunnerSupported.filter(field => !passthroughSet.has(field));
+      return {
+        supported: Array.from(new Set(legacyRunnerSupported)),
+        notInCanonical: Array.from(new Set(legacyOnly))
+      };
+    }
+
+    // Backward compatibility with older capabilities payload shape.
+    const supported = this.extractStringArray(legacyFields['supported']);
+    const notInCanonical = this.extractStringArray(legacyFields['not_in_canonical']);
+    return {
+      supported: Array.from(new Set(supported)),
+      notInCanonical: Array.from(new Set(notInCanonical))
+    };
+  }
+
+  private extractStringArray(value: unknown): string[] {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+    return Array.from(
+      new Set(value.map(item => String(item).trim()).filter(Boolean))
+    );
+  }
+
+  private filterUnsupportedDcaGridSelections(): void {
+    if (this.supportedDcaGridPresets.size === 0) {
+      return;
+    }
+    const control = this.dcaForm.get('gridPresets');
+    const selected = (control?.value as ReadonlyArray<string> | null | undefined) ?? [];
+    const allowed = selected.filter(preset => this.supportedDcaGridPresets.has(preset));
+    if (allowed.length !== selected.length) {
+      control?.setValue((allowed.length > 0 ? allowed : ['grid_balanced']) as any);
+    }
+  }
+
   buildRunRequest(): RunRequestInput {
     switch (this.selectedRun()) {
       case 'dca':
@@ -1393,7 +1609,7 @@ export class StrategyLauncherPageComponent {
   private setPayloadPreview(payload: RunRequestInput): void {
     this.payloadPreview.set(payload);
     this.payloadPreviewPaths.set(collectPaths(payload));
-    const canonical = mapRunRequestToCanonical(payload, { catalogVersion: this.catalogVersion });
+    const canonical = buildCanonicalRunPayload(payload, payload.runType, { catalogVersion: this.catalogVersion });
     this.payloadCanonicalPreview.set(canonical);
     this.payloadCanonicalPaths.set(collectPaths(canonical));
   }
@@ -1645,7 +1861,7 @@ export class StrategyLauncherPageComponent {
       case 'crypto_grid':
         return {
           kind: 'crypto_grid',
-          tpSl: this.buildDcaTpSlFromPreset(String(value.cryptoTpSlPreset ?? this.dcaDefaults.cryptoTpSlPreset))
+          tpSl: this.buildDcaTpSlFromLegacyPreset(String(value.cryptoTpSlPreset ?? this.dcaDefaults.cryptoTpSlPreset))
         };
       default:
         const executionMode = String(value.executionMode ?? this.dcaDefaults.executionMode);
@@ -1658,7 +1874,7 @@ export class StrategyLauncherPageComponent {
           executionMode: (DCA_ALLOWED_EXECUTION_MODES as readonly string[]).includes(executionMode)
             ? executionMode
             : this.dcaDefaults.executionMode,
-          tpSl: this.buildDcaTpSlFromPreset(String(value.tpSlPreset ?? this.dcaDefaults.tpSlPreset)),
+          tpSl: this.buildDcaTpSlFromForm(value),
           grid: this.buildDcaGridFromPresets(value.gridPresets),
           requireCrossing: Boolean(value.requireCrossing ?? this.dcaDefaults.requireCrossing)
         };
@@ -1706,29 +1922,54 @@ export class StrategyLauncherPageComponent {
     }
   }
 
-  private buildDcaTpSlFromPreset(presetValue: string): DcaTpSlBlock {
+  private buildDcaTpSlFromForm(value: ReturnType<typeof this.dcaForm.getRawValue>): DcaTpSlBlock {
+    const enabled = Boolean(value.tpSlEnabled ?? this.dcaDefaults.tpSlEnabled);
+    const modeRaw = String(value.tpSlMode ?? this.dcaDefaults.tpSlMode);
+    const mode = this.dcaTpSlModes.includes(modeRaw) ? modeRaw : this.dcaDefaults.tpSlMode;
+    return {
+      enabled,
+      mode,
+      tp: {
+        type: 'percent',
+        value: Number(value.tpValue ?? this.dcaDefaults.tpValue)
+      },
+      sl: {
+        type: 'percent',
+        value: Number(value.slValue ?? this.dcaDefaults.slValue)
+      },
+      breakEven: {
+        enabled: Boolean(value.breakEvenEnabled ?? this.dcaDefaults.breakEvenEnabled),
+        triggerPct: Number(value.breakEvenTriggerPct ?? this.dcaDefaults.breakEvenTriggerPct)
+      }
+    };
+  }
+
+  private buildDcaTpSlFromLegacyPreset(presetValue: string): DcaTpSlBlock {
     switch (presetValue) {
       case 'none':
         return {
           enabled: false,
-          mode: 'per_grid_max_dd',
-          rules: [],
-          slDd: -100
+          mode: 'rule_based',
+          tp: { type: 'percent', value: 0 },
+          sl: { type: 'percent', value: 0 },
+          breakEven: { enabled: false, triggerPct: 0 }
         };
       case 'tp_3_sl_1.5':
         return {
           enabled: true,
-          mode: 'per_grid_max_dd',
-          rules: [{ maxDdReached: -20, tpPct: 22.5, bePct: 10 }],
-          slDd: -65
+          mode: 'rule_based',
+          tp: { type: 'percent', value: 3 },
+          sl: { type: 'percent', value: 1.5 },
+          breakEven: { enabled: true, triggerPct: 1.5 }
         };
       case 'tp_2_sl_1':
       default:
         return {
           enabled: true,
-          mode: 'per_grid_max_dd',
-          rules: [{ maxDdReached: -20, tpPct: 15, bePct: 7 }],
-          slDd: -70
+          mode: 'rule_based',
+          tp: { type: 'percent', value: 2 },
+          sl: { type: 'percent', value: 1 },
+          breakEven: { enabled: true, triggerPct: 1 }
         };
     }
   }
@@ -2257,6 +2498,33 @@ function dateRangeValidator(startKey: string, endKey: string) {
       return null;
     }
     return start <= end ? null : { dateRange: true };
+  };
+}
+
+function dcaTpSlValidator() {
+  return (control: AbstractControl): ValidationErrors | null => {
+    const strategyType = String(control.get('strategyType')?.value ?? '');
+    if (strategyType !== 'dca_equity') {
+      return null;
+    }
+    const enabled = Boolean(control.get('tpSlEnabled')?.value);
+    if (!enabled) {
+      return null;
+    }
+    const mode = String(control.get('tpSlMode')?.value ?? '');
+    const tpValue = Number(control.get('tpValue')?.value);
+    const slValue = Number(control.get('slValue')?.value);
+    const errors: Record<string, boolean> = {};
+    if (mode !== 'rule_based') {
+      errors['tpSlModeInvalid'] = true;
+    }
+    if (!Number.isFinite(tpValue) || tpValue <= 0) {
+      errors['tpValueInvalid'] = true;
+    }
+    if (!Number.isFinite(slValue) || slValue <= 0) {
+      errors['slValueInvalid'] = true;
+    }
+    return Object.keys(errors).length ? errors : null;
   };
 }
 
