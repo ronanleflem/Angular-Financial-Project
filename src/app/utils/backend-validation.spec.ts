@@ -55,6 +55,9 @@ describe('backend-validation', () => {
     expect(mapBackendFieldToControlName('signal.require_crossing', 'backtests', {})).toBe('requireCrossing');
     expect(mapBackendFieldToControlName('strategy.params.tp_sl.jitter.seed', 'backtests', {})).toBe('tpslJitterSeed');
     expect(mapBackendFieldToControlName('screening.max_seconds', 'backtests', {})).toBe('screenMaxSeconds');
+    expect(mapBackendFieldToControlName('data.path', 'backtests', {})).toBe('csvPath');
+    expect(mapBackendFieldToControlName('data.mysql_env', 'backtests', {})).toBe('mysqlEnv');
+    expect(mapBackendFieldToControlName('data.mysql.host', 'backtests', {})).toBe('mysqlHost');
   });
 
   it('maps market stats params using context', () => {

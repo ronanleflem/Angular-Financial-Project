@@ -113,7 +113,7 @@
 
             <div class="param-group" *ngIf="deltaRanges().length > 0">
               <div class="param-hint">Plages Delta (insertedAt desc)</div>
-              <ul class="error-body">
+              <ul class="error-body delta-ranges-list">
                 <li *ngFor="let item of deltaRanges()">
                   {{ item.symbol }} | {{ item.insertedType }} | {{ item.timeframe }} |
                   {{ item.startDate }} -> {{ item.endDate }} | {{ item.insertedAt }}
@@ -721,12 +721,15 @@
       </mat-card-header>
       <mat-card-content>
         <form class="strategy-form" [formGroup]="backtestForm" (ngSubmit)="runBacktest()">
-          <mat-form-field appearance="outline">
+          <mat-form-field appearance="outline" *ngIf="isBacktestFieldSupported('strategy.name')">
             <mat-label>Strategie</mat-label>
-            <mat-select formControlName="strategy">
+            <mat-select formControlName="strategy" [disabled]="!isBacktestFieldRuntimeWired('strategy.name')">
               <mat-option *ngFor="let option of backtestStrategies" [value]="option">{{ option }}</mat-option>
             </mat-select>
           </mat-form-field>
+          <div class="param-hint" *ngIf="isBacktestFieldSupported('strategy.name') && !isBacktestFieldRuntimeWired('strategy.name')">
+            strategy.name non cable runtime (Not implemented yet).
+          </div>
 
           <mat-form-field appearance="outline">
             <mat-label>Symbole</mat-label>
@@ -752,6 +755,134 @@
             <mat-datepicker-toggle matIconSuffix [for]="backtestRangePicker"></mat-datepicker-toggle>
             <mat-date-range-picker #backtestRangePicker></mat-date-range-picker>
           </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Source mode</mat-label>
+            <mat-select formControlName="sourceMode">
+              <mat-option
+                *ngFor="let mode of backtestSourceModeOptions"
+                [value]="mode.value"
+                [disabled]="!backtestSourceModeAvailable(mode.value)"
+              >
+                {{ mode.label }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <div class="param-hint" *ngIf="backtestForm.errors?.['sourceRequired']">
+            Source explicite requise par le backend (CSV path ou MySQL config).
+          </div>
+          <div class="param-hint" *ngIf="backtestForm.errors?.['sourcePathRequired']">
+            CSV path est requis pour le mode CSV path.
+          </div>
+          <div class="param-hint" *ngIf="backtestForm.errors?.['sourceMysqlRequired']">
+            MySQL config: renseigne mysql_env ou host + database + table.
+          </div>
+
+          <ng-container *ngIf="backtestForm.get('sourceMode')?.value === 'csv_path'">
+            <mat-form-field appearance="outline">
+              <mat-label>CSV path</mat-label>
+              <input matInput type="text" formControlName="csvPath" placeholder="C:\\data\\prices.csv" />
+            </mat-form-field>
+          </ng-container>
+
+          <ng-container *ngIf="backtestForm.get('sourceMode')?.value === 'mysql_config'">
+            <div class="row-3 row-delta-selection">
+              <mat-form-field appearance="outline">
+                <mat-label>mysql_env (optionnel)</mat-label>
+                <input matInput type="text" formControlName="mysqlEnv" placeholder="BACKTEST_DB_URL" />
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>MySQL host</mat-label>
+                <input matInput type="text" formControlName="mysqlHost" placeholder="127.0.0.1" />
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>MySQL port</mat-label>
+                <input matInput type="number" formControlName="mysqlPort" min="1" />
+              </mat-form-field>
+            </div>
+            <div class="row-3 row-delta-selection">
+              <mat-form-field appearance="outline">
+                <mat-label>Database</mat-label>
+                <input matInput type="text" formControlName="mysqlDatabase" />
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>Table</mat-label>
+                <input matInput type="text" formControlName="mysqlTable" />
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>User</mat-label>
+                <input matInput type="text" formControlName="mysqlUser" />
+              </mat-form-field>
+            </div>
+            <mat-form-field appearance="outline">
+              <mat-label>Password</mat-label>
+              <input matInput type="password" formControlName="mysqlPassword" />
+            </mat-form-field>
+          </ng-container>
+
+          <div class="checkbox-row checkbox-full">
+            <mat-checkbox formControlName="useDeltaPreset" (change)="onBacktestUseDeltaPresetChange($event)">
+              Utiliser preset Delta
+            </mat-checkbox>
+          </div>
+
+          <ng-container *ngIf="backtestForm.get('useDeltaPreset')?.value">
+            <div class="row-3 row-delta-filters">
+              <mat-form-field appearance="outline">
+                <mat-label>Filtre Delta symbole</mat-label>
+                <input matInput type="text" formControlName="deltaQuerySymbol" />
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>Filtre Delta type</mat-label>
+                <mat-select formControlName="deltaQueryInsertedType">
+                  <mat-option value="">Tous</mat-option>
+                  <mat-option *ngFor="let type of deltaInsertedTypes" [value]="type">{{ type }}</mat-option>
+                </mat-select>
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>Filtre Delta timeframe</mat-label>
+                <input matInput type="text" formControlName="deltaQueryTimeframe" />
+              </mat-form-field>
+            </div>
+            <div class="param-group">
+              <button mat-stroked-button type="button" (click)="loadBacktestDeltaRanges()" [disabled]="deltaRangesLoading()">
+                Charger presets Delta
+              </button>
+            </div>
+            <div class="param-hint" *ngIf="deltaRangesLoading()">Chargement des plages Delta...</div>
+            <div class="param-hint" *ngIf="deltaRangesError()">{{ deltaRangesError() }}</div>
+            <div class="param-hint" *ngIf="!deltaRangesLoading() && !deltaRangesError() && deltaRanges().length === 0">
+              Aucune donnee Delta.
+            </div>
+            <div class="param-group" *ngIf="deltaRanges().length > 0">
+              <div class="param-hint">Plages Delta (insertedAt desc)</div>
+              <ul class="error-body delta-ranges-list">
+                <li *ngFor="let item of deltaRanges()">
+                  {{ item.symbol }} | {{ item.insertedType }} | {{ item.timeframe }} |
+                  {{ item.startDate }} -> {{ item.endDate }} | {{ item.insertedAt }}
+                </li>
+              </ul>
+            </div>
+            <div class="row-3 row-delta-selection" *ngIf="deltaRanges().length > 0">
+              <mat-form-field appearance="outline">
+                <mat-label>Symbole</mat-label>
+                <mat-select formControlName="deltaPresetSymbol">
+                  <mat-option *ngFor="let symbol of backtestDeltaAvailableSymbols()" [value]="symbol">{{ symbol }}</mat-option>
+                </mat-select>
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>Timeframe</mat-label>
+                <mat-select formControlName="deltaPresetTimeframe">
+                  <mat-option *ngFor="let tf of backtestDeltaAvailableTimeframes()" [value]="tf">{{ tf }}</mat-option>
+                </mat-select>
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>Periode</mat-label>
+                <input matInput readonly [value]="backtestSelectedDeltaPeriodLabel()" />
+              </mat-form-field>
+            </div>
+          </ng-container>
 
           <section class="section-block">
             <div class="section-title">Parametres</div>
@@ -779,7 +910,7 @@
 
                         <ng-container *ngIf="selectedBacktestTab() === 'params'">
               <mat-accordion class="accordion" multi>
-                <mat-expansion-panel>
+                <mat-expansion-panel *ngIf="isBacktestFieldSupported('strategy.params.tp_sl')">
                   <mat-expansion-panel-header>
                     <mat-panel-title>Backtest (signal)</mat-panel-title>
                   </mat-expansion-panel-header>
@@ -813,7 +944,7 @@
                   </div>
                 </mat-expansion-panel>
 
-                <mat-expansion-panel>
+                <mat-expansion-panel *ngIf="isBacktestFieldSupported('strategy.params.screening') || isBacktestFieldSupported('screening')">
                   <mat-expansion-panel-header>
                     <mat-panel-title>TP / SL</mat-panel-title>
                   </mat-expansion-panel-header>
@@ -939,7 +1070,7 @@
                     <div class="param-grid">
                       <mat-form-field appearance="outline">
                         <mat-label>filters[]</mat-label>
-                        <mat-select multiple formControlName="filters">
+                        <mat-select multiple formControlName="filters" [disabled]="!isBacktestFieldRuntimeWired('filters')">
                           <mat-option
                             *ngFor="let filter of backtestFilterOptions"
                             [value]="filter.id"
@@ -993,12 +1124,9 @@
                   <div class="param-section">
                     <div class="param-title">Filter rules</div>
                     <div class="param-grid">
-                      <div class="checkbox-row">
-                        <span class="not-implemented">Not implemented yet</span>
-                      </div>
                       <mat-form-field appearance="outline">
                         <mat-label>filter_rules[]</mat-label>
-                        <mat-select multiple formControlName="filterRules">
+                        <mat-select multiple formControlName="filterRules" [disabled]="!isBacktestFieldRuntimeWired('filters.rules')">
                           <mat-option *ngFor="let rule of backtestRuleOptions" [value]="rule.id" [matTooltip]="filterTooltip(rule.id)">
                             {{ rule.label }}
                           </mat-option>
@@ -1069,7 +1197,7 @@
                     <div class="param-title">Screening / pruning</div>
                     <div class="param-grid">
                       <div class="checkbox-row">
-                        <mat-checkbox formControlName="screeningEnabled">Enabled</mat-checkbox>
+                        <mat-checkbox formControlName="screeningEnabled" [disabled]="!isBacktestFieldRuntimeWired('strategy.params.screening')">Enabled</mat-checkbox>
                         <span class="not-implemented">Not implemented yet</span>
                       </div>
 
@@ -1108,7 +1236,7 @@
                   <div class="param-section">
                     <div class="param-title">Performance</div>
                     <div class="checkbox-row">
-                      <mat-checkbox formControlName="includePerformance">Inclure performance</mat-checkbox>
+                      <mat-checkbox formControlName="includePerformance" [disabled]="!isBacktestFieldRuntimeWired('performance')">Inclure performance</mat-checkbox>
                     </div>
                     <div class="param-grid">
                       <mat-form-field appearance="outline">
@@ -1269,6 +1397,69 @@
               <mat-option *ngFor="let tf of timeframes" [value]="tf">{{ tf }}</mat-option>
             </mat-select>
           </mat-form-field>
+
+          <div class="checkbox-row checkbox-full">
+            <mat-checkbox formControlName="useDeltaPreset" (change)="onMarketStatsUseDeltaPresetChange($event)">
+              Utiliser preset Delta
+            </mat-checkbox>
+          </div>
+
+          <ng-container *ngIf="marketStatsForm.get('useDeltaPreset')?.value">
+            <div class="row-3 row-delta-filters">
+              <mat-form-field appearance="outline">
+                <mat-label>Filtre Delta symbole</mat-label>
+                <input matInput type="text" formControlName="deltaQuerySymbol" />
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>Filtre Delta type</mat-label>
+                <mat-select formControlName="deltaQueryInsertedType">
+                  <mat-option value="">Tous</mat-option>
+                  <mat-option *ngFor="let type of deltaInsertedTypes" [value]="type">{{ type }}</mat-option>
+                </mat-select>
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>Filtre Delta timeframe</mat-label>
+                <input matInput type="text" formControlName="deltaQueryTimeframe" />
+              </mat-form-field>
+            </div>
+            <div class="param-group">
+              <button mat-stroked-button type="button" (click)="loadMarketStatsDeltaRanges()" [disabled]="deltaRangesLoading()">
+                Charger presets Delta
+              </button>
+            </div>
+            <div class="param-hint" *ngIf="deltaRangesLoading()">Chargement des plages Delta...</div>
+            <div class="param-hint" *ngIf="deltaRangesError()">{{ deltaRangesError() }}</div>
+            <div class="param-hint" *ngIf="!deltaRangesLoading() && !deltaRangesError() && deltaRanges().length === 0">
+              Aucune donnee Delta.
+            </div>
+            <div class="param-group" *ngIf="deltaRanges().length > 0">
+              <div class="param-hint">Plages Delta (insertedAt desc)</div>
+              <ul class="error-body delta-ranges-list">
+                <li *ngFor="let item of deltaRanges()">
+                  {{ item.symbol }} | {{ item.insertedType }} | {{ item.timeframe }} |
+                  {{ item.startDate }} -> {{ item.endDate }} | {{ item.insertedAt }}
+                </li>
+              </ul>
+            </div>
+            <div class="row-3 row-delta-selection" *ngIf="deltaRanges().length > 0">
+              <mat-form-field appearance="outline">
+                <mat-label>Symbole</mat-label>
+                <mat-select formControlName="deltaPresetSymbol">
+                  <mat-option *ngFor="let symbol of marketStatsDeltaAvailableSymbols()" [value]="symbol">{{ symbol }}</mat-option>
+                </mat-select>
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>Timeframe</mat-label>
+                <mat-select formControlName="deltaPresetTimeframe">
+                  <mat-option *ngFor="let tf of marketStatsDeltaAvailableTimeframes()" [value]="tf">{{ tf }}</mat-option>
+                </mat-select>
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>Periode</mat-label>
+                <input matInput readonly [value]="marketStatsSelectedDeltaPeriodLabel()" />
+              </mat-form-field>
+            </div>
+          </ng-container>
 
                     <section class="section-block">
             <div class="section-title">Parametres</div>
@@ -1633,6 +1824,69 @@
               <mat-option *ngFor="let window of seasonalityWindows" [value]="window">{{ window }}</mat-option>
             </mat-select>
           </mat-form-field>
+
+          <div class="checkbox-row checkbox-full">
+            <mat-checkbox formControlName="useDeltaPreset" (change)="onSeasonalityUseDeltaPresetChange($event)">
+              Utiliser preset Delta
+            </mat-checkbox>
+          </div>
+
+          <ng-container *ngIf="seasonalityForm.get('useDeltaPreset')?.value">
+            <div class="row-3 row-delta-filters">
+              <mat-form-field appearance="outline">
+                <mat-label>Filtre Delta symbole</mat-label>
+                <input matInput type="text" formControlName="deltaQuerySymbol" />
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>Filtre Delta type</mat-label>
+                <mat-select formControlName="deltaQueryInsertedType">
+                  <mat-option value="">Tous</mat-option>
+                  <mat-option *ngFor="let type of deltaInsertedTypes" [value]="type">{{ type }}</mat-option>
+                </mat-select>
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>Filtre Delta timeframe</mat-label>
+                <input matInput type="text" formControlName="deltaQueryTimeframe" />
+              </mat-form-field>
+            </div>
+            <div class="param-group">
+              <button mat-stroked-button type="button" (click)="loadSeasonalityDeltaRanges()" [disabled]="deltaRangesLoading()">
+                Charger presets Delta
+              </button>
+            </div>
+            <div class="param-hint" *ngIf="deltaRangesLoading()">Chargement des plages Delta...</div>
+            <div class="param-hint" *ngIf="deltaRangesError()">{{ deltaRangesError() }}</div>
+            <div class="param-hint" *ngIf="!deltaRangesLoading() && !deltaRangesError() && deltaRanges().length === 0">
+              Aucune donnee Delta.
+            </div>
+            <div class="param-group" *ngIf="deltaRanges().length > 0">
+              <div class="param-hint">Plages Delta (insertedAt desc)</div>
+              <ul class="error-body delta-ranges-list">
+                <li *ngFor="let item of deltaRanges()">
+                  {{ item.symbol }} | {{ item.insertedType }} | {{ item.timeframe }} |
+                  {{ item.startDate }} -> {{ item.endDate }} | {{ item.insertedAt }}
+                </li>
+              </ul>
+            </div>
+            <div class="row-3 row-delta-selection" *ngIf="deltaRanges().length > 0">
+              <mat-form-field appearance="outline">
+                <mat-label>Symbole</mat-label>
+                <mat-select formControlName="deltaPresetSymbol">
+                  <mat-option *ngFor="let symbol of seasonalityDeltaAvailableSymbols()" [value]="symbol">{{ symbol }}</mat-option>
+                </mat-select>
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>Timeframe</mat-label>
+                <mat-select formControlName="deltaPresetTimeframe">
+                  <mat-option *ngFor="let tf of seasonalityDeltaAvailableTimeframes()" [value]="tf">{{ tf }}</mat-option>
+                </mat-select>
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>Periode</mat-label>
+                <input matInput readonly [value]="seasonalitySelectedDeltaPeriodLabel()" />
+              </mat-form-field>
+            </div>
+          </ng-container>
 
                     <section class="section-block">
             <div class="section-title">Parametres</div>

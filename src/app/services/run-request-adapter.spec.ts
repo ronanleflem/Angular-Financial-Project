@@ -2,6 +2,41 @@ import { RunRequestInput } from '../models/run-request-input.model';
 import { buildCanonicalRunPayload } from './run-request-adapter';
 
 describe('run-request-adapter', () => {
+  it('strips strategy.name from canonical backtest payload', () => {
+    const payload: RunRequestInput = {
+      runType: 'backtest',
+      data: {
+        symbol: 'EURUSD',
+        timeframe: '1h',
+        startDate: '2024-01-01',
+        endDate: '2024-01-31'
+      },
+      strategy: {
+        name: 'Mean Reversion',
+        params: {
+          tpSl: {
+            atrWindow: 14,
+            atrK: 2
+          }
+        }
+      },
+      signal: {
+        type: 'ema_cross',
+        fast: 12,
+        slow: 26
+      }
+    } as any;
+
+    const canonical = buildCanonicalRunPayload(payload, 'backtest') as any;
+    expect(canonical.strategy.name).toBeUndefined();
+    expect(canonical.strategy.params.tp_sl).toEqual(
+      jasmine.objectContaining({
+        atr_window: 14,
+        atr_k: 2
+      })
+    );
+  });
+
   it('builds canonical dca payload and moves universe to top-level', () => {
     const payload: RunRequestInput = {
       runType: 'dca',
@@ -9,9 +44,9 @@ describe('run-request-adapter', () => {
         symbol: 'BTCUSD',
         timeframe: '1h',
         startDate: '2024-01-01',
-        endDate: '2024-12-31',
-        universe: [{ symbol: 'BTCUSD', assetClass: 'Crypto' }]
+        endDate: '2024-12-31'
       },
+      universe: [{ symbol: 'BTCUSD', assetClass: 'Crypto' }],
       strategy: {
         type: 'dca_equity',
         params: {
@@ -119,12 +154,12 @@ describe('run-request-adapter', () => {
         symbol: '',
         timeframe: '1h',
         startDate: '2024-01-01',
-        endDate: '2024-12-31',
-        universe: [
-          { symbol: 'BTCUSDT', assetClass: 'CRYPTO' },
-          { symbol: 'ETHUSD', assetClass: 'CRYPTO' }
-        ]
+        endDate: '2024-12-31'
       },
+      universe: [
+        { symbol: 'BTCUSDT', assetClass: 'CRYPTO' },
+        { symbol: 'ETHUSD', assetClass: 'CRYPTO' }
+      ],
       strategy: {
         type: 'dca_equity',
         params: {

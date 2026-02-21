@@ -29,7 +29,25 @@ describe('StrategyLauncherPageComponent', () => {
     capabilities: unknown = {
       strategy: { grid_presets: ['grid_balanced', 'grid_conservative', 'grid_aggressive'] }
     },
-    capabilitiesStatus: { status: number; statusText: string } | null = null
+    capabilitiesStatus: { status: number; statusText: string } | null = null,
+    backtestCapabilities: unknown = {
+      fields: {
+        supported: [
+          'data.symbol',
+          'data.timeframe',
+          'data.start_date',
+          'data.end_date',
+          'signal.type',
+          'signal.fast',
+          'signal.slow',
+          'signal.require_crossing',
+          'strategy.params.tp_sl',
+          'filters'
+        ],
+        accepted_but_not_wired: ['strategy.name', 'performance', 'strategy.params.screening']
+      }
+    },
+    backtestCapabilitiesStatus: { status: number; statusText: string } | null = null
   ) {
     const catalogReq = httpMock.expectOne('/parameter_catalog.json');
     catalogReq.flush({ meta: { version: 'v1' } });
@@ -38,9 +56,17 @@ describe('StrategyLauncherPageComponent', () => {
     );
     if (capabilitiesStatus) {
       capabilitiesReq.flush((capabilities ?? {}) as any, capabilitiesStatus);
+    } else {
+      capabilitiesReq.flush(capabilities as any);
+    }
+    const backtestCapabilitiesReq = httpMock.expectOne(
+      `${environment.apiUrl}/api/runs/capabilities?spec_type=backtest`
+    );
+    if (backtestCapabilitiesStatus) {
+      backtestCapabilitiesReq.flush((backtestCapabilities ?? {}) as any, backtestCapabilitiesStatus);
       return;
     }
-    capabilitiesReq.flush(capabilities as any);
+    backtestCapabilitiesReq.flush(backtestCapabilities as any);
   }
 
   it('maps backend 422 errors to form controls and global panel', () => {
@@ -90,8 +116,178 @@ describe('StrategyLauncherPageComponent', () => {
     expect(text).toMatch(/Backtest \(signal\)[\s\S]*Not implemented yet/);
     expect(text).toMatch(/Dynamic SL[\s\S]*Not implemented yet/);
     expect(text).toMatch(/TP\/SL jitter[\s\S]*Not implemented yet/);
-    expect(text).toMatch(/Filter rules[\s\S]*Not implemented yet/);
     expect(text).toMatch(/Screening \/ pruning[\s\S]*Not implemented yet/);
+  });
+
+  it('builds minimal backtest payload in capabilities mode without non-wired fields', () => {
+    fixture.detectChanges();
+    flushInitRequests(
+      { strategy: { grid_presets: ['grid_balanced'] } },
+      null,
+      {
+        fields: {
+          supported: [
+            'data.symbol',
+            'data.timeframe',
+            'data.start_date',
+            'data.end_date',
+            'signal.type',
+            'signal.fast',
+            'signal.slow'
+          ],
+          accepted_but_not_wired: ['strategy.name', 'strategy.params.tp_sl', 'filters', 'performance']
+        }
+      }
+    );
+
+    component.selectRun('backtests');
+    component.backtestForm.patchValue({
+      includePerformance: true,
+      strategy: 'Mean Reversion',
+      signalType: 'ema_rsi'
+    } as any);
+
+    const payload = component.buildRunRequest() as any;
+    expect(payload.runType).toBe('backtest');
+    expect(payload.strategy).toBeUndefined();
+    expect(payload.filters).toBeUndefined();
+    expect(payload.performance).toBeUndefined();
+    expect(payload.signal).toEqual(
+      jasmine.objectContaining({
+        type: 'ema_cross',
+        fast: jasmine.any(Number),
+        slow: jasmine.any(Number)
+      })
+    );
+  });
+
+  it('builds backtest payload in auto source mode without explicit source fields when implicit resolution is supported', () => {
+    fixture.detectChanges();
+    flushInitRequests(
+      {},
+      null,
+      {
+        fields: {
+          supported: [
+            'data.symbol',
+            'data.timeframe',
+            'data.start_date',
+            'data.end_date',
+            'signal.type',
+            'signal.fast',
+            'signal.slow'
+          ],
+          accepted_but_not_wired: []
+        },
+        data_source_resolution: {
+          implicit_supported: true,
+          supported_modes: ['auto', 'csv_path', 'mysql_config']
+        }
+      }
+    );
+
+    component.selectRun('backtests');
+    component.backtestForm.patchValue({ sourceMode: 'auto' } as any);
+
+    const payload = component.buildRunRequest() as any;
+    expect(payload.data.source).toBeUndefined();
+    expect(payload.data.path).toBeUndefined();
+    expect(payload.data.mysql).toBeUndefined();
+    expect(payload.data.mysqlEnv).toBeUndefined();
+  });
+
+  it('builds backtest payload with explicit CSV source', () => {
+    fixture.detectChanges();
+    flushInitRequests();
+
+    component.selectRun('backtests');
+    component.backtestForm.patchValue({
+      sourceMode: 'csv_path',
+      csvPath: 'C:\\\\data\\\\backtest.csv'
+    } as any);
+
+    const payload = component.buildRunRequest() as any;
+    expect(payload.data.source).toBe('csv');
+    expect(payload.data.path).toBe('C:\\\\data\\\\backtest.csv');
+  });
+
+  it('builds backtest payload with explicit MySQL source', () => {
+    fixture.detectChanges();
+    flushInitRequests();
+
+    component.selectRun('backtests');
+    component.backtestForm.patchValue({
+      sourceMode: 'mysql_config',
+      mysqlEnv: '',
+      mysqlHost: '127.0.0.1',
+      mysqlPort: 3307,
+      mysqlDatabase: 'market_data',
+      mysqlTable: 'ohlcv',
+      mysqlUser: 'bt_user',
+      mysqlPassword: 'secret'
+    } as any);
+
+    const payload = component.buildRunRequest() as any;
+    expect(payload.data.source).toBe('mysql');
+    expect(payload.data.mysql).toEqual({
+      host: '127.0.0.1',
+      port: 3307,
+      database: 'market_data',
+      table: 'ohlcv',
+      user: 'bt_user',
+      password: 'secret'
+    });
+  });
+
+  it('marks backtest form invalid in auto mode when backend requires explicit source', () => {
+    fixture.detectChanges();
+    flushInitRequests(
+      {},
+      null,
+      {
+        fields: {
+          supported: [
+            'data.symbol',
+            'data.timeframe',
+            'data.start_date',
+            'data.end_date',
+            'signal.type',
+            'signal.fast',
+            'signal.slow'
+          ],
+          accepted_but_not_wired: []
+        },
+        data_source_resolution: {
+          implicit_supported: false,
+          supported_modes: ['csv_path', 'mysql_config']
+        }
+      }
+    );
+
+    component.selectRun('backtests');
+    component.backtestForm.patchValue({ sourceMode: 'auto' } as any);
+    component.backtestForm.updateValueAndValidity();
+
+    expect(component.backtestForm.errors?.['sourceRequired']).toBeTrue();
+    expect(component.backtestForm.invalid).toBeTrue();
+  });
+
+  it('falls back to static mode when backtest capabilities endpoint is unavailable', () => {
+    fixture.detectChanges();
+    flushInitRequests(
+      { strategy: { grid_presets: ['grid_balanced'] } },
+      null,
+      {},
+      { status: 503, statusText: 'Service Unavailable' }
+    );
+
+    component.selectRun('backtests');
+    component.backtestForm.patchValue({ includePerformance: true } as any);
+    const payload = component.buildRunRequest() as any;
+
+    expect(component.backtestCapabilitiesInfo()).toContain('mode statique');
+    expect(payload.runType).toBe('backtest');
+    expect(payload.filters).toBeDefined();
   });
 
   it('normalizes backend unsupported errors to Not implemented yet', () => {
@@ -414,11 +610,116 @@ describe('StrategyLauncherPageComponent', () => {
     expect(component.backtestRuleOptions.map(option => option.id)).toEqual(['drawdown_guard']);
   });
 
+  it('emits backtest rule params from catalog-backed capabilities options', () => {
+    fixture.detectChanges();
+    const catalogReq = httpMock.expectOne('/parameter_catalog.json');
+    catalogReq.flush({
+      meta: { version: 'v1' },
+      filters_expanded: {
+        items: {
+          adx: {
+            summary: 'ADX',
+            params: [
+              { name: 'window', type: 'int' },
+              { name: 'threshold', type: 'float' }
+            ]
+          }
+        }
+      }
+    } as any);
+    const dcaCapabilitiesReq = httpMock.expectOne(
+      `${environment.apiUrl}/api/runs/capabilities?spec_type=dca`
+    );
+    dcaCapabilitiesReq.flush({} as any);
+    const backtestCapabilitiesReq = httpMock.expectOne(
+      `${environment.apiUrl}/api/runs/capabilities?spec_type=backtest`
+    );
+    backtestCapabilitiesReq.flush({
+      fields: {
+        supported: [
+          'data.symbol',
+          'data.timeframe',
+          'data.start_date',
+          'data.end_date',
+          'signal.type',
+          'signal.fast',
+          'signal.slow',
+          'signal.require_crossing',
+          'filters',
+          'filters.rules'
+        ],
+        accepted_but_not_wired: []
+      },
+      filters: {
+        supported_ids: {
+          filters: ['volatility_guard'],
+          rules: ['adx']
+        }
+      }
+    } as any);
+
+    component.selectRun('backtests');
+    component.backtestForm.patchValue({
+      filterRules: ['adx'],
+      filter_adx_window: 14,
+      filter_adx_threshold: 25
+    } as any);
+
+    const payload = component.buildRunRequest() as any;
+    expect(payload.filters.rules).toEqual([
+      jasmine.objectContaining({
+        id: 'adx',
+        params: {
+          window: 14,
+          threshold: 25
+        }
+      })
+    ]);
+  });
+
+  it('does not emit backtest filter rules when filters.rules is not runtime wired', () => {
+    fixture.detectChanges();
+    flushInitRequests(
+      {},
+      null,
+      {
+        fields: {
+          supported: [
+            'data.symbol',
+            'data.timeframe',
+            'data.start_date',
+            'data.end_date',
+            'signal.type',
+            'signal.fast',
+            'signal.slow',
+            'signal.require_crossing',
+            'filters'
+          ],
+          accepted_but_not_wired: ['filters.rules']
+        },
+        filters: {
+          supported_ids: {
+            filters: ['volatility_guard'],
+            rules: ['drawdown_guard']
+          }
+        }
+      }
+    );
+
+    component.selectRun('backtests');
+    component.backtestForm.patchValue({
+      filterRules: ['drawdown_guard']
+    } as any);
+
+    const payload = component.buildRunRequest() as any;
+    expect(payload.filters.rules).toEqual([]);
+  });
+
   it('builds dca payload with canonical universe for one selected symbol', () => {
     fixture.detectChanges();
     flushInitRequests({
       fields: {
-        supported: ['data.symbol', 'data.universe', 'strategy.params.grid']
+        supported: ['data.symbol', 'universe', 'strategy.params.grid']
       }
     });
 
@@ -430,7 +731,7 @@ describe('StrategyLauncherPageComponent', () => {
 
     const payload = component.buildRunRequest() as any;
     expect(payload.data.symbol).toBe('BTCUSD');
-    expect(payload.data.universe).toEqual([
+    expect(payload.universe).toEqual([
       jasmine.objectContaining({ symbol: 'BTCUSD' })
     ]);
   });
@@ -452,7 +753,7 @@ describe('StrategyLauncherPageComponent', () => {
 
     const payload = component.buildRunRequest() as any;
     expect(payload.data.symbol).toBe('BTCUSD');
-    expect(payload.data.universe).toEqual([
+    expect(payload.universe).toEqual([
       jasmine.objectContaining({ symbol: 'BTCUSD' }),
       jasmine.objectContaining({ symbol: 'AAPL' })
     ]);
@@ -474,7 +775,7 @@ describe('StrategyLauncherPageComponent', () => {
     fixture.detectChanges();
     flushInitRequests({
       fields: {
-        supported: ['data.symbol', 'data.universe', 'strategy.params.grid']
+        supported: ['data.symbol', 'universe', 'strategy.params.grid']
       }
     });
 
@@ -486,7 +787,7 @@ describe('StrategyLauncherPageComponent', () => {
 
     const payload = component.buildRunRequest() as any;
     expect(payload.data.symbol).toBe('BTCUSD');
-    expect(payload.data.universe).toEqual([
+    expect(payload.universe).toEqual([
       jasmine.objectContaining({ symbol: 'BTCUSD' }),
       jasmine.objectContaining({ symbol: 'AAPL' })
     ]);
@@ -496,7 +797,7 @@ describe('StrategyLauncherPageComponent', () => {
     fixture.detectChanges();
     flushInitRequests({
       fields: {
-        supported: ['data.symbol', 'data.universe']
+        supported: ['data.symbol', 'universe']
       }
     });
 
@@ -529,7 +830,7 @@ describe('StrategyLauncherPageComponent', () => {
     const payload = component.buildRunRequest() as any;
     expect(component.canUseCanonicalUniverse()).toBeFalse();
     expect(payload.data.symbol).toBe('ETHUSD');
-    expect(payload.data.universe).toBeUndefined();
+    expect(payload.universe).toBeUndefined();
   });
 
   it('emits rules params from catalog-backed capabilities options', () => {
@@ -562,6 +863,10 @@ describe('StrategyLauncherPageComponent', () => {
         }
       }
     } as any);
+    const backtestCapabilitiesReq = httpMock.expectOne(
+      `${environment.apiUrl}/api/runs/capabilities?spec_type=backtest`
+    );
+    backtestCapabilitiesReq.flush({} as any);
 
     component.selectRun('dca');
     component.dcaForm.patchValue({
@@ -752,7 +1057,7 @@ describe('StrategyLauncherPageComponent', () => {
     } as any);
 
     const payload = component.buildRunRequest() as any;
-    expect(payload.data.universe).toEqual([
+    expect(payload.universe).toEqual([
       jasmine.objectContaining({ symbol: 'BTCUSDT' }),
       jasmine.objectContaining({ symbol: 'ETHUSD' })
     ]);
@@ -787,5 +1092,111 @@ describe('StrategyLauncherPageComponent', () => {
     expect(component.selectedDeltaPeriodLabel()).toBe('2024-01-01T00:00:00.000Z -> 2024-01-10T00:00:00.000Z');
     expect(new Date(component.dcaForm.get('startDate')?.value as Date).toISOString()).toBe('2024-01-01T00:00:00.000Z');
     expect(new Date(component.dcaForm.get('endDate')?.value as Date).toISOString()).toBe('2024-01-10T00:00:00.000Z');
+  });
+
+  it('uses delta preset on backtest (single symbol)', () => {
+    fixture.detectChanges();
+    flushInitRequests();
+
+    component.selectRun('backtests');
+    component.backtestForm.patchValue({
+      useDeltaPreset: true,
+      deltaQueryInsertedType: 'CRYPTO'
+    } as any);
+
+    component.loadBacktestDeltaRanges();
+    const req = httpMock.expectOne(`${environment.apiUrl}/api/data-import/ranges?insertedType=CRYPTO&limit=200`);
+    req.flush([
+      {
+        symbol: 'BTCUSDT',
+        insertedType: 'CRYPTO',
+        startDate: '2024-01-02T00:00:00Z',
+        endDate: '2024-01-20T00:00:00Z',
+        timeframe: '1h',
+        insertedAt: '2026-02-20T10:00:00Z'
+      }
+    ]);
+
+    component.backtestForm.patchValue({
+      deltaPresetSymbol: 'BTCUSDT',
+      deltaPresetTimeframe: '1h'
+    } as any);
+
+    const payload = component.buildRunRequest() as any;
+    expect(payload.runType).toBe('backtest');
+    expect(payload.data.symbol).toBe('BTCUSDT');
+    expect(payload.data.timeframe).toBe('1h');
+    expect(payload.data.startDate).toBe('2024-01-02T00:00:00.000Z');
+    expect(payload.data.endDate).toBe('2024-01-20T00:00:00.000Z');
+  });
+
+  it('uses delta preset on market-stats (single symbol)', () => {
+    fixture.detectChanges();
+    flushInitRequests();
+
+    component.selectRun('market-stats');
+    component.marketStatsForm.patchValue({
+      useDeltaPreset: true,
+      deltaQueryInsertedType: 'CRYPTO'
+    } as any);
+
+    component.loadMarketStatsDeltaRanges();
+    const req = httpMock.expectOne(`${environment.apiUrl}/api/data-import/ranges?insertedType=CRYPTO&limit=200`);
+    req.flush([
+      {
+        symbol: 'BTCUSDT',
+        insertedType: 'CRYPTO',
+        startDate: '2024-01-02T00:00:00Z',
+        endDate: '2024-01-20T00:00:00Z',
+        timeframe: '4h',
+        insertedAt: '2026-02-20T10:00:00Z'
+      }
+    ]);
+
+    component.marketStatsForm.patchValue({
+      deltaPresetSymbol: 'BTCUSDT',
+      deltaPresetTimeframe: '4h'
+    } as any);
+
+    const payload = component.buildRunRequest() as any;
+    expect(payload.runType).toBe('market_stats');
+    expect(payload.data.symbol).toBe('BTCUSDT');
+    expect(payload.data.timeframe).toBe('4h');
+  });
+
+  it('uses delta preset on seasonality (single symbol) and maps period to years', () => {
+    fixture.detectChanges();
+    flushInitRequests();
+
+    component.selectRun('seasonality');
+    component.seasonalityForm.patchValue({
+      useDeltaPreset: true,
+      deltaQueryInsertedType: 'CRYPTO'
+    } as any);
+
+    component.loadSeasonalityDeltaRanges();
+    const req = httpMock.expectOne(`${environment.apiUrl}/api/data-import/ranges?insertedType=CRYPTO&limit=200`);
+    req.flush([
+      {
+        symbol: 'BTCUSDT',
+        insertedType: 'CRYPTO',
+        startDate: '2021-03-01T00:00:00Z',
+        endDate: '2024-08-01T00:00:00Z',
+        timeframe: '1d',
+        insertedAt: '2026-02-20T10:00:00Z'
+      }
+    ]);
+
+    component.seasonalityForm.patchValue({
+      deltaPresetSymbol: 'BTCUSDT',
+      deltaPresetTimeframe: '1d'
+    } as any);
+
+    const payload = component.buildRunRequest() as any;
+    expect(payload.runType).toBe('seasonality');
+    expect(payload.data.symbol).toBe('BTCUSDT');
+    expect(payload.data.timeframe).toBe('1d');
+    expect(payload.data.startYear).toBe(2021);
+    expect(payload.data.endYear).toBe(2024);
   });
 });

@@ -55,6 +55,7 @@ function mapDcaPayload(payload: RunRequestInput): Record<string, unknown> {
   const filters = payload.filters?.filters?.map(item => item.id) ?? [];
   const rules = payload.filters?.rules?.map(item => item.id) ?? [];
   const params = payload.strategy.params as any;
+  const universe = (payload.universe ?? ((payload.data as any)?.universe ?? [])) as Array<{ symbol?: string }>;
   return {
     symbol: payload.data.symbol,
     timeframe: payload.data.timeframe,
@@ -76,7 +77,7 @@ function mapDcaPayload(payload: RunRequestInput): Record<string, unknown> {
     resetOnNewHigh: params.resetOnNewHigh,
     rearmOnReboundPct: params.rearmOnReboundPct,
     forceCloseEnd: params.forceCloseEnd,
-    universe: payload.data.universe?.map(item => item.symbol) ?? [],
+    universe: universe.map(item => String(item.symbol ?? '').trim()).filter(Boolean),
     filters,
     filterRules: rules,
     filterRuleMinScore: payload.filters?.rulesConfig?.minScore,
@@ -165,16 +166,33 @@ function mapBacktestPayload(payload: RunRequestInput): Record<string, unknown> {
   }
   const filters = payload.filters?.filters?.map(item => item.id) ?? [];
   const rules = payload.filters?.rules?.map(item => item.id) ?? [];
-  const strategy = payload.strategy as any;
+  const strategy = (payload.strategy ?? {}) as any;
   const params = strategy.params ?? {};
   const tpSl = strategy.tpSl ?? params.tpSl ?? {};
   const screening = strategy.screening ?? params.screening ?? {};
+  const data = payload.data as any;
+  const source = String(data.source ?? '').trim().toLowerCase();
+  const hasMysql = data.mysql && typeof data.mysql === 'object';
+  const sourceMode = source === 'csv'
+    ? 'csv_path'
+    : source === 'mysql' || hasMysql
+      ? 'mysql_config'
+      : 'auto';
   return {
-    strategy: payload.strategy.name,
+    strategy: strategy.name,
     symbol: payload.data.symbol,
     timeframe: payload.data.timeframe,
     startDate: payload.data.startDate,
     endDate: payload.data.endDate,
+    sourceMode,
+    csvPath: data.path,
+    mysqlEnv: data.mysqlEnv,
+    mysqlHost: data.mysql?.host,
+    mysqlPort: data.mysql?.port,
+    mysqlDatabase: data.mysql?.database,
+    mysqlTable: data.mysql?.table,
+    mysqlUser: data.mysql?.user,
+    mysqlPassword: data.mysql?.password,
     capital: payload.performance?.initialCapital,
     riskPct: payload.performance?.riskPct,
     riskFreeRate: payload.performance?.riskFreeRatePct,

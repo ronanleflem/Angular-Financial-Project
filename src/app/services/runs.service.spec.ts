@@ -188,9 +188,9 @@ describe('RunsService', () => {
         symbol: 'BTCUSD',
         timeframe: '1h',
         startDate: '2024-01-01',
-        endDate: '2024-12-31',
-        universe: [{ symbol: 'BTCUSD', assetClass: 'Crypto' }]
+        endDate: '2024-12-31'
       },
+      universe: [{ symbol: 'BTCUSD', assetClass: 'Crypto' }],
       strategy: {
         type: 'dca_equity',
         params: {

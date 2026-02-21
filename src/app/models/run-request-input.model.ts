@@ -102,10 +102,23 @@ export interface DcaDataBlock extends DataBlockBase, PeriodBlock {
   feePct?: number;
   broker?: string;
   reinvestDividends?: boolean;
-  universe?: UniverseItem[];
 }
 
-export interface BacktestDataBlock extends DataBlockBase, PeriodBlock {}
+export interface BacktestMySqlDataSpec {
+  host?: string;
+  port?: number;
+  database?: string;
+  table?: string;
+  user?: string;
+  password?: string;
+}
+
+export interface BacktestDataBlock extends DataBlockBase, PeriodBlock {
+  source?: string;
+  path?: string;
+  mysqlEnv?: string;
+  mysql?: BacktestMySqlDataSpec;
+}
 
 export interface BacktestSignalBlock {
   type: string;
@@ -311,6 +324,7 @@ export type RunRequestInput =
   | {
       runType: 'dca';
       data: DcaDataBlock;
+      universe?: UniverseItem[];
       strategy: DcaStrategyCore;
       filters?: BacktestFiltersBlock;
       performance?: PerformanceBlock;
@@ -318,7 +332,7 @@ export type RunRequestInput =
   | {
       runType: 'backtest';
       data: BacktestDataBlock;
-      strategy: { name: string; params?: BacktestStrategyParamsBlock };
+      strategy?: { name?: string; params?: BacktestStrategyParamsBlock };
       signal: BacktestSignalBlock;
       filters?: BacktestFiltersBlock;
       performance?: PerformanceBlock;
@@ -372,7 +386,6 @@ export function validateRunRequest(input: RunRequestInput): ValidationError[] {
       validateRequired(errors, 'data.timeframe', input.data.timeframe);
       validateRequired(errors, 'data.startDate', input.data.startDate);
       validateRequired(errors, 'data.endDate', input.data.endDate);
-      validateRequired(errors, 'strategy.name', input.strategy.name);
       validateDateOrder(errors, 'data.startDate', 'data.endDate', input.data.startDate, input.data.endDate);
       validateBacktestSignal(errors, input.signal);
       break;

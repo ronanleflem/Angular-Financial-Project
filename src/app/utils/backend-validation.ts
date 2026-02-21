@@ -180,6 +180,32 @@ function mapDataField(segments: string[], runTheme: RunTheme): string | null {
       return runTheme === 'dca' || runTheme === 'backtests' || runTheme === 'stress-tests' ? 'endDate' : null;
     case 'strategy_name':
       return runTheme === 'backtests' ? 'strategy' : null;
+    case 'source':
+      return runTheme === 'backtests' ? 'sourceMode' : null;
+    case 'path':
+      return runTheme === 'backtests' ? 'csvPath' : null;
+    case 'mysql_env':
+      return runTheme === 'backtests' ? 'mysqlEnv' : null;
+    case 'mysql':
+      if (runTheme !== 'backtests') {
+        return null;
+      }
+      switch (segments[1]) {
+        case 'host':
+          return 'mysqlHost';
+        case 'port':
+          return 'mysqlPort';
+        case 'database':
+          return 'mysqlDatabase';
+        case 'table':
+          return 'mysqlTable';
+        case 'user':
+          return 'mysqlUser';
+        case 'password':
+          return 'mysqlPassword';
+        default:
+          return null;
+      }
     case 'lookback':
       return runTheme === 'market-stats' ? 'lookback' : null;
     case 'stats_pack':

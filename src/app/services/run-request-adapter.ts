@@ -56,6 +56,19 @@ export function mapRunRequestToCanonical(
 
 function normalizeCanonicalInput(input: RunRequestInput): Record<string, unknown> {
   const { runType, ...rest } = input as RunRequestInput & Record<string, unknown>;
+  if (runType === 'backtest') {
+    const strategy = ((rest['strategy'] ?? {}) as Record<string, unknown>);
+    if (!strategy || typeof strategy !== 'object') {
+      return rest;
+    }
+    const { name, ...strategyWithoutName } = strategy as Record<string, unknown>;
+    void name;
+    return {
+      ...rest,
+      strategy: Object.keys(strategyWithoutName).length > 0 ? strategyWithoutName : undefined
+    };
+  }
+
   if (runType !== 'dca') {
     return rest;
   }

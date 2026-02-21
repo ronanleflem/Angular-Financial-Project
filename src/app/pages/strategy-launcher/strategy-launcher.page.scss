@@ -551,6 +551,13 @@
   color: #dc2626;
 }
 
+.delta-ranges-list {
+  max-height: 220px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 0.35rem;
+}
+
 @media (max-width: 768px) {
   :host {
     padding: 1.25rem;

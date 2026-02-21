@@ -24,6 +24,7 @@ import {
   DcaTpSlBlock,
   BacktestTpSlBlock,
   BacktestScreeningBlock,
+  BacktestStrategyParamsBlock,
   BacktestFiltersBlock,
   MarketStatsBlock,
   MarketStatsPersistenceBlock,
@@ -115,6 +116,7 @@ type RunKey = 'dca' | 'backtests' | 'market-stats' | 'seasonality' | 'stress-tes
 type DcaStrategyType = 'dca_equity' | 'dca_etf' | 'crypto_grid';
 type DcaParamTab = 'params' | 'stress';
 type BacktestParamTab = 'params' | 'stress';
+type BacktestSourceMode = 'auto' | 'csv_path' | 'mysql_config';
 
 interface UiValidationError {
   source: 'local' | 'backend';
@@ -176,6 +178,12 @@ interface SeasonalityOption {
 interface DeltaPresetPeriod {
   startDate: string;
   endDate: string;
+}
+
+interface BacktestSourceResolution {
+  implicitSupported: boolean;
+  csvSupported: boolean;
+  mysqlSupported: boolean;
 }
 
 const DEFAULT_FILTER_OPTIONS: FilterOption[] = [
@@ -277,6 +285,11 @@ export class StrategyLauncherPageComponent {
   readonly dcaTpSlModes = ['rule_based'];
   readonly deltaInsertedTypes: DeltaInsertedType[] = ['CRYPTO', 'ETF', 'FOREX', 'STOCK'];
   readonly dcaTpSlPresets = ['none', 'tp_2_sl_1', 'tp_3_sl_1.5'];
+  readonly backtestSourceModeOptions: Array<{ value: BacktestSourceMode; label: string }> = [
+    { value: 'auto', label: 'Auto (backend resolution)' },
+    { value: 'csv_path', label: 'CSV path' },
+    { value: 'mysql_config', label: 'MySQL config' }
+  ];
   readonly dcaUniverseOptions = [
     { id: 'SPY', label: 'SPY', assetClass: 'ETF', exchange: 'NYSE', broker: 'IBKR' },
     { id: 'QQQ', label: 'QQQ', assetClass: 'ETF', exchange: 'NASDAQ', broker: 'IBKR' },
@@ -504,6 +517,21 @@ export class StrategyLauncherPageComponent {
     timeframe: '1h',
     startDate: new Date(2019, 0, 1),
     endDate: new Date(2024, 11, 31),
+    useDeltaPreset: false,
+    deltaQuerySymbol: '',
+    deltaQueryInsertedType: 'CRYPTO' as DeltaInsertedType,
+    deltaQueryTimeframe: '',
+    deltaPresetSymbol: '',
+    deltaPresetTimeframe: '',
+    sourceMode: 'auto' as BacktestSourceMode,
+    csvPath: '',
+    mysqlEnv: '',
+    mysqlHost: '',
+    mysqlPort: 3306,
+    mysqlDatabase: '',
+    mysqlTable: '',
+    mysqlUser: '',
+    mysqlPassword: '',
     capital: 10000,
     riskPct: 1.0,
     stopLoss: 2.0,
@@ -560,6 +588,12 @@ export class StrategyLauncherPageComponent {
   private readonly statsDefaults = {
     symbol: 'BTCUSD',
     timeframe: '4h',
+    useDeltaPreset: false,
+    deltaQuerySymbol: '',
+    deltaQueryInsertedType: 'CRYPTO' as DeltaInsertedType,
+    deltaQueryTimeframe: '',
+    deltaPresetSymbol: '',
+    deltaPresetTimeframe: '',
     lookback: 500,
     statsPack: 'Volatility',
     session: 'Full',
@@ -598,6 +632,12 @@ export class StrategyLauncherPageComponent {
   private readonly seasonalityDefaults = {
     symbol: 'SPY',
     timeframe: '1d',
+    useDeltaPreset: false,
+    deltaQuerySymbol: '',
+    deltaQueryInsertedType: 'CRYPTO' as DeltaInsertedType,
+    deltaQueryTimeframe: '',
+    deltaPresetSymbol: '',
+    deltaPresetTimeframe: '',
     window: 'Monthly',
     startYear: 2010,
     endYear: 2024,
@@ -774,6 +814,21 @@ export class StrategyLauncherPageComponent {
       timeframe: [this.backtestDefaults.timeframe, Validators.required],
       startDate: [this.backtestDefaults.startDate, Validators.required],
       endDate: [this.backtestDefaults.endDate, Validators.required],
+      useDeltaPreset: [this.backtestDefaults.useDeltaPreset],
+      deltaQuerySymbol: [this.backtestDefaults.deltaQuerySymbol],
+      deltaQueryInsertedType: [this.backtestDefaults.deltaQueryInsertedType],
+      deltaQueryTimeframe: [this.backtestDefaults.deltaQueryTimeframe],
+      deltaPresetSymbol: [this.backtestDefaults.deltaPresetSymbol],
+      deltaPresetTimeframe: [this.backtestDefaults.deltaPresetTimeframe],
+      sourceMode: [this.backtestDefaults.sourceMode, Validators.required],
+      csvPath: [this.backtestDefaults.csvPath],
+      mysqlEnv: [this.backtestDefaults.mysqlEnv],
+      mysqlHost: [this.backtestDefaults.mysqlHost],
+      mysqlPort: [this.backtestDefaults.mysqlPort, [Validators.min(1)]],
+      mysqlDatabase: [this.backtestDefaults.mysqlDatabase],
+      mysqlTable: [this.backtestDefaults.mysqlTable],
+      mysqlUser: [this.backtestDefaults.mysqlUser],
+      mysqlPassword: [this.backtestDefaults.mysqlPassword],
       capital: [this.backtestDefaults.capital, [Validators.required, Validators.min(1000)]],
       riskPct: [this.backtestDefaults.riskPct, [Validators.min(0.1)]],
       stopLoss: [this.backtestDefaults.stopLoss, [Validators.min(0.1)]],
@@ -831,12 +886,18 @@ export class StrategyLauncherPageComponent {
       presetName: [''],
       presetId: ['']
     },
-    { validators: dateRangeValidator('startDate', 'endDate') }
+    { validators: [dateRangeValidator('startDate', 'endDate'), control => this.backtestSourceModeValidator(control)] }
   );
 
   readonly marketStatsForm = this.fb.group({
     symbol: [this.statsDefaults.symbol, [Validators.required, symbolListValidator(this.symbols)]],
     timeframe: [this.statsDefaults.timeframe, Validators.required],
+    useDeltaPreset: [this.statsDefaults.useDeltaPreset],
+    deltaQuerySymbol: [this.statsDefaults.deltaQuerySymbol],
+    deltaQueryInsertedType: [this.statsDefaults.deltaQueryInsertedType],
+    deltaQueryTimeframe: [this.statsDefaults.deltaQueryTimeframe],
+    deltaPresetSymbol: [this.statsDefaults.deltaPresetSymbol],
+    deltaPresetTimeframe: [this.statsDefaults.deltaPresetTimeframe],
     lookback: [this.statsDefaults.lookback, [Validators.min(100), Validators.max(5000)]],
     statsPack: [this.statsDefaults.statsPack, Validators.required],
     session: [this.statsDefaults.session],
@@ -877,6 +938,12 @@ export class StrategyLauncherPageComponent {
   readonly seasonalityForm = this.fb.group({
     symbol: [this.seasonalityDefaults.symbol, [Validators.required, symbolListValidator(this.symbols)]],
     timeframe: [this.seasonalityDefaults.timeframe, Validators.required],
+    useDeltaPreset: [this.seasonalityDefaults.useDeltaPreset],
+    deltaQuerySymbol: [this.seasonalityDefaults.deltaQuerySymbol],
+    deltaQueryInsertedType: [this.seasonalityDefaults.deltaQueryInsertedType],
+    deltaQueryTimeframe: [this.seasonalityDefaults.deltaQueryTimeframe],
+    deltaPresetSymbol: [this.seasonalityDefaults.deltaPresetSymbol],
+    deltaPresetTimeframe: [this.seasonalityDefaults.deltaPresetTimeframe],
     window: [this.seasonalityDefaults.window, Validators.required],
     startYear: [this.seasonalityDefaults.startYear, [Validators.min(1990)]],
     endYear: [this.seasonalityDefaults.endYear, [Validators.max(new Date().getFullYear())]],
@@ -1005,6 +1072,10 @@ export class StrategyLauncherPageComponent {
   readonly dcaLegacyOnlyFields = signal<string[]>([]);
   readonly dcaLegacyNotes = signal<string[]>([]);
   readonly dcaUniverseCanonicalSupported = signal(false);
+  readonly backtestCapabilitiesInfo = signal<string | null>(null);
+  readonly backtestCanonicalSupportedFields = signal<string[]>([]);
+  readonly backtestCanonicalAcceptedButNotWiredFields = signal<string[]>([]);
+  readonly backtestImplicitSourceSupported = signal(true);
   readonly presetMessages = signal<Record<RunKey, string | null>>({
     'dca': null,
     'backtests': null,
@@ -1017,15 +1088,25 @@ export class StrategyLauncherPageComponent {
   private supportedRuleIds = new Set<string>();
   private supportedDcaGridPresets = new Set<string>();
   private hasCapabilitiesFilterSupport = false;
+  private backtestCapabilitiesAvailable = false;
+  private backtestSupportedFields = new Set<string>();
+  private backtestAcceptedButNotWiredFields = new Set<string>();
+  private backtestCsvSourceSupported = true;
+  private backtestMysqlSourceSupported = true;
 
   constructor() {
     this.setUniverseControlAvailability(false);
     this.bindStressAdvancedControls();
     this.bindDcaDeltaPresetControls();
+    this.bindBacktestDeltaPresetControls();
+    this.bindBacktestSourceControls();
+    this.bindMarketStatsDeltaPresetControls();
+    this.bindSeasonalityDeltaPresetControls();
     this.runForSelection(this.selectedRun());
     this.loadPresets();
     this.loadCatalog();
     this.loadDcaCapabilities();
+    this.loadBacktestCapabilities();
   }
 
   private bindStressAdvancedControls(): void {
@@ -1098,6 +1179,36 @@ export class StrategyLauncherPageComponent {
     this.loadDeltaRanges();
   }
 
+  onBacktestUseDeltaPresetChange(event: MatCheckboxChange): void {
+    if (!event.checked) {
+      return;
+    }
+    if (this.deltaRanges().length > 0 || this.deltaRangesLoading()) {
+      return;
+    }
+    this.loadBacktestDeltaRanges();
+  }
+
+  onMarketStatsUseDeltaPresetChange(event: MatCheckboxChange): void {
+    if (!event.checked) {
+      return;
+    }
+    if (this.deltaRanges().length > 0 || this.deltaRangesLoading()) {
+      return;
+    }
+    this.loadMarketStatsDeltaRanges();
+  }
+
+  onSeasonalityUseDeltaPresetChange(event: MatCheckboxChange): void {
+    if (!event.checked) {
+      return;
+    }
+    if (this.deltaRanges().length > 0 || this.deltaRangesLoading()) {
+      return;
+    }
+    this.loadSeasonalityDeltaRanges();
+  }
+
   loadDeltaRanges(): void {
     if (this.deltaRangesLoading()) {
       return;
@@ -1131,6 +1242,18 @@ export class StrategyLauncherPageComponent {
           this.deltaRangesError.set('Impossible de charger les presets Delta.');
         }
       });
+  }
+
+  loadBacktestDeltaRanges(): void {
+    this.loadDeltaRangesForForm(this.backtestForm);
+  }
+
+  loadMarketStatsDeltaRanges(): void {
+    this.loadDeltaRangesForForm(this.marketStatsForm);
+  }
+
+  loadSeasonalityDeltaRanges(): void {
+    this.loadDeltaRangesForForm(this.seasonalityForm);
   }
 
   deltaAvailableSymbols(): string[] {
@@ -1181,6 +1304,45 @@ export class StrategyLauncherPageComponent {
     return `${period.startDate} -> ${period.endDate}`;
   }
 
+  backtestDeltaAvailableSymbols(): string[] {
+    return this.deltaAvailableSymbolsForForm(this.backtestForm);
+  }
+
+  backtestDeltaAvailableTimeframes(): string[] {
+    return this.deltaAvailableTimeframesForForm(this.backtestForm);
+  }
+
+  backtestSelectedDeltaPeriodLabel(): string {
+    const period = this.selectedDeltaPeriodForForm(this.backtestForm);
+    return period ? `${period.startDate} -> ${period.endDate}` : '';
+  }
+
+  marketStatsDeltaAvailableSymbols(): string[] {
+    return this.deltaAvailableSymbolsForForm(this.marketStatsForm);
+  }
+
+  marketStatsDeltaAvailableTimeframes(): string[] {
+    return this.deltaAvailableTimeframesForForm(this.marketStatsForm);
+  }
+
+  marketStatsSelectedDeltaPeriodLabel(): string {
+    const period = this.selectedDeltaPeriodForForm(this.marketStatsForm);
+    return period ? `${period.startDate} -> ${period.endDate}` : '';
+  }
+
+  seasonalityDeltaAvailableSymbols(): string[] {
+    return this.deltaAvailableSymbolsForForm(this.seasonalityForm);
+  }
+
+  seasonalityDeltaAvailableTimeframes(): string[] {
+    return this.deltaAvailableTimeframesForForm(this.seasonalityForm);
+  }
+
+  seasonalitySelectedDeltaPeriodLabel(): string {
+    const period = this.selectedDeltaPeriodForForm(this.seasonalityForm);
+    return period ? `${period.startDate} -> ${period.endDate}` : '';
+  }
+
   private syncDeltaPresetSelection(): void {
     const symbolControl = this.dcaForm.get('deltaPresetSymbols');
     const timeframeControl = this.dcaForm.get('deltaPresetTimeframe');
@@ -1221,6 +1383,252 @@ export class StrategyLauncherPageComponent {
     }
     const single = String(value ?? '').trim();
     return single ? [single] : [];
+  }
+
+  private bindBacktestDeltaPresetControls(): void {
+    this.bindSingleDeltaPresetControls(this.backtestForm, period => {
+      const startControl = this.backtestForm.get('startDate');
+      const endControl = this.backtestForm.get('endDate');
+      if (!startControl || !endControl) {
+        return;
+      }
+      startControl.setValue(new Date(period.startDate) as any, { emitEvent: false });
+      endControl.setValue(new Date(period.endDate) as any, { emitEvent: false });
+    });
+  }
+
+  private bindBacktestSourceControls(): void {
+    const sourceMode = this.backtestForm.get('sourceMode');
+    if (!sourceMode) {
+      return;
+    }
+    sourceMode.valueChanges.subscribe(() => {
+      this.backtestForm.updateValueAndValidity({ emitEvent: false });
+    });
+  }
+
+  backtestSourceModeAvailable(mode: BacktestSourceMode): boolean {
+    const implicitSupported = typeof this.backtestImplicitSourceSupported === 'function'
+      ? this.backtestImplicitSourceSupported()
+      : true;
+    if (mode === 'auto') {
+      return implicitSupported;
+    }
+    if (mode === 'csv_path') {
+      return this.backtestCsvSourceSupported;
+    }
+    if (mode === 'mysql_config') {
+      return this.backtestMysqlSourceSupported;
+    }
+    return false;
+  }
+
+  private backtestSourceModeValidator(control?: AbstractControl | null): ValidationErrors | null {
+    const form = control as UntypedFormGroup | null;
+    if (!form?.get) {
+      return null;
+    }
+    const implicitSupported = typeof this.backtestImplicitSourceSupported === 'function'
+      ? this.backtestImplicitSourceSupported()
+      : true;
+    const mode = String(form.get('sourceMode')?.value ?? this.backtestDefaults.sourceMode) as BacktestSourceMode;
+    if (mode === 'auto') {
+      return implicitSupported ? null : { sourceRequired: true };
+    }
+    if (mode === 'csv_path') {
+      const csvPath = String(form.get('csvPath')?.value ?? '').trim();
+      return csvPath ? null : { sourcePathRequired: true };
+    }
+    if (mode === 'mysql_config') {
+      const mysqlEnv = String(form.get('mysqlEnv')?.value ?? '').trim();
+      const mysqlHost = String(form.get('mysqlHost')?.value ?? '').trim();
+      const mysqlDatabase = String(form.get('mysqlDatabase')?.value ?? '').trim();
+      const mysqlTable = String(form.get('mysqlTable')?.value ?? '').trim();
+      if (mysqlEnv || (mysqlHost && mysqlDatabase && mysqlTable)) {
+        return null;
+      }
+      return { sourceMysqlRequired: true };
+    }
+    return { sourceModeInvalid: true };
+  }
+
+  private bindMarketStatsDeltaPresetControls(): void {
+    this.bindSingleDeltaPresetControls(this.marketStatsForm);
+  }
+
+  private bindSeasonalityDeltaPresetControls(): void {
+    this.bindSingleDeltaPresetControls(this.seasonalityForm, period => {
+      const startYearControl = this.seasonalityForm.get('startYear');
+      const endYearControl = this.seasonalityForm.get('endYear');
+      if (!startYearControl || !endYearControl) {
+        return;
+      }
+      startYearControl.setValue(new Date(period.startDate).getUTCFullYear() as any, { emitEvent: false });
+      endYearControl.setValue(new Date(period.endDate).getUTCFullYear() as any, { emitEvent: false });
+    });
+  }
+
+  private bindSingleDeltaPresetControls(
+    form: UntypedFormGroup,
+    applyPeriod?: (period: DeltaPresetPeriod) => void
+  ): void {
+    const useDeltaPreset = form.get('useDeltaPreset');
+    const deltaPresetSymbol = form.get('deltaPresetSymbol');
+    const deltaPresetTimeframe = form.get('deltaPresetTimeframe');
+    const symbol = form.get('symbol');
+    const timeframe = form.get('timeframe');
+    if (!useDeltaPreset || !deltaPresetSymbol || !deltaPresetTimeframe || !symbol || !timeframe) {
+      return;
+    }
+
+    const startDate = form.get('startDate');
+    const endDate = form.get('endDate');
+    const applyState = (enabled: boolean) => {
+      if (enabled) {
+        symbol.disable({ emitEvent: false });
+        timeframe.disable({ emitEvent: false });
+        startDate?.disable({ emitEvent: false });
+        endDate?.disable({ emitEvent: false });
+        deltaPresetSymbol.setValidators([Validators.required]);
+        deltaPresetTimeframe.setValidators([Validators.required]);
+      } else {
+        symbol.enable({ emitEvent: false });
+        timeframe.enable({ emitEvent: false });
+        startDate?.enable({ emitEvent: false });
+        endDate?.enable({ emitEvent: false });
+        deltaPresetSymbol.clearValidators();
+        deltaPresetTimeframe.clearValidators();
+      }
+      deltaPresetSymbol.updateValueAndValidity({ emitEvent: false });
+      deltaPresetTimeframe.updateValueAndValidity({ emitEvent: false });
+    };
+
+    applyState(Boolean(useDeltaPreset.value));
+    useDeltaPreset.valueChanges.subscribe(value => applyState(Boolean(value)));
+    deltaPresetSymbol.valueChanges.subscribe(() => this.syncSingleDeltaPresetSelection(form, applyPeriod));
+    deltaPresetTimeframe.valueChanges.subscribe(() => this.syncSingleDeltaPresetSelection(form, applyPeriod));
+  }
+
+  private loadDeltaRangesForForm(form: UntypedFormGroup): void {
+    if (this.deltaRangesLoading()) {
+      return;
+    }
+    const raw = form.getRawValue() as Record<string, unknown>;
+    const filters: DeltaIngestionRangeFilters = {
+      symbol: String(raw['deltaQuerySymbol'] ?? '').trim() || undefined,
+      insertedType: (String(raw['deltaQueryInsertedType'] ?? '').trim() as DeltaInsertedType) || undefined,
+      timeframe: String(raw['deltaQueryTimeframe'] ?? '').trim() || undefined,
+      limit: 200
+    };
+
+    this.deltaRangesLoading.set(true);
+    this.deltaRangesError.set(null);
+    this.dataImportRangesApi
+      .getRanges(filters)
+      .pipe(finalize(() => this.deltaRangesLoading.set(false)))
+      .subscribe({
+        next: ranges => {
+          const sorted = [...ranges].sort((a, b) => {
+            const left = new Date(a.insertedAt).getTime();
+            const right = new Date(b.insertedAt).getTime();
+            return right - left;
+          });
+          this.deltaRanges.set(sorted);
+          this.syncSingleDeltaPresetSelection(form, this.singleDeltaPeriodApplierForForm(form));
+        },
+        error: err => {
+          console.error('[StrategyLauncher] Failed to load delta ranges', err);
+          this.deltaRanges.set([]);
+          this.deltaRangesError.set('Impossible de charger les presets Delta.');
+        }
+      });
+  }
+
+  private singleDeltaPeriodApplierForForm(
+    form: UntypedFormGroup
+  ): ((period: DeltaPresetPeriod) => void) | undefined {
+    if (form === this.backtestForm) {
+      return period => {
+        this.backtestForm.get('startDate')?.setValue(new Date(period.startDate) as any, { emitEvent: false });
+        this.backtestForm.get('endDate')?.setValue(new Date(period.endDate) as any, { emitEvent: false });
+      };
+    }
+    if (form === this.seasonalityForm) {
+      return period => {
+        this.seasonalityForm.get('startYear')?.setValue(new Date(period.startDate).getUTCFullYear() as any, { emitEvent: false });
+        this.seasonalityForm.get('endYear')?.setValue(new Date(period.endDate).getUTCFullYear() as any, { emitEvent: false });
+      };
+    }
+    return undefined;
+  }
+
+  private deltaAvailableSymbolsForForm(form: UntypedFormGroup): string[] {
+    return Array.from(new Set(this.deltaRanges().map(item => item.symbol).filter(Boolean))).sort();
+  }
+
+  private deltaAvailableTimeframesForForm(form: UntypedFormGroup): string[] {
+    const symbol = String(form.get('deltaPresetSymbol')?.value ?? '').trim();
+    if (!symbol) {
+      return [];
+    }
+    return Array.from(
+      new Set(
+        this.deltaRanges()
+          .filter(item => item.symbol === symbol)
+          .map(item => item.timeframe)
+          .filter(Boolean)
+      )
+    ).sort();
+  }
+
+  private selectedDeltaPeriodForForm(form: UntypedFormGroup): DeltaPresetPeriod | null {
+    const symbol = String(form.get('deltaPresetSymbol')?.value ?? '').trim();
+    const timeframe = String(form.get('deltaPresetTimeframe')?.value ?? '').trim();
+    if (!symbol || !timeframe) {
+      return null;
+    }
+    const rows = this.deltaRanges().filter(item => item.symbol === symbol && item.timeframe === timeframe);
+    if (rows.length === 0) {
+      return null;
+    }
+    const starts = rows.map(item => new Date(item.startDate).getTime()).filter(Number.isFinite);
+    const ends = rows.map(item => new Date(item.endDate).getTime()).filter(Number.isFinite);
+    if (starts.length === 0 || ends.length === 0) {
+      return null;
+    }
+    return {
+      startDate: new Date(Math.min(...starts)).toISOString(),
+      endDate: new Date(Math.max(...ends)).toISOString()
+    };
+  }
+
+  private syncSingleDeltaPresetSelection(
+    form: UntypedFormGroup,
+    applyPeriod?: (period: DeltaPresetPeriod) => void
+  ): void {
+    const symbolControl = form.get('deltaPresetSymbol');
+    const timeframeControl = form.get('deltaPresetTimeframe');
+    if (!symbolControl || !timeframeControl) {
+      return;
+    }
+    const symbols = this.deltaAvailableSymbolsForForm(form);
+    const currentSymbol = String(symbolControl.value ?? '').trim();
+    if (symbols.length > 0 && !symbols.includes(currentSymbol)) {
+      symbolControl.setValue(symbols[0] as any, { emitEvent: false });
+    }
+
+    const timeframes = this.deltaAvailableTimeframesForForm(form);
+    const currentTimeframe = String(timeframeControl.value ?? '').trim();
+    if (timeframes.length > 0 && !timeframes.includes(currentTimeframe)) {
+      timeframeControl.setValue(timeframes[0] as any, { emitEvent: false });
+    }
+
+    if (Boolean(form.get('useDeltaPreset')?.value)) {
+      const period = this.selectedDeltaPeriodForForm(form);
+      if (period && applyPeriod) {
+        applyPeriod(period);
+      }
+    }
   }
 
   selectRun(key: RunKey): void {
@@ -1275,6 +1683,23 @@ export class StrategyLauncherPageComponent {
 
   canUseCanonicalUniverse(): boolean {
     return this.dcaUniverseCanonicalSupported();
+  }
+
+  isBacktestFieldSupported(path: string): boolean {
+    if (!this.backtestCapabilitiesAvailable) {
+      return true;
+    }
+    return this.hasCapabilityField(this.backtestSupportedFields, path);
+  }
+
+  isBacktestFieldRuntimeWired(path: string): boolean {
+    if (!this.backtestCapabilitiesAvailable) {
+      return true;
+    }
+    if (!this.hasCapabilityField(this.backtestSupportedFields, path)) {
+      return false;
+    }
+    return !this.hasCapabilityFieldAtOrAbove(this.backtestAcceptedButNotWiredFields, path);
   }
 
   hasDcaCapabilitiesDetails(): boolean {
@@ -1562,7 +1987,7 @@ export class StrategyLauncherPageComponent {
           return;
         }
         const capabilitiesRecord = capabilities as Record<string, unknown>;
-        const canonicalFields = this.extractCanonicalDcaFields(capabilitiesRecord);
+        const canonicalFields = this.extractCanonicalFields(capabilitiesRecord);
         const presets = this.extractDcaPresetCapabilities(capabilitiesRecord);
         const gridPresets = this.extractDcaGridCapabilities(capabilities);
         const filterSupport = this.extractCapabilitiesFilterSupport(capabilitiesRecord);
@@ -1596,6 +2021,54 @@ export class StrategyLauncherPageComponent {
       });
   }
 
+  private loadBacktestCapabilities(): void {
+    this.runsService
+      .getRunCapabilities('backtest')
+      .pipe(
+        catchError(err => {
+          console.warn('[StrategyLauncher] /runs/capabilities(backtest) unavailable, fallback static mode', err);
+          this.backtestCapabilitiesAvailable = false;
+          this.backtestSupportedFields = new Set<string>();
+          this.backtestAcceptedButNotWiredFields = new Set<string>();
+          this.backtestImplicitSourceSupported.set(true);
+          this.backtestCsvSourceSupported = true;
+          this.backtestMysqlSourceSupported = true;
+          this.backtestCapabilitiesInfo.set('Capabilities backtest indisponibles, mode statique active.');
+          this.backtestCanonicalSupportedFields.set([]);
+          this.backtestCanonicalAcceptedButNotWiredFields.set([]);
+          this.applyBacktestSourceResolution({
+            implicitSupported: true,
+            csvSupported: true,
+            mysqlSupported: true
+          });
+          return of(null);
+        })
+      )
+      .subscribe(capabilities => {
+        if (!capabilities) {
+          return;
+        }
+        const capabilitiesRecord = capabilities as Record<string, unknown>;
+        const fields = this.extractCanonicalFields(capabilitiesRecord);
+        const filterSupport = this.extractCapabilitiesFilterSupport(capabilitiesRecord);
+        const sourceResolution = this.extractBacktestSourceResolution(capabilitiesRecord);
+        this.backtestCapabilitiesAvailable = fields.supported.length > 0 || fields.acceptedButNotWired.length > 0;
+        this.backtestSupportedFields = new Set(fields.supported);
+        this.backtestAcceptedButNotWiredFields = new Set(fields.acceptedButNotWired);
+        this.backtestCanonicalSupportedFields.set(fields.supported);
+        this.backtestCanonicalAcceptedButNotWiredFields.set(fields.acceptedButNotWired);
+        this.applyBacktestSourceResolution(sourceResolution);
+        if (filterSupport.filters.length > 0 || filterSupport.rules.length > 0) {
+          this.applyCapabilitiesFilterSupport(filterSupport);
+        }
+        this.backtestCapabilitiesInfo.set(
+          this.backtestCapabilitiesAvailable
+            ? 'Mode capabilities backtest actif.'
+            : null
+        );
+      });
+  }
+
   private extractDcaGridCapabilities(payload: Record<string, unknown>): string[] {
     const candidates: unknown[] = [
       (payload as any)?.presets?.supported?.strategy?.grid,
@@ -1625,7 +2098,7 @@ export class StrategyLauncherPageComponent {
     return [];
   }
 
-  private extractCanonicalDcaFields(payload: Record<string, unknown>): {
+  private extractCanonicalFields(payload: Record<string, unknown>): {
     supported: string[];
     acceptedButNotWired: string[];
   } {
@@ -1634,6 +2107,70 @@ export class StrategyLauncherPageComponent {
       supported: this.extractStringArray(fields['supported']),
       acceptedButNotWired: this.extractStringArray(fields['accepted_but_not_wired'])
     };
+  }
+
+  private extractBacktestSourceResolution(payload: Record<string, unknown>): BacktestSourceResolution {
+    const candidates: Array<Record<string, unknown> | null> = [
+      ((payload as any)?.data_source_resolution ?? null) as Record<string, unknown> | null,
+      ((payload as any)?.backtest?.data_source_resolution ?? null) as Record<string, unknown> | null,
+      ((payload as any)?.capabilities?.data_source_resolution ?? null) as Record<string, unknown> | null
+    ];
+    const resolution = candidates.find(candidate => candidate && typeof candidate === 'object');
+    if (!resolution) {
+      return { implicitSupported: true, csvSupported: true, mysqlSupported: true };
+    }
+
+    const supportedModes = this.extractStringArray(
+      resolution['supported_modes'] ?? resolution['modes'] ?? resolution['supported']
+    ).map(mode => mode.toLowerCase());
+    const hasModes = supportedModes.length > 0;
+    const implicitSupportedFromModes = supportedModes.some(mode =>
+      mode === 'auto' || mode === 'implicit' || mode === 'backend_resolution'
+    );
+    const csvSupportedFromModes = supportedModes.some(mode =>
+      mode === 'csv' || mode === 'csv_path' || mode === 'path'
+    );
+    const mysqlSupportedFromModes = supportedModes.some(mode =>
+      mode === 'mysql' || mode === 'mysql_config'
+    );
+    const implicitFlag = resolution['implicit_supported'];
+    const explicitRequiredFlag = resolution['explicit_required'];
+    return {
+      implicitSupported: typeof implicitFlag === 'boolean'
+        ? implicitFlag
+        : typeof explicitRequiredFlag === 'boolean'
+          ? !explicitRequiredFlag
+          : hasModes
+            ? implicitSupportedFromModes
+            : true,
+      csvSupported: hasModes ? csvSupportedFromModes : true,
+      mysqlSupported: hasModes ? mysqlSupportedFromModes : true
+    };
+  }
+
+  private applyBacktestSourceResolution(resolution: BacktestSourceResolution): void {
+    this.backtestImplicitSourceSupported.set(resolution.implicitSupported);
+    this.backtestCsvSourceSupported = resolution.csvSupported;
+    this.backtestMysqlSourceSupported = resolution.mysqlSupported;
+    const sourceModeControl = this.backtestForm.get('sourceMode');
+    if (!sourceModeControl) {
+      return;
+    }
+    const currentMode = String(sourceModeControl.value ?? this.backtestDefaults.sourceMode) as BacktestSourceMode;
+    const hasCurrentMode = this.backtestSourceModeAvailable(currentMode);
+    if (hasCurrentMode) {
+      this.backtestForm.updateValueAndValidity({ emitEvent: false });
+      return;
+    }
+    const fallbackMode: BacktestSourceMode = resolution.implicitSupported
+      ? 'auto'
+      : resolution.csvSupported
+        ? 'csv_path'
+        : resolution.mysqlSupported
+          ? 'mysql_config'
+          : 'auto';
+    sourceModeControl.setValue(fallbackMode as any, { emitEvent: false });
+    this.backtestForm.updateValueAndValidity({ emitEvent: false });
   }
 
   private isCanonicalUniverseField(fieldPath: string): boolean {
@@ -1750,6 +2287,44 @@ export class StrategyLauncherPageComponent {
       };
     }
     return { filters: [], rules: [] };
+  }
+
+  private hasCapabilityField(fields: ReadonlySet<string>, targetPath: string): boolean {
+    const target = String(targetPath).trim();
+    if (!target) {
+      return false;
+    }
+    for (const field of fields) {
+      const normalized = String(field).trim();
+      if (!normalized) {
+        continue;
+      }
+      if (
+        normalized === target ||
+        normalized.startsWith(`${target}.`) ||
+        target.startsWith(`${normalized}.`)
+      ) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private hasCapabilityFieldAtOrAbove(fields: ReadonlySet<string>, targetPath: string): boolean {
+    const target = String(targetPath).trim();
+    if (!target) {
+      return false;
+    }
+    for (const field of fields) {
+      const normalized = String(field).trim();
+      if (!normalized) {
+        continue;
+      }
+      if (normalized === target || target.startsWith(`${normalized}.`)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private applyCapabilitiesFilterSupport(support: { filters: string[]; rules: string[] }): void {
@@ -2179,9 +2754,9 @@ export class StrategyLauncherPageComponent {
         symbol: effectiveSymbol || this.dcaDefaults.symbol,
         timeframe: effectiveTimeframe || this.dcaDefaults.timeframe,
         startDate: effectiveStartDate,
-        endDate: effectiveEndDate,
-        universe: canUseUniverse ? selectedUniverse : undefined
+        endDate: effectiveEndDate
       },
+      universe: canUseUniverse ? selectedUniverse : undefined,
       strategy: params,
       filters: this.buildFiltersBlock(
         v.filters,
@@ -2205,34 +2780,100 @@ export class StrategyLauncherPageComponent {
 
   private buildBacktestRequest(): RunRequestInput {
     const v = this.backtestForm.getRawValue();
+    const useDeltaPreset = Boolean(v.useDeltaPreset);
+    const deltaPeriod = useDeltaPreset ? this.selectedDeltaPeriodForForm(this.backtestForm) : null;
+    const effectiveSymbol = useDeltaPreset
+      ? String(v.deltaPresetSymbol ?? '').trim()
+      : String(v.symbol ?? this.backtestDefaults.symbol);
+    const effectiveTimeframe = useDeltaPreset
+      ? String(v.deltaPresetTimeframe ?? '').trim()
+      : String(v.timeframe ?? this.backtestDefaults.timeframe);
+    const effectiveStartDate = useDeltaPreset && deltaPeriod
+      ? deltaPeriod.startDate
+      : toIsoDate(v.startDate ?? this.backtestDefaults.startDate);
+    const effectiveEndDate = useDeltaPreset && deltaPeriod
+      ? deltaPeriod.endDate
+      : toIsoDate(v.endDate ?? this.backtestDefaults.endDate);
+    const sourceMode = String(v.sourceMode ?? this.backtestDefaults.sourceMode) as BacktestSourceMode;
+    const includeTpSl = this.isBacktestFieldRuntimeWired('strategy.params.tp_sl');
+    const includeScreening = this.isBacktestFieldRuntimeWired('strategy.params.screening');
+    const includeFilters = this.isBacktestFieldRuntimeWired('filters');
+    const includeFilterRules = this.isBacktestFieldRuntimeWired('filters.rules');
+    const includePerformance = this.isBacktestFieldRuntimeWired('performance');
+    const strategyParams: Record<string, unknown> = {};
+    if (includeTpSl) {
+      strategyParams['tpSl'] = this.buildBacktestTpSl(v);
+    }
+    if (includeScreening) {
+      strategyParams['screening'] = this.buildBacktestScreening(v);
+    }
+    const strategy = Object.keys(strategyParams).length > 0
+      ? { params: strategyParams as BacktestStrategyParamsBlock }
+      : undefined;
+    const data: Record<string, unknown> = {
+      symbol: effectiveSymbol || this.backtestDefaults.symbol,
+      timeframe: effectiveTimeframe || this.backtestDefaults.timeframe,
+      startDate: effectiveStartDate,
+      endDate: effectiveEndDate
+    };
+    if (sourceMode === 'csv_path') {
+      const csvPath = String(v.csvPath ?? '').trim();
+      if (csvPath) {
+        data['source'] = 'csv';
+        data['path'] = csvPath;
+      }
+    } else if (sourceMode === 'mysql_config') {
+      data['source'] = 'mysql';
+      const mysqlEnv = String(v.mysqlEnv ?? '').trim();
+      if (mysqlEnv) {
+        data['mysqlEnv'] = mysqlEnv;
+      }
+      const mysqlHost = String(v.mysqlHost ?? '').trim();
+      const mysqlDatabase = String(v.mysqlDatabase ?? '').trim();
+      const mysqlTable = String(v.mysqlTable ?? '').trim();
+      const mysqlUser = String(v.mysqlUser ?? '').trim();
+      const mysqlPassword = String(v.mysqlPassword ?? '').trim();
+      const mysqlPort = Number(v.mysqlPort ?? 0);
+      const mysql: Record<string, unknown> = {};
+      if (mysqlHost) {
+        mysql['host'] = mysqlHost;
+      }
+      if (Number.isFinite(mysqlPort) && mysqlPort > 0) {
+        mysql['port'] = mysqlPort;
+      }
+      if (mysqlDatabase) {
+        mysql['database'] = mysqlDatabase;
+      }
+      if (mysqlTable) {
+        mysql['table'] = mysqlTable;
+      }
+      if (mysqlUser) {
+        mysql['user'] = mysqlUser;
+      }
+      if (mysqlPassword) {
+        mysql['password'] = mysqlPassword;
+      }
+      if (Object.keys(mysql).length > 0) {
+        data['mysql'] = mysql;
+      }
+    }
     return {
       runType: 'backtest',
-      data: {
-        symbol: String(v.symbol ?? this.backtestDefaults.symbol),
-        timeframe: String(v.timeframe ?? this.backtestDefaults.timeframe),
-        startDate: toIsoDate(v.startDate ?? this.backtestDefaults.startDate),
-        endDate: toIsoDate(v.endDate ?? this.backtestDefaults.endDate)
-      },
-      strategy: {
-        name: String(v.strategy ?? this.backtestDefaults.strategy),
-        params: {
-          tpSl: this.buildBacktestTpSl(v),
-          screening: this.buildBacktestScreening(v)
-        }
-      },
+      data: data as any,
+      strategy,
       signal: {
-        type: String(v.signalType ?? this.backtestDefaults.signalType),
+        type: 'ema_cross',
         fast: Number(v.fast ?? this.backtestDefaults.fast),
         slow: Number(v.slow ?? this.backtestDefaults.slow),
         requireCrossing: Boolean(v.requireCrossing ?? this.backtestDefaults.requireCrossing)
       },
-      filters: this.buildFiltersBlock(
+      filters: includeFilters ? this.buildFiltersBlock(
         v.filters,
-        v.filterRules,
+        includeFilterRules ? v.filterRules : [],
         v.filterRuleMinScore,
         v.filterRuleMinScorePct
-      ),
-      performance: v.includePerformance
+      ) : undefined,
+      performance: includePerformance && v.includePerformance
         ? this.buildPerformanceBlock(
             v.capital,
             undefined,
@@ -2247,11 +2888,18 @@ export class StrategyLauncherPageComponent {
 
   private buildMarketStatsRequest(): RunRequestInput {
     const v = this.marketStatsForm.getRawValue();
+    const useDeltaPreset = Boolean(v.useDeltaPreset);
+    const effectiveSymbol = useDeltaPreset
+      ? String(v.deltaPresetSymbol ?? '').trim()
+      : String(v.symbol ?? this.statsDefaults.symbol);
+    const effectiveTimeframe = useDeltaPreset
+      ? String(v.deltaPresetTimeframe ?? '').trim()
+      : String(v.timeframe ?? this.statsDefaults.timeframe);
     return {
       runType: 'market_stats',
       data: {
-        symbol: String(v.symbol ?? this.statsDefaults.symbol),
-        timeframe: String(v.timeframe ?? this.statsDefaults.timeframe),
+        symbol: effectiveSymbol || this.statsDefaults.symbol,
+        timeframe: effectiveTimeframe || this.statsDefaults.timeframe,
         lookback: Number(v.lookback ?? this.statsDefaults.lookback),
         statsPack: String(v.statsPack ?? this.statsDefaults.statsPack),
         session: String(v.session ?? this.statsDefaults.session),
@@ -2265,14 +2913,28 @@ export class StrategyLauncherPageComponent {
 
   private buildSeasonalityRequest(): RunRequestInput {
     const v = this.seasonalityForm.getRawValue();
+    const useDeltaPreset = Boolean(v.useDeltaPreset);
+    const deltaPeriod = useDeltaPreset ? this.selectedDeltaPeriodForForm(this.seasonalityForm) : null;
+    const effectiveSymbol = useDeltaPreset
+      ? String(v.deltaPresetSymbol ?? '').trim()
+      : String(v.symbol ?? this.seasonalityDefaults.symbol);
+    const effectiveTimeframe = useDeltaPreset
+      ? String(v.deltaPresetTimeframe ?? '').trim()
+      : String(v.timeframe ?? this.seasonalityDefaults.timeframe);
+    const effectiveStartYear = useDeltaPreset && deltaPeriod
+      ? new Date(deltaPeriod.startDate).getUTCFullYear()
+      : Number(v.startYear ?? this.seasonalityDefaults.startYear);
+    const effectiveEndYear = useDeltaPreset && deltaPeriod
+      ? new Date(deltaPeriod.endDate).getUTCFullYear()
+      : Number(v.endYear ?? this.seasonalityDefaults.endYear);
     return {
       runType: 'seasonality',
       data: {
-        symbol: String(v.symbol ?? this.seasonalityDefaults.symbol),
-        timeframe: String(v.timeframe ?? this.seasonalityDefaults.timeframe),
+        symbol: effectiveSymbol || this.seasonalityDefaults.symbol,
+        timeframe: effectiveTimeframe || this.seasonalityDefaults.timeframe,
         window: String(v.window ?? this.seasonalityDefaults.window),
-        startYear: Number(v.startYear ?? this.seasonalityDefaults.startYear),
-        endYear: Number(v.endYear ?? this.seasonalityDefaults.endYear)
+        startYear: effectiveStartYear,
+        endYear: effectiveEndYear
       },
       seasonality: this.buildSeasonalityBlock(v),
       persistence: this.buildSeasonalityPersistence(v),
