@@ -42,7 +42,7 @@
               <mat-label>Symbole</mat-label>
               <input matInput type="text" [matAutocomplete]="symbolAutoDca" formControlName="symbol" />
               <mat-autocomplete #symbolAutoDca="matAutocomplete" autoActiveFirstOption>
-                <mat-option *ngFor="let symbol of symbols" [value]="symbol">{{ symbol }}</mat-option>
+                <mat-option *ngFor="let symbol of symbols" [value]="symbol">{{ displaySymbol(symbol) }}</mat-option>
               </mat-autocomplete>
             </mat-form-field>
 
@@ -67,7 +67,7 @@
             <mat-form-field appearance="outline">
               <mat-label>Symboles (multi)</mat-label>
               <mat-select multiple formControlName="symbols">
-                <mat-option *ngFor="let symbol of symbols" [value]="symbol">{{ symbol }}</mat-option>
+                <mat-option *ngFor="let symbol of symbols" [value]="symbol">{{ displaySymbol(symbol) }}</mat-option>
               </mat-select>
             </mat-form-field>
           </div>
@@ -115,7 +115,7 @@
               <div class="param-hint">Plages Delta (insertedAt desc)</div>
               <ul class="error-body delta-ranges-list">
                 <li *ngFor="let item of deltaRanges()">
-                  {{ item.symbol }} | {{ item.insertedType }} | {{ item.timeframe }} |
+                  {{ displaySymbol(item.symbol) }} | {{ item.insertedType }} | {{ item.timeframe }} |
                   {{ item.startDate }} -> {{ item.endDate }} | {{ item.insertedAt }}
                 </li>
               </ul>
@@ -125,7 +125,7 @@
               <mat-form-field appearance="outline">
                 <mat-label>Symboles</mat-label>
                 <mat-select multiple formControlName="deltaPresetSymbols">
-                  <mat-option *ngFor="let symbol of deltaAvailableSymbols()" [value]="symbol">{{ symbol }}</mat-option>
+                  <mat-option *ngFor="let symbol of deltaAvailableSymbols()" [value]="symbol">{{ displaySymbol(symbol) }}</mat-option>
                 </mat-select>
               </mat-form-field>
 
@@ -735,8 +735,15 @@
             <mat-label>Symbole</mat-label>
             <input matInput type="text" [matAutocomplete]="symbolAutoBacktest" formControlName="symbol" />
             <mat-autocomplete #symbolAutoBacktest="matAutocomplete" autoActiveFirstOption>
-              <mat-option *ngFor="let symbol of symbols" [value]="symbol">{{ symbol }}</mat-option>
+              <mat-option *ngFor="let symbol of symbols" [value]="symbol">{{ displaySymbol(symbol) }}</mat-option>
             </mat-autocomplete>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Classe d'actif</mat-label>
+            <mat-select formControlName="assetClass">
+              <mat-option *ngFor="let option of dcaAssetClasses" [value]="option">{{ option }}</mat-option>
+            </mat-select>
           </mat-form-field>
 
           <mat-form-field appearance="outline">
@@ -859,7 +866,7 @@
               <div class="param-hint">Plages Delta (insertedAt desc)</div>
               <ul class="error-body delta-ranges-list">
                 <li *ngFor="let item of deltaRanges()">
-                  {{ item.symbol }} | {{ item.insertedType }} | {{ item.timeframe }} |
+                  {{ displaySymbol(item.symbol) }} | {{ item.insertedType }} | {{ item.timeframe }} |
                   {{ item.startDate }} -> {{ item.endDate }} | {{ item.insertedAt }}
                 </li>
               </ul>
@@ -868,7 +875,7 @@
               <mat-form-field appearance="outline">
                 <mat-label>Symbole</mat-label>
                 <mat-select formControlName="deltaPresetSymbol">
-                  <mat-option *ngFor="let symbol of backtestDeltaAvailableSymbols()" [value]="symbol">{{ symbol }}</mat-option>
+                  <mat-option *ngFor="let symbol of backtestDeltaAvailableSymbols()" [value]="symbol">{{ displaySymbol(symbol) }}</mat-option>
                 </mat-select>
               </mat-form-field>
               <mat-form-field appearance="outline">
@@ -1387,7 +1394,7 @@
             <mat-label>Symbole</mat-label>
             <input matInput type="text" [matAutocomplete]="symbolAutoStats" formControlName="symbol" />
             <mat-autocomplete #symbolAutoStats="matAutocomplete" autoActiveFirstOption>
-              <mat-option *ngFor="let symbol of symbols" [value]="symbol">{{ symbol }}</mat-option>
+              <mat-option *ngFor="let symbol of symbols" [value]="symbol">{{ displaySymbol(symbol) }}</mat-option>
             </mat-autocomplete>
           </mat-form-field>
 
@@ -1436,7 +1443,7 @@
               <div class="param-hint">Plages Delta (insertedAt desc)</div>
               <ul class="error-body delta-ranges-list">
                 <li *ngFor="let item of deltaRanges()">
-                  {{ item.symbol }} | {{ item.insertedType }} | {{ item.timeframe }} |
+                  {{ displaySymbol(item.symbol) }} | {{ item.insertedType }} | {{ item.timeframe }} |
                   {{ item.startDate }} -> {{ item.endDate }} | {{ item.insertedAt }}
                 </li>
               </ul>
@@ -1445,7 +1452,7 @@
               <mat-form-field appearance="outline">
                 <mat-label>Symbole</mat-label>
                 <mat-select formControlName="deltaPresetSymbol">
-                  <mat-option *ngFor="let symbol of marketStatsDeltaAvailableSymbols()" [value]="symbol">{{ symbol }}</mat-option>
+                  <mat-option *ngFor="let symbol of marketStatsDeltaAvailableSymbols()" [value]="symbol">{{ displaySymbol(symbol) }}</mat-option>
                 </mat-select>
               </mat-form-field>
               <mat-form-field appearance="outline">
@@ -1807,7 +1814,7 @@
             <mat-label>Symbole</mat-label>
             <input matInput type="text" [matAutocomplete]="symbolAutoSeason" formControlName="symbol" />
             <mat-autocomplete #symbolAutoSeason="matAutocomplete" autoActiveFirstOption>
-              <mat-option *ngFor="let symbol of symbols" [value]="symbol">{{ symbol }}</mat-option>
+              <mat-option *ngFor="let symbol of symbols" [value]="symbol">{{ displaySymbol(symbol) }}</mat-option>
             </mat-autocomplete>
           </mat-form-field>
 
@@ -1863,7 +1870,7 @@
               <div class="param-hint">Plages Delta (insertedAt desc)</div>
               <ul class="error-body delta-ranges-list">
                 <li *ngFor="let item of deltaRanges()">
-                  {{ item.symbol }} | {{ item.insertedType }} | {{ item.timeframe }} |
+                  {{ displaySymbol(item.symbol) }} | {{ item.insertedType }} | {{ item.timeframe }} |
                   {{ item.startDate }} -> {{ item.endDate }} | {{ item.insertedAt }}
                 </li>
               </ul>
@@ -1872,7 +1879,7 @@
               <mat-form-field appearance="outline">
                 <mat-label>Symbole</mat-label>
                 <mat-select formControlName="deltaPresetSymbol">
-                  <mat-option *ngFor="let symbol of seasonalityDeltaAvailableSymbols()" [value]="symbol">{{ symbol }}</mat-option>
+                  <mat-option *ngFor="let symbol of seasonalityDeltaAvailableSymbols()" [value]="symbol">{{ displaySymbol(symbol) }}</mat-option>
                 </mat-select>
               </mat-form-field>
               <mat-form-field appearance="outline">
@@ -2223,7 +2230,7 @@
             <mat-label>Symbole</mat-label>
             <input matInput type="text" [matAutocomplete]="symbolAutoStress" formControlName="symbol" />
             <mat-autocomplete #symbolAutoStress="matAutocomplete" autoActiveFirstOption>
-              <mat-option *ngFor="let symbol of symbols" [value]="symbol">{{ symbol }}</mat-option>
+              <mat-option *ngFor="let symbol of symbols" [value]="symbol">{{ displaySymbol(symbol) }}</mat-option>
             </mat-autocomplete>
           </mat-form-field>
 

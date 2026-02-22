@@ -10,10 +10,8 @@ export interface FilterConfig {
 
 export interface FilterRule {
   id: string;
-  params?: Record<string, number | string | boolean>;
   mode: 'soft' | 'hard';
   weight: number;
-  enabled?: boolean;
 }
 
 export interface FilterRulesConfig {
@@ -165,6 +163,7 @@ export interface BacktestScreeningBlock {
 }
 
 export interface BacktestStrategyParamsBlock {
+  assetClass?: 'CRYPTO' | 'EQUITY' | 'ETF' | 'STOCK' | 'ACTION' | string;
   tpSl?: BacktestTpSlBlock;
   screening?: BacktestScreeningBlock;
 }

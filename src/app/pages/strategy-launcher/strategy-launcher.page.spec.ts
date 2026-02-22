@@ -149,7 +149,13 @@ describe('StrategyLauncherPageComponent', () => {
 
     const payload = component.buildRunRequest() as any;
     expect(payload.runType).toBe('backtest');
-    expect(payload.strategy).toBeUndefined();
+    expect(payload.strategy).toEqual(
+      jasmine.objectContaining({
+        params: jasmine.objectContaining({
+          assetClass: 'CRYPTO'
+        })
+      })
+    );
     expect(payload.filters).toBeUndefined();
     expect(payload.performance).toBeUndefined();
     expect(payload.signal).toEqual(
@@ -190,6 +196,7 @@ describe('StrategyLauncherPageComponent', () => {
     component.backtestForm.patchValue({ sourceMode: 'auto' } as any);
 
     const payload = component.buildRunRequest() as any;
+    expect(payload.strategy.params.assetClass).toBe('CRYPTO');
     expect(payload.data.source).toBeUndefined();
     expect(payload.data.path).toBeUndefined();
     expect(payload.data.mysql).toBeUndefined();
@@ -207,6 +214,7 @@ describe('StrategyLauncherPageComponent', () => {
     } as any);
 
     const payload = component.buildRunRequest() as any;
+    expect(payload.strategy.params.assetClass).toBe('CRYPTO');
     expect(payload.data.source).toBe('csv');
     expect(payload.data.path).toBe('C:\\\\data\\\\backtest.csv');
   });
@@ -228,6 +236,7 @@ describe('StrategyLauncherPageComponent', () => {
     } as any);
 
     const payload = component.buildRunRequest() as any;
+    expect(payload.strategy.params.assetClass).toBe('CRYPTO');
     expect(payload.data.source).toBe('mysql');
     expect(payload.data.mysql).toEqual({
       host: '127.0.0.1',
@@ -666,13 +675,20 @@ describe('StrategyLauncherPageComponent', () => {
     } as any);
 
     const payload = component.buildRunRequest() as any;
-    expect(payload.filters.rules).toEqual([
+    expect(payload.filters.filters).toEqual([
       jasmine.objectContaining({
         id: 'adx',
         params: {
           window: 14,
           threshold: 25
         }
+      })
+    ]);
+    expect(payload.filters.rules).toEqual([
+      jasmine.objectContaining({
+        id: 'adx',
+        mode: 'soft',
+        weight: 0.5
       })
     ]);
   });
@@ -877,13 +893,20 @@ describe('StrategyLauncherPageComponent', () => {
     } as any);
 
     const payload = component.buildRunRequest() as any;
-    expect(payload.filters.rules).toEqual([
+    expect(payload.filters.filters).toEqual([
       jasmine.objectContaining({
         id: 'adx',
         params: {
           window: 14,
           threshold: 25
         }
+      })
+    ]);
+    expect(payload.filters.rules).toEqual([
+      jasmine.objectContaining({
+        id: 'adx',
+        mode: 'soft',
+        weight: 0.5
       })
     ]);
   });
@@ -1012,7 +1035,7 @@ describe('StrategyLauncherPageComponent', () => {
     } as any);
 
     const payload = component.buildRunRequest() as any;
-    expect(payload.data.symbol).toBe('BTCUSDT');
+    expect(payload.data.symbol).toBe('BTC');
     expect(payload.data.timeframe).toBe('1h');
     expect(payload.data.startDate).toBe('2024-01-01T00:00:00.000Z');
     expect(payload.data.endDate).toBe('2024-01-10T00:00:00.000Z');
@@ -1058,8 +1081,8 @@ describe('StrategyLauncherPageComponent', () => {
 
     const payload = component.buildRunRequest() as any;
     expect(payload.universe).toEqual([
-      jasmine.objectContaining({ symbol: 'BTCUSDT' }),
-      jasmine.objectContaining({ symbol: 'ETHUSD' })
+      jasmine.objectContaining({ symbol: 'BTC' }),
+      jasmine.objectContaining({ symbol: 'ETH' })
     ]);
   });
 
@@ -1124,7 +1147,7 @@ describe('StrategyLauncherPageComponent', () => {
 
     const payload = component.buildRunRequest() as any;
     expect(payload.runType).toBe('backtest');
-    expect(payload.data.symbol).toBe('BTCUSDT');
+    expect(payload.data.symbol).toBe('BTC');
     expect(payload.data.timeframe).toBe('1h');
     expect(payload.data.startDate).toBe('2024-01-02T00:00:00.000Z');
     expect(payload.data.endDate).toBe('2024-01-20T00:00:00.000Z');
@@ -1160,7 +1183,7 @@ describe('StrategyLauncherPageComponent', () => {
 
     const payload = component.buildRunRequest() as any;
     expect(payload.runType).toBe('market_stats');
-    expect(payload.data.symbol).toBe('BTCUSDT');
+    expect(payload.data.symbol).toBe('BTC');
     expect(payload.data.timeframe).toBe('4h');
   });
 
@@ -1194,7 +1217,7 @@ describe('StrategyLauncherPageComponent', () => {
 
     const payload = component.buildRunRequest() as any;
     expect(payload.runType).toBe('seasonality');
-    expect(payload.data.symbol).toBe('BTCUSDT');
+    expect(payload.data.symbol).toBe('BTC');
     expect(payload.data.timeframe).toBe('1d');
     expect(payload.data.startYear).toBe(2021);
     expect(payload.data.endYear).toBe(2024);

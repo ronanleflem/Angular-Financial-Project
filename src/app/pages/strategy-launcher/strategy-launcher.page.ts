@@ -109,6 +109,7 @@ const FREQUENCY_DAYS: Record<string, number> = {
 const DCA_ALLOWED_EXECUTION_MODES = ['bar_close', 'intracandle'] as const;
 const DCA_ALLOWED_DRAWDOWN_REFERENCES = ['ATH', '1M', '3M', '6M', '1Y'] as const;
 const DCA_ALLOWED_ASSET_CLASSES = ['CRYPTO', 'EQUITY', 'ETF', 'STOCK', 'ACTION'] as const;
+const SYMBOL_QUOTE_SUFFIXES = ['USDT', 'USDC', 'USD'] as const;
 const NOT_IMPLEMENTED_YET_MESSAGE = 'Not implemented yet';
 
 type MetricTone = 'positive' | 'negative' | 'neutral';
@@ -264,7 +265,7 @@ export class StrategyLauncherPageComponent {
     { key: 'stress-tests', label: 'Stress tests', description: 'Chocs et scenarios extremes' }
   ];
 
-  readonly symbols = ['BTC', 'BTCUSD', 'BTCUSDT', 'ETHUSD', 'EURUSD', 'AAPL', 'SPY', 'XAUUSD'];
+  readonly symbols = ['BTC', 'ETH', 'EUR', 'AAPL', 'SPY', 'XAU'];
   readonly timeframes = ['15m', '1h', '4h', '1d'];
   readonly brokers = ['BINANCE', 'COINBASE', 'IBKR', 'FXCM'];
 
@@ -447,7 +448,7 @@ export class StrategyLauncherPageComponent {
   readonly stressScenarioSlots = [1, 2, 3];
 
   private readonly dcaDefaults = {
-    symbol: 'BTCUSD',
+    symbol: 'BTC',
     timeframe: '1h',
     frequency: 'weekly',
     amount: 200,
@@ -513,7 +514,8 @@ export class StrategyLauncherPageComponent {
 
   private readonly backtestDefaults = {
     strategy: 'Mean Reversion',
-    symbol: 'EURUSD',
+    symbol: 'EUR',
+    assetClass: 'CRYPTO',
     timeframe: '1h',
     startDate: new Date(2019, 0, 1),
     endDate: new Date(2024, 11, 31),
@@ -586,7 +588,7 @@ export class StrategyLauncherPageComponent {
   } as const;
 
   private readonly statsDefaults = {
-    symbol: 'BTCUSD',
+    symbol: 'BTC',
     timeframe: '4h',
     useDeltaPreset: false,
     deltaQuerySymbol: '',
@@ -811,6 +813,10 @@ export class StrategyLauncherPageComponent {
     {
       strategy: [this.backtestDefaults.strategy, Validators.required],
       symbol: [this.backtestDefaults.symbol, [Validators.required, symbolListValidator(this.symbols)]],
+      assetClass: [
+        this.backtestDefaults.assetClass,
+        [Validators.required, oneOfValidator(DCA_ALLOWED_ASSET_CLASSES)]
+      ],
       timeframe: [this.backtestDefaults.timeframe, Validators.required],
       startDate: [this.backtestDefaults.startDate, Validators.required],
       endDate: [this.backtestDefaults.endDate, Validators.required],
@@ -1661,6 +1667,10 @@ export class StrategyLauncherPageComponent {
 
   enumTooltip(enumKey: string, value?: string): string | null {
     return this.catalogService.enumTooltip(enumKey, value);
+  }
+
+  displaySymbol(symbol: string): string {
+    return toBaseSymbol(symbol);
   }
 
   isDcaGridSupported(gridPreset: string): boolean {
@@ -2721,7 +2731,7 @@ export class StrategyLauncherPageComponent {
     const explicitUniverse = canUseUniverse && Boolean(v.includeDcaUniverse) ? this.buildDcaUniverse(v) : undefined;
     const selectedSymbols = Array.from(new Set(((v.symbols ?? []) as ReadonlyArray<string>).map(item => String(item).trim()).filter(Boolean)));
     const deltaSymbols = useDeltaPreset
-      ? Array.from(new Set(((v.deltaPresetSymbols ?? []) as ReadonlyArray<string>).map(item => String(item).trim()).filter(Boolean)))
+      ? Array.from(new Set(((v.deltaPresetSymbols ?? []) as ReadonlyArray<string>).map(item => toBaseSymbol(String(item).trim())).filter(Boolean)))
       : [];
     const autoUniverseSymbols = useDeltaPreset ? deltaSymbols : selectedSymbols;
     const autoUniverse = canUseUniverse && autoUniverseSymbols.length > 1
@@ -2731,7 +2741,7 @@ export class StrategyLauncherPageComponent {
     const universePrimarySymbol = canUseUniverse ? (selectedUniverse?.[0]?.symbol?.trim() ?? '') : '';
     const autoSingleSymbol = autoUniverseSymbols.length === 1 ? autoUniverseSymbols[0] : '';
     const effectiveSymbol = universePrimarySymbol || (useDeltaPreset
-      ? (autoSingleSymbol || String(v.deltaPresetSymbol ?? '').trim())
+      ? (autoSingleSymbol || toBaseSymbol(String(v.deltaPresetSymbol ?? '').trim()))
       : (autoSingleSymbol || String(v.symbol ?? this.dcaDefaults.symbol)));
     const effectiveTimeframe = useDeltaPreset
       ? String(v.deltaPresetTimeframe ?? '').trim()
@@ -2783,7 +2793,7 @@ export class StrategyLauncherPageComponent {
     const useDeltaPreset = Boolean(v.useDeltaPreset);
     const deltaPeriod = useDeltaPreset ? this.selectedDeltaPeriodForForm(this.backtestForm) : null;
     const effectiveSymbol = useDeltaPreset
-      ? String(v.deltaPresetSymbol ?? '').trim()
+      ? toBaseSymbol(String(v.deltaPresetSymbol ?? '').trim())
       : String(v.symbol ?? this.backtestDefaults.symbol);
     const effectiveTimeframe = useDeltaPreset
       ? String(v.deltaPresetTimeframe ?? '').trim()
@@ -2800,7 +2810,11 @@ export class StrategyLauncherPageComponent {
     const includeFilters = this.isBacktestFieldRuntimeWired('filters');
     const includeFilterRules = this.isBacktestFieldRuntimeWired('filters.rules');
     const includePerformance = this.isBacktestFieldRuntimeWired('performance');
-    const strategyParams: Record<string, unknown> = {};
+    const assetClassRaw = String(v.assetClass ?? this.backtestDefaults.assetClass);
+    const assetClass = (DCA_ALLOWED_ASSET_CLASSES as readonly string[]).includes(assetClassRaw)
+      ? assetClassRaw
+      : this.backtestDefaults.assetClass;
+    const strategyParams: Record<string, unknown> = { assetClass };
     if (includeTpSl) {
       strategyParams['tpSl'] = this.buildBacktestTpSl(v);
     }
@@ -2890,7 +2904,7 @@ export class StrategyLauncherPageComponent {
     const v = this.marketStatsForm.getRawValue();
     const useDeltaPreset = Boolean(v.useDeltaPreset);
     const effectiveSymbol = useDeltaPreset
-      ? String(v.deltaPresetSymbol ?? '').trim()
+      ? toBaseSymbol(String(v.deltaPresetSymbol ?? '').trim())
       : String(v.symbol ?? this.statsDefaults.symbol);
     const effectiveTimeframe = useDeltaPreset
       ? String(v.deltaPresetTimeframe ?? '').trim()
@@ -2916,7 +2930,7 @@ export class StrategyLauncherPageComponent {
     const useDeltaPreset = Boolean(v.useDeltaPreset);
     const deltaPeriod = useDeltaPreset ? this.selectedDeltaPeriodForForm(this.seasonalityForm) : null;
     const effectiveSymbol = useDeltaPreset
-      ? String(v.deltaPresetSymbol ?? '').trim()
+      ? toBaseSymbol(String(v.deltaPresetSymbol ?? '').trim())
       : String(v.symbol ?? this.seasonalityDefaults.symbol);
     const effectiveTimeframe = useDeltaPreset
       ? String(v.deltaPresetTimeframe ?? '').trim()
@@ -3135,18 +3149,17 @@ export class StrategyLauncherPageComponent {
     const allowedRules = this.supportedRuleIds.size > 0
       ? rules.filter(id => this.supportedRuleIds.has(id))
       : rules.filter(id => !UNSUPPORTED_RULE_IDS.has(id));
+    const filterIdsForCanonical = Array.from(new Set([...allowedFilters, ...allowedRules]));
 
     return {
-      filters: allowedFilters.map(id => ({
+      filters: filterIdsForCanonical.map(id => ({
         id,
         params: this.buildFilterParams(id, prefix)
       })),
       rules: allowedRules.map(id => ({
         id,
-        params: this.buildRuleParams(id, prefix),
         mode: String(this.getControlValue(`${prefix}rule_${id}_mode`) ?? 'soft') as 'soft' | 'hard',
-        weight: Number(this.getControlValue(`${prefix}rule_${id}_weight`) ?? 0.5),
-        enabled: true
+        weight: Number(this.getControlValue(`${prefix}rule_${id}_weight`) ?? 0.5)
       })),
       rulesConfig: {
         minScore: Number(minScore ?? 0),
@@ -3156,7 +3169,9 @@ export class StrategyLauncherPageComponent {
   }
 
   private buildFilterParams(id: string, prefix: string): Record<string, number | string | boolean> {
-    const params = this.backtestFilterOptions.find(option => option.id === id)?.params ?? [];
+    const params = this.backtestFilterOptions.find(option => option.id === id)?.params
+      ?? this.backtestRuleOptions.find(option => option.id === id)?.params
+      ?? [];
     const result: Record<string, number | string | boolean> = {};
     params.forEach(param => {
       const controlName = `${prefix}filter_${id}_${param.key}`;
@@ -3181,16 +3196,6 @@ export class StrategyLauncherPageComponent {
         broker: item.broker
       };
     });
-  }
-
-  private buildRuleParams(id: string, prefix: string): Record<string, number | string | boolean> {
-    const params = this.backtestRuleOptions.find(option => option.id === id)?.params ?? [];
-    const result: Record<string, number | string | boolean> = {};
-    params.forEach(param => {
-      const controlName = `${prefix}filter_${id}_${param.key}`;
-      result[param.key] = coerceParamValue(this.getControlValue(controlName));
-    });
-    return result;
   }
 
   private buildBacktestTpSl(value: ReturnType<typeof this.backtestForm.getRawValue>): BacktestTpSlBlock {
@@ -3757,6 +3762,19 @@ function hashSeed(...parts: Array<string | number | Date | null | undefined>): n
   return hash;
 }
 
+function toBaseSymbol(value: string): string {
+  const symbol = String(value ?? '').trim().toUpperCase();
+  if (!symbol) {
+    return '';
+  }
+  for (const suffix of SYMBOL_QUOTE_SUFFIXES) {
+    if (symbol.length > suffix.length && symbol.endsWith(suffix)) {
+      return symbol.slice(0, -suffix.length);
+    }
+  }
+  return symbol;
+}
+
 function symbolBasePrice(symbol: string): number {
   return SYMBOL_BASE_PRICE[symbol] ?? 100;
 }
@@ -3814,16 +3832,20 @@ function backtestBase(strategy: string): {
 function marketVolatility(symbol: string): number {
   switch (symbol) {
     case 'BTCUSD':
+    case 'BTC':
       return 65;
     case 'ETHUSD':
+    case 'ETH':
       return 70;
     case 'XAUUSD':
+    case 'XAU':
       return 22;
     case 'AAPL':
       return 28;
     case 'SPY':
       return 18;
     case 'EURUSD':
+    case 'EUR':
       return 12;
     default:
       return 20;
