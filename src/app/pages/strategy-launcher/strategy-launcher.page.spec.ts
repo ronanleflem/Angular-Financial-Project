@@ -344,6 +344,35 @@ describe('StrategyLauncherPageComponent', () => {
     expect(component.isMarketStatsFieldRuntimeWired('data.currency')).toBeFalse();
   });
 
+  it('enables market-stats multi-symbol mode when data.symbols is supported', () => {
+    fixture.detectChanges();
+    flushInitRequests(
+      {},
+      null,
+      {},
+      null,
+      {
+        fields: {
+          supported: ['data.symbols', 'data.timeframe', 'data.currency'],
+          accepted_but_not_wired: []
+        }
+      }
+    );
+
+    expect(component.marketStatsUsesMultiSymbols()).toBeTrue();
+
+    component.selectRun('market-stats');
+    component.marketStatsForm.patchValue({
+      useDeltaPreset: false,
+      symbols: ['BTC', 'ETH'],
+      symbol: 'AAPL'
+    } as any);
+
+    const payload = component.buildRunRequest() as any;
+    expect(payload.data.symbols).toEqual(['BTC', 'ETH']);
+    expect(payload.data.symbol).toBeUndefined();
+  });
+
   it('falls back to static mode when market_stats capabilities endpoint is unavailable', () => {
     fixture.detectChanges();
     flushInitRequests(
@@ -380,6 +409,37 @@ describe('StrategyLauncherPageComponent', () => {
     expect(component.seasonalityCapabilitiesInfo()).toContain('capabilities seasonality actif');
     expect(component.isSeasonalityFieldSupported('data.window')).toBeTrue();
     expect(component.isSeasonalityFieldRuntimeWired('data.window')).toBeFalse();
+  });
+
+  it('enables seasonality multi-symbol mode when data.symbols is supported', () => {
+    fixture.detectChanges();
+    flushInitRequests(
+      {},
+      null,
+      {},
+      null,
+      {},
+      null,
+      {
+        fields: {
+          supported: ['data.symbols', 'data.timeframe', 'data.window'],
+          accepted_but_not_wired: []
+        }
+      }
+    );
+
+    expect(component.seasonalityUsesMultiSymbols()).toBeTrue();
+
+    component.selectRun('seasonality');
+    component.seasonalityForm.patchValue({
+      useDeltaPreset: false,
+      symbols: ['BTC', 'ETH'],
+      symbol: 'SPY'
+    } as any);
+
+    const payload = component.buildRunRequest() as any;
+    expect(payload.data.symbols).toEqual(['BTC', 'ETH']);
+    expect(payload.data.symbol).toBeUndefined();
   });
 
   it('normalizes backend unsupported errors to Not implemented yet', () => {
@@ -1307,7 +1367,7 @@ describe('StrategyLauncherPageComponent', () => {
     expect(payload.data.currency).toBe('USDT');
   });
 
-  it('uses delta preset on market-stats (single symbol)', () => {
+  it('uses delta preset on market-stats (multi symbol)', () => {
     fixture.detectChanges();
     flushInitRequests();
 
@@ -1331,7 +1391,7 @@ describe('StrategyLauncherPageComponent', () => {
     ]);
 
     component.marketStatsForm.patchValue({
-      deltaPresetSymbol: 'BTCUSDT',
+      deltaPresetSymbols: ['BTCUSDT'],
       deltaPresetTimeframe: '4h'
     } as any);
 
@@ -1362,7 +1422,7 @@ describe('StrategyLauncherPageComponent', () => {
     expect(payload.data.currency).toBe('USDT');
   });
 
-  it('uses delta preset on seasonality (single symbol) and maps period to years', () => {
+  it('uses delta preset on seasonality (multi symbol) and maps period to years', () => {
     fixture.detectChanges();
     flushInitRequests();
 
@@ -1386,7 +1446,7 @@ describe('StrategyLauncherPageComponent', () => {
     ]);
 
     component.seasonalityForm.patchValue({
-      deltaPresetSymbol: 'BTCUSDT',
+      deltaPresetSymbols: ['BTCUSDT'],
       deltaPresetTimeframe: '1d'
     } as any);
 

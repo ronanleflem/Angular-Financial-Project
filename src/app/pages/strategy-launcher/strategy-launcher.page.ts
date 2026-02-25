@@ -594,6 +594,7 @@ export class StrategyLauncherPageComponent {
 
   private readonly statsDefaults = {
     symbol: 'BTC',
+    symbols: ['BTC'],
     assetClass: 'CRYPTO',
     currency: 'USDT',
     timeframe: '4h',
@@ -601,7 +602,7 @@ export class StrategyLauncherPageComponent {
     deltaQuerySymbol: '',
     deltaQueryInsertedType: 'CRYPTO' as DeltaInsertedType,
     deltaQueryTimeframe: '',
-    deltaPresetSymbol: '',
+    deltaPresetSymbols: [] as string[],
     deltaPresetTimeframe: '',
     lookback: 500,
     statsPack: 'Volatility',
@@ -640,6 +641,7 @@ export class StrategyLauncherPageComponent {
 
   private readonly seasonalityDefaults = {
     symbol: 'SPY',
+    symbols: ['SPY'],
     assetClass: 'EQUITY',
     currency: 'USD',
     timeframe: '1d',
@@ -647,7 +649,7 @@ export class StrategyLauncherPageComponent {
     deltaQuerySymbol: '',
     deltaQueryInsertedType: 'CRYPTO' as DeltaInsertedType,
     deltaQueryTimeframe: '',
-    deltaPresetSymbol: '',
+    deltaPresetSymbols: [] as string[],
     deltaPresetTimeframe: '',
     window: 'Monthly',
     startYear: 2010,
@@ -916,6 +918,7 @@ export class StrategyLauncherPageComponent {
 
   readonly marketStatsForm = this.fb.group({
     symbol: [this.statsDefaults.symbol, [Validators.required, symbolListValidator(this.symbols)]],
+    symbols: [this.statsDefaults.symbols],
     assetClass: [
       this.statsDefaults.assetClass,
       [Validators.required, oneOfValidator(DCA_ALLOWED_ASSET_CLASSES)]
@@ -926,7 +929,7 @@ export class StrategyLauncherPageComponent {
     deltaQuerySymbol: [this.statsDefaults.deltaQuerySymbol],
     deltaQueryInsertedType: [this.statsDefaults.deltaQueryInsertedType],
     deltaQueryTimeframe: [this.statsDefaults.deltaQueryTimeframe],
-    deltaPresetSymbol: [this.statsDefaults.deltaPresetSymbol],
+    deltaPresetSymbols: [this.statsDefaults.deltaPresetSymbols],
     deltaPresetTimeframe: [this.statsDefaults.deltaPresetTimeframe],
     lookback: [this.statsDefaults.lookback, [Validators.min(100), Validators.max(5000)]],
     statsPack: [this.statsDefaults.statsPack, Validators.required],
@@ -963,10 +966,13 @@ export class StrategyLauncherPageComponent {
     target_range_extension_exit_pct: [this.statsDefaults.target_range_extension_exit_pct, [Validators.min(0)]],
     presetName: [''],
     presetId: ['']
+  }, {
+    validators: control => this.marketStatsSymbolsValidator(control)
   });
 
   readonly seasonalityForm = this.fb.group({
     symbol: [this.seasonalityDefaults.symbol, [Validators.required, symbolListValidator(this.symbols)]],
+    symbols: [this.seasonalityDefaults.symbols],
     assetClass: [
       this.seasonalityDefaults.assetClass,
       [Validators.required, oneOfValidator(DCA_ALLOWED_ASSET_CLASSES)]
@@ -977,7 +983,7 @@ export class StrategyLauncherPageComponent {
     deltaQuerySymbol: [this.seasonalityDefaults.deltaQuerySymbol],
     deltaQueryInsertedType: [this.seasonalityDefaults.deltaQueryInsertedType],
     deltaQueryTimeframe: [this.seasonalityDefaults.deltaQueryTimeframe],
-    deltaPresetSymbol: [this.seasonalityDefaults.deltaPresetSymbol],
+    deltaPresetSymbols: [this.seasonalityDefaults.deltaPresetSymbols],
     deltaPresetTimeframe: [this.seasonalityDefaults.deltaPresetTimeframe],
     window: [this.seasonalityDefaults.window, Validators.required],
     startYear: [this.seasonalityDefaults.startYear, [Validators.min(1990)]],
@@ -1010,6 +1016,8 @@ export class StrategyLauncherPageComponent {
     includePerformance: [this.seasonalityDefaults.includePerformance],
     presetName: [''],
     presetId: ['']
+  }, {
+    validators: control => this.seasonalitySymbolsValidator(control)
   });
 
   readonly stressForm = this.fb.group({
@@ -1137,9 +1145,11 @@ export class StrategyLauncherPageComponent {
   private marketStatsCapabilitiesAvailable = false;
   private marketStatsSupportedFields = new Set<string>();
   private marketStatsAcceptedButNotWiredFields = new Set<string>();
+  private marketStatsDataSymbolsSupported = false;
   private seasonalityCapabilitiesAvailable = false;
   private seasonalitySupportedFields = new Set<string>();
   private seasonalityAcceptedButNotWiredFields = new Set<string>();
+  private seasonalityDataSymbolsSupported = false;
 
   constructor() {
     this.setUniverseControlAvailability(false);
@@ -1607,9 +1617,9 @@ export class StrategyLauncherPageComponent {
     const assetClass = this.marketStatsForm.get('assetClass');
     const currency = this.marketStatsForm.get('currency');
     const useDeltaPreset = this.marketStatsForm.get('useDeltaPreset');
-    const deltaPresetSymbol = this.marketStatsForm.get('deltaPresetSymbol');
+    const deltaPresetSymbols = this.marketStatsForm.get('deltaPresetSymbols');
     const deltaPresetTimeframe = this.marketStatsForm.get('deltaPresetTimeframe');
-    if (!assetClass || !currency || !useDeltaPreset || !deltaPresetSymbol || !deltaPresetTimeframe) {
+    if (!assetClass || !currency || !useDeltaPreset || !deltaPresetSymbols || !deltaPresetTimeframe) {
       return;
     }
 
@@ -1645,7 +1655,7 @@ export class StrategyLauncherPageComponent {
     sync();
     assetClass.valueChanges.subscribe(sync);
     useDeltaPreset.valueChanges.subscribe(sync);
-    deltaPresetSymbol.valueChanges.subscribe(sync);
+    deltaPresetSymbols.valueChanges.subscribe(sync);
     deltaPresetTimeframe.valueChanges.subscribe(sync);
   }
 
@@ -1653,9 +1663,9 @@ export class StrategyLauncherPageComponent {
     const assetClass = this.seasonalityForm.get('assetClass');
     const currency = this.seasonalityForm.get('currency');
     const useDeltaPreset = this.seasonalityForm.get('useDeltaPreset');
-    const deltaPresetSymbol = this.seasonalityForm.get('deltaPresetSymbol');
+    const deltaPresetSymbols = this.seasonalityForm.get('deltaPresetSymbols');
     const deltaPresetTimeframe = this.seasonalityForm.get('deltaPresetTimeframe');
-    if (!assetClass || !currency || !useDeltaPreset || !deltaPresetSymbol || !deltaPresetTimeframe) {
+    if (!assetClass || !currency || !useDeltaPreset || !deltaPresetSymbols || !deltaPresetTimeframe) {
       return;
     }
 
@@ -1691,7 +1701,7 @@ export class StrategyLauncherPageComponent {
     sync();
     assetClass.valueChanges.subscribe(sync);
     useDeltaPreset.valueChanges.subscribe(sync);
-    deltaPresetSymbol.valueChanges.subscribe(sync);
+    deltaPresetSymbols.valueChanges.subscribe(sync);
     deltaPresetTimeframe.valueChanges.subscribe(sync);
   }
 
@@ -1731,6 +1741,37 @@ export class StrategyLauncherPageComponent {
     return allowedCurrenciesForAssetClass(assetClass);
   }
 
+  private normalizedSymbolList(value: unknown): string[] {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+    return Array.from(new Set(value.map(item => String(item ?? '').trim()).filter(Boolean)));
+  }
+
+  private marketStatsSymbolsValidator(control?: AbstractControl | null): ValidationErrors | null {
+    const form = control as UntypedFormGroup | null;
+    if (!form?.get) {
+      return null;
+    }
+    if (!this.marketStatsDataSymbolsSupported) {
+      return null;
+    }
+    const symbols = this.normalizedSymbolList(form.get('symbols')?.value);
+    return symbols.length > 0 ? null : { symbolsRequired: true };
+  }
+
+  private seasonalitySymbolsValidator(control?: AbstractControl | null): ValidationErrors | null {
+    const form = control as UntypedFormGroup | null;
+    if (!form?.get) {
+      return null;
+    }
+    if (!this.seasonalityDataSymbolsSupported) {
+      return null;
+    }
+    const symbols = this.normalizedSymbolList(form.get('symbols')?.value);
+    return symbols.length > 0 ? null : { symbolsRequired: true };
+  }
+
   private backtestSourceModeValidator(control?: AbstractControl | null): ValidationErrors | null {
     const form = control as UntypedFormGroup | null;
     if (!form?.get) {
@@ -1761,11 +1802,11 @@ export class StrategyLauncherPageComponent {
   }
 
   private bindMarketStatsDeltaPresetControls(): void {
-    this.bindSingleDeltaPresetControls(this.marketStatsForm);
+    this.bindMultiDeltaPresetControls(this.marketStatsForm);
   }
 
   private bindSeasonalityDeltaPresetControls(): void {
-    this.bindSingleDeltaPresetControls(this.seasonalityForm, period => {
+    this.bindMultiDeltaPresetControls(this.seasonalityForm, period => {
       const startYearControl = this.seasonalityForm.get('startYear');
       const endYearControl = this.seasonalityForm.get('endYear');
       if (!startYearControl || !endYearControl) {
@@ -1783,6 +1824,7 @@ export class StrategyLauncherPageComponent {
     const useDeltaPreset = form.get('useDeltaPreset');
     const deltaPresetSymbol = form.get('deltaPresetSymbol');
     const deltaPresetTimeframe = form.get('deltaPresetTimeframe');
+    const symbols = form.get('symbols');
     const symbol = form.get('symbol');
     const timeframe = form.get('timeframe');
     if (!useDeltaPreset || !deltaPresetSymbol || !deltaPresetTimeframe || !symbol || !timeframe) {
@@ -1794,6 +1836,7 @@ export class StrategyLauncherPageComponent {
     const applyState = (enabled: boolean) => {
       if (enabled) {
         symbol.disable({ emitEvent: false });
+        symbols?.disable({ emitEvent: false });
         timeframe.disable({ emitEvent: false });
         startDate?.disable({ emitEvent: false });
         endDate?.disable({ emitEvent: false });
@@ -1801,6 +1844,7 @@ export class StrategyLauncherPageComponent {
         deltaPresetTimeframe.setValidators([Validators.required]);
       } else {
         symbol.enable({ emitEvent: false });
+        symbols?.enable({ emitEvent: false });
         timeframe.enable({ emitEvent: false });
         startDate?.enable({ emitEvent: false });
         endDate?.enable({ emitEvent: false });
@@ -1815,6 +1859,50 @@ export class StrategyLauncherPageComponent {
     useDeltaPreset.valueChanges.subscribe(value => applyState(Boolean(value)));
     deltaPresetSymbol.valueChanges.subscribe(() => this.syncSingleDeltaPresetSelection(form, applyPeriod));
     deltaPresetTimeframe.valueChanges.subscribe(() => this.syncSingleDeltaPresetSelection(form, applyPeriod));
+  }
+
+  private bindMultiDeltaPresetControls(
+    form: UntypedFormGroup,
+    applyPeriod?: (period: DeltaPresetPeriod) => void
+  ): void {
+    const useDeltaPreset = form.get('useDeltaPreset');
+    const deltaPresetSymbols = form.get('deltaPresetSymbols');
+    const deltaPresetTimeframe = form.get('deltaPresetTimeframe');
+    const symbols = form.get('symbols');
+    const symbol = form.get('symbol');
+    const timeframe = form.get('timeframe');
+    if (!useDeltaPreset || !deltaPresetSymbols || !deltaPresetTimeframe || !symbol || !timeframe) {
+      return;
+    }
+
+    const startDate = form.get('startDate');
+    const endDate = form.get('endDate');
+    const applyState = (enabled: boolean) => {
+      if (enabled) {
+        symbol.disable({ emitEvent: false });
+        symbols?.disable({ emitEvent: false });
+        timeframe.disable({ emitEvent: false });
+        startDate?.disable({ emitEvent: false });
+        endDate?.disable({ emitEvent: false });
+        deltaPresetSymbols.setValidators([Validators.required]);
+        deltaPresetTimeframe.setValidators([Validators.required]);
+      } else {
+        symbol.enable({ emitEvent: false });
+        symbols?.enable({ emitEvent: false });
+        timeframe.enable({ emitEvent: false });
+        startDate?.enable({ emitEvent: false });
+        endDate?.enable({ emitEvent: false });
+        deltaPresetSymbols.clearValidators();
+        deltaPresetTimeframe.clearValidators();
+      }
+      deltaPresetSymbols.updateValueAndValidity({ emitEvent: false });
+      deltaPresetTimeframe.updateValueAndValidity({ emitEvent: false });
+    };
+
+    applyState(Boolean(useDeltaPreset.value));
+    useDeltaPreset.valueChanges.subscribe(value => applyState(Boolean(value)));
+    deltaPresetSymbols.valueChanges.subscribe(() => this.syncMultiDeltaPresetSelection(form, applyPeriod));
+    deltaPresetTimeframe.valueChanges.subscribe(() => this.syncMultiDeltaPresetSelection(form, applyPeriod));
   }
 
   private loadDeltaRangesForForm(form: UntypedFormGroup): void {
@@ -1842,7 +1930,11 @@ export class StrategyLauncherPageComponent {
             return right - left;
           });
           this.deltaRanges.set(sorted);
-          this.syncSingleDeltaPresetSelection(form, this.singleDeltaPeriodApplierForForm(form));
+          if (form.get('deltaPresetSymbols')) {
+            this.syncMultiDeltaPresetSelection(form, this.singleDeltaPeriodApplierForForm(form));
+          } else {
+            this.syncSingleDeltaPresetSelection(form, this.singleDeltaPeriodApplierForForm(form));
+          }
         },
         error: err => {
           console.error('[StrategyLauncher] Failed to load delta ranges', err);
@@ -1875,14 +1967,14 @@ export class StrategyLauncherPageComponent {
   }
 
   private deltaAvailableTimeframesForForm(form: UntypedFormGroup): string[] {
-    const symbol = String(form.get('deltaPresetSymbol')?.value ?? '').trim();
-    if (!symbol) {
+    const symbols = this.selectedDeltaSymbolsForForm(form);
+    if (symbols.length === 0) {
       return [];
     }
     return Array.from(
       new Set(
         this.deltaRanges()
-          .filter(item => item.symbol === symbol)
+          .filter(item => symbols.includes(item.symbol))
           .map(item => item.timeframe)
           .filter(Boolean)
       )
@@ -1906,12 +1998,25 @@ export class StrategyLauncherPageComponent {
   }
 
   private selectedDeltaRowsForForm(form: UntypedFormGroup): DeltaIngestionRange[] {
-    const symbol = String(form.get('deltaPresetSymbol')?.value ?? '').trim();
+    const symbols = this.selectedDeltaSymbolsForForm(form);
     const timeframe = String(form.get('deltaPresetTimeframe')?.value ?? '').trim();
-    if (!symbol || !timeframe) {
+    if (symbols.length === 0 || !timeframe) {
       return [];
     }
-    return this.deltaRanges().filter(item => item.symbol === symbol && item.timeframe === timeframe);
+    return this.deltaRanges().filter(item => symbols.includes(item.symbol) && item.timeframe === timeframe);
+  }
+
+  private selectedDeltaSymbolsForForm(form: UntypedFormGroup): string[] {
+    const multi = form.get('deltaPresetSymbols');
+    if (multi) {
+      const raw = multi.value;
+      if (!Array.isArray(raw)) {
+        return [];
+      }
+      return Array.from(new Set(raw.map(item => String(item ?? '').trim()).filter(Boolean)));
+    }
+    const single = String(form.get('deltaPresetSymbol')?.value ?? '').trim();
+    return single ? [single] : [];
   }
 
   private deltaQuoteLabelFromRows(rows: ReadonlyArray<DeltaIngestionRange>): string {
@@ -2026,6 +2131,7 @@ export class StrategyLauncherPageComponent {
   ): void {
     const symbolControl = form.get('deltaPresetSymbol');
     const timeframeControl = form.get('deltaPresetTimeframe');
+    const symbolsControl = form.get('symbols');
     if (!symbolControl || !timeframeControl) {
       return;
     }
@@ -2042,6 +2148,50 @@ export class StrategyLauncherPageComponent {
     }
 
     if (Boolean(form.get('useDeltaPreset')?.value)) {
+      const selectedDeltaSymbol = String(symbolControl.value ?? '').trim();
+      const baseSymbol = toBaseSymbol(selectedDeltaSymbol);
+      if (baseSymbol && symbolsControl) {
+        symbolsControl.setValue([baseSymbol] as any, { emitEvent: false });
+      }
+      const period = this.selectedDeltaPeriodForForm(form);
+      if (period && applyPeriod) {
+        applyPeriod(period);
+      }
+    }
+  }
+
+  private syncMultiDeltaPresetSelection(
+    form: UntypedFormGroup,
+    applyPeriod?: (period: DeltaPresetPeriod) => void
+  ): void {
+    const symbolsControl = form.get('deltaPresetSymbols');
+    const timeframeControl = form.get('deltaPresetTimeframe');
+    const selectedSymbolsControl = form.get('symbols');
+    if (!symbolsControl || !timeframeControl) {
+      return;
+    }
+    const availableSymbols = this.deltaAvailableSymbolsForForm(form);
+    const selectedSymbols = this.selectedDeltaSymbolsForForm(form);
+    const validSymbols = selectedSymbols.filter(symbol => availableSymbols.includes(symbol));
+    if (availableSymbols.length > 0 && validSymbols.length === 0) {
+      symbolsControl.setValue([availableSymbols[0]] as any, { emitEvent: false });
+    } else if (selectedSymbols.length !== validSymbols.length) {
+      symbolsControl.setValue(validSymbols as any, { emitEvent: false });
+    }
+
+    const timeframes = this.deltaAvailableTimeframesForForm(form);
+    const currentTimeframe = String(timeframeControl.value ?? '').trim();
+    if (timeframes.length > 0 && !timeframes.includes(currentTimeframe)) {
+      timeframeControl.setValue(timeframes[0] as any, { emitEvent: false });
+    }
+
+    if (Boolean(form.get('useDeltaPreset')?.value)) {
+      const baseSymbols = this.selectedDeltaSymbolsForForm(form)
+        .map(symbol => toBaseSymbol(symbol))
+        .filter(Boolean);
+      if (selectedSymbolsControl) {
+        selectedSymbolsControl.setValue(Array.from(new Set(baseSymbols)) as any, { emitEvent: false });
+      }
       const period = this.selectedDeltaPeriodForForm(form);
       if (period && applyPeriod) {
         applyPeriod(period);
@@ -2156,6 +2306,14 @@ export class StrategyLauncherPageComponent {
       return false;
     }
     return !this.hasCapabilityFieldAtOrAbove(this.seasonalityAcceptedButNotWiredFields, path);
+  }
+
+  marketStatsUsesMultiSymbols(): boolean {
+    return this.marketStatsDataSymbolsSupported;
+  }
+
+  seasonalityUsesMultiSymbols(): boolean {
+    return this.seasonalityDataSymbolsSupported;
   }
 
   hasDcaCapabilitiesDetails(): boolean {
@@ -2534,6 +2692,7 @@ export class StrategyLauncherPageComponent {
           this.marketStatsCapabilitiesAvailable = false;
           this.marketStatsSupportedFields = new Set<string>();
           this.marketStatsAcceptedButNotWiredFields = new Set<string>();
+          this.marketStatsDataSymbolsSupported = false;
           this.marketStatsCapabilitiesInfo.set('Capabilities market_stats indisponibles, mode statique active.');
           this.marketStatsCanonicalSupportedFields.set([]);
           this.marketStatsCanonicalAcceptedButNotWiredFields.set([]);
@@ -2548,6 +2707,15 @@ export class StrategyLauncherPageComponent {
         this.marketStatsCapabilitiesAvailable = fields.supported.length > 0 || fields.acceptedButNotWired.length > 0;
         this.marketStatsSupportedFields = new Set(fields.supported);
         this.marketStatsAcceptedButNotWiredFields = new Set(fields.acceptedButNotWired);
+        this.marketStatsDataSymbolsSupported = fields.supported.includes('data.symbols');
+        if (this.marketStatsDataSymbolsSupported) {
+          const currentSymbol = String(this.marketStatsForm.get('symbol')?.value ?? '').trim();
+          const currentSymbols = this.normalizedSymbolList(this.marketStatsForm.get('symbols')?.value);
+          if (currentSymbols.length === 0 && currentSymbol) {
+            this.marketStatsForm.get('symbols')?.setValue([currentSymbol] as any, { emitEvent: false });
+          }
+        }
+        this.marketStatsForm.updateValueAndValidity({ emitEvent: false });
         this.marketStatsCanonicalSupportedFields.set(fields.supported);
         this.marketStatsCanonicalAcceptedButNotWiredFields.set(fields.acceptedButNotWired);
         this.marketStatsCapabilitiesInfo.set(
@@ -2565,6 +2733,7 @@ export class StrategyLauncherPageComponent {
           this.seasonalityCapabilitiesAvailable = false;
           this.seasonalitySupportedFields = new Set<string>();
           this.seasonalityAcceptedButNotWiredFields = new Set<string>();
+          this.seasonalityDataSymbolsSupported = false;
           this.seasonalityCapabilitiesInfo.set('Capabilities seasonality indisponibles, mode statique active.');
           this.seasonalityCanonicalSupportedFields.set([]);
           this.seasonalityCanonicalAcceptedButNotWiredFields.set([]);
@@ -2579,6 +2748,15 @@ export class StrategyLauncherPageComponent {
         this.seasonalityCapabilitiesAvailable = fields.supported.length > 0 || fields.acceptedButNotWired.length > 0;
         this.seasonalitySupportedFields = new Set(fields.supported);
         this.seasonalityAcceptedButNotWiredFields = new Set(fields.acceptedButNotWired);
+        this.seasonalityDataSymbolsSupported = fields.supported.includes('data.symbols');
+        if (this.seasonalityDataSymbolsSupported) {
+          const currentSymbol = String(this.seasonalityForm.get('symbol')?.value ?? '').trim();
+          const currentSymbols = this.normalizedSymbolList(this.seasonalityForm.get('symbols')?.value);
+          if (currentSymbols.length === 0 && currentSymbol) {
+            this.seasonalityForm.get('symbols')?.setValue([currentSymbol] as any, { emitEvent: false });
+          }
+        }
+        this.seasonalityForm.updateValueAndValidity({ emitEvent: false });
         this.seasonalityCanonicalSupportedFields.set(fields.supported);
         this.seasonalityCanonicalAcceptedButNotWiredFields.set(fields.acceptedButNotWired);
         this.seasonalityCapabilitiesInfo.set(
@@ -3452,9 +3630,24 @@ export class StrategyLauncherPageComponent {
     const assetClass = (DCA_ALLOWED_ASSET_CLASSES as readonly string[]).includes(assetClassRaw)
       ? assetClassRaw
       : this.statsDefaults.assetClass;
-    const effectiveSymbol = useDeltaPreset
-      ? toBaseSymbol(String(v.deltaPresetSymbol ?? '').trim())
+    const deltaSelectedSymbols = useDeltaPreset
+      ? Array.from(
+          new Set(
+            ((v.deltaPresetSymbols ?? []) as ReadonlyArray<string>)
+              .map(item => toBaseSymbol(String(item).trim()))
+              .filter(Boolean)
+          )
+        )
+      : [];
+    const fallbackSymbol = useDeltaPreset
+      ? (deltaSelectedSymbols[0] ?? '')
       : String(v.symbol ?? this.statsDefaults.symbol);
+    const selectedSymbols = useDeltaPreset
+      ? deltaSelectedSymbols
+      : this.normalizedSymbolList(v.symbols).map(symbol => toBaseSymbol(symbol)).filter(Boolean);
+    const effectiveSymbols = Array.from(new Set(selectedSymbols));
+    const useDataSymbols = this.marketStatsDataSymbolsSupported && effectiveSymbols.length > 0;
+    const effectiveSymbol = effectiveSymbols[0] || fallbackSymbol;
     const effectiveTimeframe = useDeltaPreset
       ? String(v.deltaPresetTimeframe ?? '').trim()
       : String(v.timeframe ?? this.statsDefaults.timeframe);
@@ -3471,7 +3664,8 @@ export class StrategyLauncherPageComponent {
     return {
       runType: 'market_stats',
       data: {
-        symbol: effectiveSymbol || this.statsDefaults.symbol,
+        symbol: useDataSymbols ? undefined : (effectiveSymbol || this.statsDefaults.symbol),
+        symbols: useDataSymbols ? effectiveSymbols : undefined,
         assetClass,
         currency: effectiveCurrency,
         timeframe: effectiveTimeframe || this.statsDefaults.timeframe,
@@ -3494,9 +3688,24 @@ export class StrategyLauncherPageComponent {
     const assetClass = (DCA_ALLOWED_ASSET_CLASSES as readonly string[]).includes(assetClassRaw)
       ? assetClassRaw
       : this.seasonalityDefaults.assetClass;
-    const effectiveSymbol = useDeltaPreset
-      ? toBaseSymbol(String(v.deltaPresetSymbol ?? '').trim())
+    const deltaSelectedSymbols = useDeltaPreset
+      ? Array.from(
+          new Set(
+            ((v.deltaPresetSymbols ?? []) as ReadonlyArray<string>)
+              .map(item => toBaseSymbol(String(item).trim()))
+              .filter(Boolean)
+          )
+        )
+      : [];
+    const fallbackSymbol = useDeltaPreset
+      ? (deltaSelectedSymbols[0] ?? '')
       : String(v.symbol ?? this.seasonalityDefaults.symbol);
+    const selectedSymbols = useDeltaPreset
+      ? deltaSelectedSymbols
+      : this.normalizedSymbolList(v.symbols).map(symbol => toBaseSymbol(symbol)).filter(Boolean);
+    const effectiveSymbols = Array.from(new Set(selectedSymbols));
+    const useDataSymbols = this.seasonalityDataSymbolsSupported && effectiveSymbols.length > 0;
+    const effectiveSymbol = effectiveSymbols[0] || fallbackSymbol;
     const effectiveTimeframe = useDeltaPreset
       ? String(v.deltaPresetTimeframe ?? '').trim()
       : String(v.timeframe ?? this.seasonalityDefaults.timeframe);
@@ -3519,7 +3728,8 @@ export class StrategyLauncherPageComponent {
     return {
       runType: 'seasonality',
       data: {
-        symbol: effectiveSymbol || this.seasonalityDefaults.symbol,
+        symbol: useDataSymbols ? undefined : (effectiveSymbol || this.seasonalityDefaults.symbol),
+        symbols: useDataSymbols ? effectiveSymbols : undefined,
         assetClass,
         currency: effectiveCurrency,
         timeframe: effectiveTimeframe || this.seasonalityDefaults.timeframe,

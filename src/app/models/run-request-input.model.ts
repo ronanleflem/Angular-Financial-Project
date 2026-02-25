@@ -28,7 +28,8 @@ export interface UniverseItem {
 }
 
 export interface DataBlockBase {
-  symbol: string;
+  symbol?: string;
+  symbols?: string[];
   assetClass?: string;
   currency?: string;
   timeframe: Timeframe;
@@ -394,14 +395,14 @@ export function validateRunRequest(input: RunRequestInput): ValidationError[] {
       validateBacktestSignal(errors, input.signal);
       break;
     case 'market_stats':
-      validateRequired(errors, 'data.symbol', input.data.symbol);
+      validateSymbolSelection(errors, input.data.symbol, input.data.symbols);
       validateRequired(errors, 'data.timeframe', input.data.timeframe);
       validateRequired(errors, 'stats.event.id', input.stats.event.id);
       validateRequired(errors, 'stats.condition.id', input.stats.condition.id);
       validateRequired(errors, 'stats.target.id', input.stats.target.id);
       break;
     case 'seasonality':
-      validateRequired(errors, 'data.symbol', input.data.symbol);
+      validateSymbolSelection(errors, input.data.symbol, input.data.symbols);
       validateRequired(errors, 'data.timeframe', input.data.timeframe);
       validateRequired(errors, 'seasonality.profile.id', input.seasonality.profile.id);
       validateRequired(errors, 'seasonality.signal.method', input.seasonality.signal.method);
@@ -433,6 +434,20 @@ export function validateRunRequest(input: RunRequestInput): ValidationError[] {
 function validateRequired(errors: ValidationError[], path: string, value: unknown): void {
   if (value === null || value === undefined || value === '') {
     errors.push({ path, message: 'required' });
+  }
+}
+
+function validateSymbolSelection(
+  errors: ValidationError[],
+  symbol: unknown,
+  symbols: unknown
+): void {
+  const hasSymbol = !(symbol === null || symbol === undefined || symbol === '');
+  const symbolList = Array.isArray(symbols)
+    ? symbols.map(item => String(item ?? '').trim()).filter(Boolean)
+    : [];
+  if (!hasSymbol && symbolList.length === 0) {
+    errors.push({ path: 'data.symbols', message: 'at least one symbol is required' });
   }
 }
 

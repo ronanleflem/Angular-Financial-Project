@@ -117,6 +117,59 @@ describe('RunsService', () => {
     req.flush({ request_id: 'req-seasonality', status: 'PENDING' });
   });
 
+  it('submits market_stats canonical payload with data.symbols (without data.symbol)', () => {
+    service.submitRun({
+      runType: 'market_stats',
+      data: {
+        symbols: ['BTC', 'ETH'],
+        assetClass: 'CRYPTO',
+        currency: 'USDT',
+        timeframe: '4h',
+        lookback: 200,
+        statsPack: 'Volatility'
+      },
+      stats: {
+        event: { id: 'vol_spike', params: {} },
+        condition: { id: 'trend_regime', params: {} },
+        target: { id: 'mean_reversion', params: {} },
+        validation: { trainMonths: 12, testMonths: 6, folds: 3, embargoDays: 2 }
+      }
+    } as any).subscribe();
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/api/runs`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body.data.symbols).toEqual(['BTC', 'ETH']);
+    expect(req.request.body.data.symbol).toBeUndefined();
+    req.flush({ request_id: 'req-ms-symbols', status: 'QUEUED' });
+  });
+
+  it('submits seasonality canonical payload with data.symbols (without data.symbol)', () => {
+    service.submitRun({
+      runType: 'seasonality',
+      data: {
+        symbols: ['BTC', 'ETH'],
+        assetClass: 'CRYPTO',
+        currency: 'USDT',
+        timeframe: '1d',
+        window: 'Monthly',
+        startYear: 2015,
+        endYear: 2024
+      },
+      seasonality: {
+        profile: { id: 'by_session', bySession: true, measure: 'return', retHorizon: 5, minSamplesBin: 100, params: {} },
+        signal: { method: 'threshold', threshold: 0.01, dims: ['session'], combine: 'and' },
+        compute: { maxTrials: 50, searchSpace: 'default' },
+        execution: { riskModel: 'fixed_fraction', tpSl: 'tp_2_sl_1' }
+      }
+    } as any).subscribe();
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/api/runs`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body.data.symbols).toEqual(['BTC', 'ETH']);
+    expect(req.request.body.data.symbol).toBeUndefined();
+    req.flush({ request_id: 'req-seas-symbols', status: 'QUEUED' });
+  });
+
   it('requests run result and normalizes fields', () => {
     let response: any;
 

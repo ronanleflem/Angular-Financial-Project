@@ -70,6 +70,7 @@ describe('backend-validation', () => {
   it('maps data.asset_class and data.currency to market-stats controls', () => {
     expect(mapBackendFieldToControlName('data.asset_class', 'market-stats', {})).toBe('assetClass');
     expect(mapBackendFieldToControlName('data.currency', 'market-stats', {})).toBe('currency');
+    expect(mapBackendFieldToControlName('data.symbols', 'market-stats', {})).toBe('symbols');
   });
 
   it('maps market stats top-level persistence and output fields', () => {
@@ -84,6 +85,7 @@ describe('backend-validation', () => {
     );
     expect(mapBackendFieldToControlName('data.asset_class', 'seasonality', {})).toBe('assetClass');
     expect(mapBackendFieldToControlName('data.currency', 'seasonality', {})).toBe('currency');
+    expect(mapBackendFieldToControlName('data.symbols', 'seasonality', {})).toBe('symbols');
     expect(mapBackendFieldToControlName('persistence.enabled', 'seasonality', {})).toBe('persistenceEnabled');
     expect(mapBackendFieldToControlName('output.out_dir', 'seasonality', {})).toBe('artifactsOutDir');
   });

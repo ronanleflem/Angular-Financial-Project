@@ -765,13 +765,6 @@
           <mat-form-field appearance="outline">
             <mat-label>Devise</mat-label>
             <mat-select formControlName="currency">
-              <mat-option *ngFor="let option of marketStatsCurrencyOptions()" [value]="option">{{ option }}</mat-option>
-            </mat-select>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Devise</mat-label>
-            <mat-select formControlName="currency">
               <mat-option *ngFor="let option of backtestCurrencyOptions()" [value]="option">{{ option }}</mat-option>
             </mat-select>
           </mat-form-field>
@@ -1426,7 +1419,14 @@
       </mat-card-header>
       <mat-card-content>
         <form class="strategy-form" [formGroup]="marketStatsForm" (ngSubmit)="runMarketStats()">
-          <mat-form-field appearance="outline" *ngIf="isMarketStatsFieldSupported('data.symbol')">
+          <mat-form-field appearance="outline" *ngIf="marketStatsUsesMultiSymbols() && isMarketStatsFieldSupported('data.symbols')">
+            <mat-label>Symboles</mat-label>
+            <mat-select multiple formControlName="symbols" [disabled]="!isMarketStatsFieldRuntimeWired('data.symbols')">
+              <mat-option *ngFor="let symbol of symbols" [value]="symbol">{{ displaySymbol(symbol) }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" *ngIf="!marketStatsUsesMultiSymbols() && isMarketStatsFieldSupported('data.symbol')">
             <mat-label>Symbole</mat-label>
             <input matInput type="text" [matAutocomplete]="symbolAutoStats" formControlName="symbol" [disabled]="!isMarketStatsFieldRuntimeWired('data.symbol')" />
             <mat-autocomplete #symbolAutoStats="matAutocomplete" autoActiveFirstOption>
@@ -1503,8 +1503,8 @@
             </div>
             <div class="row-3 row-delta-selection" *ngIf="deltaRanges().length > 0">
               <mat-form-field appearance="outline">
-                <mat-label>Symbole</mat-label>
-                <mat-select formControlName="deltaPresetSymbol">
+                <mat-label>Symboles</mat-label>
+                <mat-select multiple formControlName="deltaPresetSymbols">
                   <mat-option *ngFor="let symbol of marketStatsDeltaAvailableSymbols()" [value]="symbol">{{ displaySymbol(symbol) }}</mat-option>
                 </mat-select>
               </mat-form-field>
@@ -1869,7 +1869,14 @@
       </mat-card-header>
       <mat-card-content>
         <form class="strategy-form" [formGroup]="seasonalityForm" (ngSubmit)="runSeasonality()">
-          <mat-form-field appearance="outline" *ngIf="isSeasonalityFieldSupported('data.symbol')">
+          <mat-form-field appearance="outline" *ngIf="seasonalityUsesMultiSymbols() && isSeasonalityFieldSupported('data.symbols')">
+            <mat-label>Symboles</mat-label>
+            <mat-select multiple formControlName="symbols" [disabled]="!isSeasonalityFieldRuntimeWired('data.symbols')">
+              <mat-option *ngFor="let symbol of symbols" [value]="symbol">{{ displaySymbol(symbol) }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" *ngIf="!seasonalityUsesMultiSymbols() && isSeasonalityFieldSupported('data.symbol')">
             <mat-label>Symbole</mat-label>
             <input matInput type="text" [matAutocomplete]="symbolAutoSeason" formControlName="symbol" [disabled]="!isSeasonalityFieldRuntimeWired('data.symbol')" />
             <mat-autocomplete #symbolAutoSeason="matAutocomplete" autoActiveFirstOption>
@@ -1953,8 +1960,8 @@
             </div>
             <div class="row-3 row-delta-selection" *ngIf="deltaRanges().length > 0">
               <mat-form-field appearance="outline">
-                <mat-label>Symbole</mat-label>
-                <mat-select formControlName="deltaPresetSymbol">
+                <mat-label>Symboles</mat-label>
+                <mat-select multiple formControlName="deltaPresetSymbols">
                   <mat-option *ngFor="let symbol of seasonalityDeltaAvailableSymbols()" [value]="symbol">{{ displaySymbol(symbol) }}</mat-option>
                 </mat-select>
               </mat-form-field>

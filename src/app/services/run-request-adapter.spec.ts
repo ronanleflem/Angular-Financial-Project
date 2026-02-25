@@ -181,4 +181,28 @@ describe('run-request-adapter', () => {
       { symbol: 'ETHUSD', asset_class: 'CRYPTO' }
     ]);
   });
+
+  it('accepts market_stats payload with data.symbols only', () => {
+    const payload = {
+      runType: 'market_stats',
+      data: {
+        symbols: ['BTC', 'ETH'],
+        timeframe: '4h',
+        assetClass: 'CRYPTO',
+        currency: 'USDT',
+        lookback: 200,
+        statsPack: 'Volatility'
+      },
+      stats: {
+        event: { id: 'vol_spike', params: {} },
+        condition: { id: 'trend_regime', params: {} },
+        target: { id: 'mean_reversion', params: {} },
+        validation: { trainMonths: 12, testMonths: 6, folds: 3, embargoDays: 2 }
+      }
+    } as unknown as RunRequestInput;
+
+    const canonical = buildCanonicalRunPayload(payload, 'market_stats') as any;
+    expect(canonical.data.symbol).toBeUndefined();
+    expect(canonical.data.symbols).toEqual(['BTC', 'ETH']);
+  });
 });

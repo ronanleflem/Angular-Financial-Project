@@ -170,6 +170,8 @@ function mapDataField(segments: string[], runTheme: RunTheme): string | null {
     case 'symbol':
     case 'timeframe':
       return key;
+    case 'symbols':
+      return runTheme === 'market-stats' || runTheme === 'seasonality' ? 'symbols' : null;
     case 'frequency':
       return runTheme === 'dca' ? 'frequency' : null;
     case 'amount':
