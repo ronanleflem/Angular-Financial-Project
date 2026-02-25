@@ -1189,6 +1189,7 @@ describe('StrategyLauncherPageComponent', () => {
     expect(payload.runType).toBe('market_stats');
     expect(payload.data.symbol).toBe('BTC');
     expect(payload.data.assetClass).toBe('CRYPTO');
+    expect(payload.data.currency).toBe('USDT');
     expect(payload.data.timeframe).toBe('4h');
   });
 
@@ -1224,6 +1225,7 @@ describe('StrategyLauncherPageComponent', () => {
     expect(payload.runType).toBe('seasonality');
     expect(payload.data.symbol).toBe('BTC');
     expect(payload.data.assetClass).toBe('EQUITY');
+    expect(payload.data.currency).toBe('USDT');
     expect(payload.data.timeframe).toBe('1d');
     expect(payload.data.startYear).toBe(2021);
     expect(payload.data.endYear).toBe(2024);

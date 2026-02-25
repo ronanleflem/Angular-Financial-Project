@@ -759,6 +759,13 @@
           <mat-form-field appearance="outline">
             <mat-label>Devise</mat-label>
             <mat-select formControlName="currency">
+              <mat-option *ngFor="let option of marketStatsCurrencyOptions()" [value]="option">{{ option }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Devise</mat-label>
+            <mat-select formControlName="currency">
               <mat-option *ngFor="let option of backtestCurrencyOptions()" [value]="option">{{ option }}</mat-option>
             </mat-select>
           </mat-form-field>
@@ -1422,6 +1429,13 @@
             <mat-label>Classe d'actif</mat-label>
             <mat-select formControlName="assetClass">
               <mat-option *ngFor="let option of dcaAssetClasses" [value]="option">{{ option }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Devise</mat-label>
+            <mat-select formControlName="currency">
+              <mat-option *ngFor="let option of seasonalityCurrencyOptions()" [value]="option">{{ option }}</mat-option>
             </mat-select>
           </mat-form-field>
 

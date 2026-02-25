@@ -594,6 +594,7 @@ export class StrategyLauncherPageComponent {
   private readonly statsDefaults = {
     symbol: 'BTC',
     assetClass: 'CRYPTO',
+    currency: 'USDT',
     timeframe: '4h',
     useDeltaPreset: false,
     deltaQuerySymbol: '',
@@ -639,6 +640,7 @@ export class StrategyLauncherPageComponent {
   private readonly seasonalityDefaults = {
     symbol: 'SPY',
     assetClass: 'EQUITY',
+    currency: 'USD',
     timeframe: '1d',
     useDeltaPreset: false,
     deltaQuerySymbol: '',
@@ -909,6 +911,7 @@ export class StrategyLauncherPageComponent {
       this.statsDefaults.assetClass,
       [Validators.required, oneOfValidator(DCA_ALLOWED_ASSET_CLASSES)]
     ],
+    currency: [this.statsDefaults.currency, Validators.required],
     timeframe: [this.statsDefaults.timeframe, Validators.required],
     useDeltaPreset: [this.statsDefaults.useDeltaPreset],
     deltaQuerySymbol: [this.statsDefaults.deltaQuerySymbol],
@@ -959,6 +962,7 @@ export class StrategyLauncherPageComponent {
       this.seasonalityDefaults.assetClass,
       [Validators.required, oneOfValidator(DCA_ALLOWED_ASSET_CLASSES)]
     ],
+    currency: [this.seasonalityDefaults.currency, Validators.required],
     timeframe: [this.seasonalityDefaults.timeframe, Validators.required],
     useDeltaPreset: [this.seasonalityDefaults.useDeltaPreset],
     deltaQuerySymbol: [this.seasonalityDefaults.deltaQuerySymbol],
@@ -1124,6 +1128,8 @@ export class StrategyLauncherPageComponent {
     this.bindBacktestSourceControls();
     this.bindDcaCurrencyControls();
     this.bindBacktestCurrencyControls();
+    this.bindMarketStatsCurrencyControls();
+    this.bindSeasonalityCurrencyControls();
     this.bindMarketStatsDeltaPresetControls();
     this.bindSeasonalityDeltaPresetControls();
     this.runForSelection(this.selectedRun());
@@ -1530,6 +1536,80 @@ export class StrategyLauncherPageComponent {
     deltaPresetTimeframe.valueChanges.subscribe(sync);
   }
 
+  private bindMarketStatsCurrencyControls(): void {
+    const assetClass = this.marketStatsForm.get('assetClass');
+    const currency = this.marketStatsForm.get('currency');
+    const useDeltaPreset = this.marketStatsForm.get('useDeltaPreset');
+    const deltaPresetSymbol = this.marketStatsForm.get('deltaPresetSymbol');
+    const deltaPresetTimeframe = this.marketStatsForm.get('deltaPresetTimeframe');
+    if (!assetClass || !currency || !useDeltaPreset || !deltaPresetSymbol || !deltaPresetTimeframe) {
+      return;
+    }
+
+    const sync = () => {
+      const selectedAssetClass = String(assetClass.value ?? this.statsDefaults.assetClass);
+      const selectedCurrency = String(currency.value ?? this.statsDefaults.currency);
+      const autoCurrency = Boolean(useDeltaPreset.value)
+        ? this.detectCurrencyFromDeltaRows(this.selectedDeltaRowsForForm(this.marketStatsForm))
+        : null;
+      const next = this.resolveCurrencyForAssetClass(
+        selectedAssetClass,
+        selectedCurrency,
+        autoCurrency,
+        this.statsDefaults.currency
+      );
+      currency.setValue(next as any, { emitEvent: false });
+      if (Boolean(useDeltaPreset.value)) {
+        currency.disable({ emitEvent: false });
+      } else {
+        currency.enable({ emitEvent: false });
+      }
+    };
+
+    sync();
+    assetClass.valueChanges.subscribe(sync);
+    useDeltaPreset.valueChanges.subscribe(sync);
+    deltaPresetSymbol.valueChanges.subscribe(sync);
+    deltaPresetTimeframe.valueChanges.subscribe(sync);
+  }
+
+  private bindSeasonalityCurrencyControls(): void {
+    const assetClass = this.seasonalityForm.get('assetClass');
+    const currency = this.seasonalityForm.get('currency');
+    const useDeltaPreset = this.seasonalityForm.get('useDeltaPreset');
+    const deltaPresetSymbol = this.seasonalityForm.get('deltaPresetSymbol');
+    const deltaPresetTimeframe = this.seasonalityForm.get('deltaPresetTimeframe');
+    if (!assetClass || !currency || !useDeltaPreset || !deltaPresetSymbol || !deltaPresetTimeframe) {
+      return;
+    }
+
+    const sync = () => {
+      const selectedAssetClass = String(assetClass.value ?? this.seasonalityDefaults.assetClass);
+      const selectedCurrency = String(currency.value ?? this.seasonalityDefaults.currency);
+      const autoCurrency = Boolean(useDeltaPreset.value)
+        ? this.detectCurrencyFromDeltaRows(this.selectedDeltaRowsForForm(this.seasonalityForm))
+        : null;
+      const next = this.resolveCurrencyForAssetClass(
+        selectedAssetClass,
+        selectedCurrency,
+        autoCurrency,
+        this.seasonalityDefaults.currency
+      );
+      currency.setValue(next as any, { emitEvent: false });
+      if (Boolean(useDeltaPreset.value)) {
+        currency.disable({ emitEvent: false });
+      } else {
+        currency.enable({ emitEvent: false });
+      }
+    };
+
+    sync();
+    assetClass.valueChanges.subscribe(sync);
+    useDeltaPreset.valueChanges.subscribe(sync);
+    deltaPresetSymbol.valueChanges.subscribe(sync);
+    deltaPresetTimeframe.valueChanges.subscribe(sync);
+  }
+
   backtestSourceModeAvailable(mode: BacktestSourceMode): boolean {
     const implicitSupported = typeof this.backtestImplicitSourceSupported === 'function'
       ? this.backtestImplicitSourceSupported()
@@ -1553,6 +1633,16 @@ export class StrategyLauncherPageComponent {
 
   backtestCurrencyOptions(): string[] {
     const assetClass = String(this.backtestForm.get('assetClass')?.value ?? this.backtestDefaults.assetClass);
+    return allowedCurrenciesForAssetClass(assetClass);
+  }
+
+  marketStatsCurrencyOptions(): string[] {
+    const assetClass = String(this.marketStatsForm.get('assetClass')?.value ?? this.statsDefaults.assetClass);
+    return allowedCurrenciesForAssetClass(assetClass);
+  }
+
+  seasonalityCurrencyOptions(): string[] {
+    const assetClass = String(this.seasonalityForm.get('assetClass')?.value ?? this.seasonalityDefaults.assetClass);
     return allowedCurrenciesForAssetClass(assetClass);
   }
 
@@ -1770,7 +1860,7 @@ export class StrategyLauncherPageComponent {
     fallbackCurrency: string
   ): string {
     const allowed = allowedCurrenciesForAssetClass(assetClass);
-    if (deltaCurrency && allowed.includes(deltaCurrency)) {
+    if (deltaCurrency) {
       return deltaCurrency;
     }
     if (selectedCurrency && allowed.includes(selectedCurrency)) {
@@ -3146,11 +3236,22 @@ export class StrategyLauncherPageComponent {
     const effectiveTimeframe = useDeltaPreset
       ? String(v.deltaPresetTimeframe ?? '').trim()
       : String(v.timeframe ?? this.statsDefaults.timeframe);
+    const deltaDetectedCurrency = useDeltaPreset
+      ? this.detectCurrencyFromDeltaRows(this.selectedDeltaRowsForForm(this.marketStatsForm))
+      : null;
+    const selectedCurrency = String(v.currency ?? this.statsDefaults.currency);
+    const effectiveCurrency = this.resolveCurrencyForAssetClass(
+      assetClass,
+      selectedCurrency,
+      deltaDetectedCurrency,
+      this.statsDefaults.currency
+    );
     return {
       runType: 'market_stats',
       data: {
         symbol: effectiveSymbol || this.statsDefaults.symbol,
         assetClass,
+        currency: effectiveCurrency,
         timeframe: effectiveTimeframe || this.statsDefaults.timeframe,
         lookback: Number(v.lookback ?? this.statsDefaults.lookback),
         statsPack: String(v.statsPack ?? this.statsDefaults.statsPack),
@@ -3183,11 +3284,22 @@ export class StrategyLauncherPageComponent {
     const effectiveEndYear = useDeltaPreset && deltaPeriod
       ? new Date(deltaPeriod.endDate).getUTCFullYear()
       : Number(v.endYear ?? this.seasonalityDefaults.endYear);
+    const deltaDetectedCurrency = useDeltaPreset
+      ? this.detectCurrencyFromDeltaRows(this.selectedDeltaRowsForForm(this.seasonalityForm))
+      : null;
+    const selectedCurrency = String(v.currency ?? this.seasonalityDefaults.currency);
+    const effectiveCurrency = this.resolveCurrencyForAssetClass(
+      assetClass,
+      selectedCurrency,
+      deltaDetectedCurrency,
+      this.seasonalityDefaults.currency
+    );
     return {
       runType: 'seasonality',
       data: {
         symbol: effectiveSymbol || this.seasonalityDefaults.symbol,
         assetClass,
+        currency: effectiveCurrency,
         timeframe: effectiveTimeframe || this.seasonalityDefaults.timeframe,
         window: String(v.window ?? this.seasonalityDefaults.window),
         startYear: effectiveStartYear,
