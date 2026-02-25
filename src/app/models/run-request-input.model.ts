@@ -22,12 +22,15 @@ export interface FilterRulesConfig {
 export interface UniverseItem {
   symbol: string;
   assetClass: string;
+  currency?: string;
   exchange?: string;
   broker?: string;
 }
 
 export interface DataBlockBase {
   symbol: string;
+  assetClass?: string;
+  currency?: string;
   timeframe: Timeframe;
 }
 
@@ -163,12 +166,13 @@ export interface BacktestScreeningBlock {
 }
 
 export interface BacktestStrategyParamsBlock {
-  assetClass?: 'CRYPTO' | 'EQUITY' | 'ETF' | 'STOCK' | 'ACTION' | string;
+  assetClass?: 'CRYPTO' | 'ETF' | 'EQUITY' | 'FOREX' | string;
   tpSl?: BacktestTpSlBlock;
   screening?: BacktestScreeningBlock;
 }
 
 export interface MarketStatsDataBlock extends DataBlockBase {
+  assetClass?: 'CRYPTO' | 'ETF' | 'EQUITY' | 'FOREX' | string;
   lookback: number;
   statsPack: string;
   session?: string;
@@ -207,6 +211,7 @@ export interface MarketStatsOutputBlock {
 }
 
 export interface SeasonalityDataBlock extends DataBlockBase {
+  assetClass?: 'CRYPTO' | 'ETF' | 'EQUITY' | 'FOREX' | string;
   window: string;
   startYear: number;
   endYear: number;
@@ -457,10 +462,10 @@ function validateDcaStrategy(errors: ValidationError[], strategy: DcaStrategyCor
   const paramsWithAssetClass = strategy.params as { assetClass?: string };
   if (!paramsWithAssetClass.assetClass) {
     errors.push({ path: 'strategy.params.assetClass', message: 'required' });
-  } else if (!['CRYPTO', 'EQUITY', 'ETF', 'STOCK', 'ACTION'].includes(paramsWithAssetClass.assetClass)) {
+  } else if (!['CRYPTO', 'ETF', 'EQUITY', 'FOREX'].includes(paramsWithAssetClass.assetClass)) {
     errors.push({
       path: 'strategy.params.assetClass',
-      message: 'must be one of: CRYPTO, EQUITY, ETF, STOCK, ACTION'
+      message: 'must be one of: CRYPTO, ETF, EQUITY, FOREX'
     });
   }
   if (strategy.type === 'dca_equity') {

@@ -141,6 +141,9 @@
                 <input matInput readonly [value]="selectedDeltaPeriodLabel()" />
               </mat-form-field>
             </div>
+            <div class="param-hint" *ngIf="deltaRanges().length > 0">
+              Devise detectee: {{ selectedDeltaQuoteLabel() }}
+            </div>
           </ng-container>
 
           <section class="section-block">
@@ -187,6 +190,13 @@
                     <mat-label>strategy.params.asset_class</mat-label>
                     <mat-select formControlName="assetClass">
                       <mat-option *ngFor="let assetClass of dcaAssetClasses" [value]="assetClass">{{ assetClass }}</mat-option>
+                    </mat-select>
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline">
+                    <mat-label>data.currency</mat-label>
+                    <mat-select formControlName="currency">
+                      <mat-option *ngFor="let currency of dcaCurrencyOptions()" [value]="currency">{{ currency }}</mat-option>
                     </mat-select>
                   </mat-form-field>
 
@@ -747,6 +757,13 @@
           </mat-form-field>
 
           <mat-form-field appearance="outline">
+            <mat-label>Devise</mat-label>
+            <mat-select formControlName="currency">
+              <mat-option *ngFor="let option of backtestCurrencyOptions()" [value]="option">{{ option }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
             <mat-label>Timeframe</mat-label>
             <mat-select formControlName="timeframe">
               <mat-option *ngFor="let tf of timeframes" [value]="tf">{{ tf }}</mat-option>
@@ -888,6 +905,9 @@
                 <mat-label>Periode</mat-label>
                 <input matInput readonly [value]="backtestSelectedDeltaPeriodLabel()" />
               </mat-form-field>
+            </div>
+            <div class="param-hint" *ngIf="deltaRanges().length > 0">
+              Devise detectee: {{ backtestSelectedDeltaQuoteLabel() }}
             </div>
           </ng-container>
 
@@ -1399,6 +1419,13 @@
           </mat-form-field>
 
           <mat-form-field appearance="outline">
+            <mat-label>Classe d'actif</mat-label>
+            <mat-select formControlName="assetClass">
+              <mat-option *ngFor="let option of dcaAssetClasses" [value]="option">{{ option }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
             <mat-label>Timeframe</mat-label>
             <mat-select formControlName="timeframe">
               <mat-option *ngFor="let tf of timeframes" [value]="tf">{{ tf }}</mat-option>
@@ -1465,6 +1492,9 @@
                 <mat-label>Periode</mat-label>
                 <input matInput readonly [value]="marketStatsSelectedDeltaPeriodLabel()" />
               </mat-form-field>
+            </div>
+            <div class="param-hint" *ngIf="deltaRanges().length > 0">
+              Devise detectee: {{ marketStatsSelectedDeltaQuoteLabel() }}
             </div>
           </ng-container>
 
@@ -1819,6 +1849,13 @@
           </mat-form-field>
 
           <mat-form-field appearance="outline">
+            <mat-label>Classe d'actif</mat-label>
+            <mat-select formControlName="assetClass">
+              <mat-option *ngFor="let option of dcaAssetClasses" [value]="option">{{ option }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
             <mat-label>Timeframe</mat-label>
             <mat-select formControlName="timeframe">
               <mat-option *ngFor="let tf of timeframes" [value]="tf">{{ tf }}</mat-option>
@@ -1892,6 +1929,9 @@
                 <mat-label>Periode</mat-label>
                 <input matInput readonly [value]="seasonalitySelectedDeltaPeriodLabel()" />
               </mat-form-field>
+            </div>
+            <div class="param-hint" *ngIf="deltaRanges().length > 0">
+              Devise detectee: {{ seasonalitySelectedDeltaQuoteLabel() }}
             </div>
           </ng-container>
 

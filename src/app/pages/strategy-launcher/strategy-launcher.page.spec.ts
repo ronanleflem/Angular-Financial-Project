@@ -215,6 +215,7 @@ describe('StrategyLauncherPageComponent', () => {
 
     const payload = component.buildRunRequest() as any;
     expect(payload.strategy.params.assetClass).toBe('CRYPTO');
+    expect(payload.data.currency).toBe('USDT');
     expect(payload.data.source).toBe('csv');
     expect(payload.data.path).toBe('C:\\\\data\\\\backtest.csv');
   });
@@ -410,6 +411,8 @@ describe('StrategyLauncherPageComponent', () => {
 
     const payload = component.buildRunRequest() as any;
     expect(payload.strategy.grid).toBeUndefined();
+    expect(payload.data.assetClass).toBe('CRYPTO');
+    expect(payload.data.currency).toBe('USDT');
     expect(payload.strategy.params.assetClass).toBe('CRYPTO');
     expect(payload.strategy.params.grid).toEqual([
       { dd: -5, weight: 1 },
@@ -769,9 +772,10 @@ describe('StrategyLauncherPageComponent', () => {
 
     const payload = component.buildRunRequest() as any;
     expect(payload.data.symbol).toBe('BTCUSD');
+    expect(payload.data.currency).toBe('USDT');
     expect(payload.universe).toEqual([
-      jasmine.objectContaining({ symbol: 'BTCUSD' }),
-      jasmine.objectContaining({ symbol: 'AAPL' })
+      jasmine.objectContaining({ symbol: 'BTCUSD', currency: 'USDT' }),
+      jasmine.objectContaining({ symbol: 'AAPL', currency: 'USDT' })
     ]);
   });
 
@@ -1032,7 +1036,7 @@ describe('StrategyLauncherPageComponent', () => {
       deltaPresetSymbol: 'BTCUSDT',
       deltaPresetSymbols: ['BTCUSDT'],
       deltaPresetTimeframe: '1h'
-    } as any);
+     } as any);
 
     const payload = component.buildRunRequest() as any;
     expect(payload.data.symbol).toBe('BTC');
@@ -1184,6 +1188,7 @@ describe('StrategyLauncherPageComponent', () => {
     const payload = component.buildRunRequest() as any;
     expect(payload.runType).toBe('market_stats');
     expect(payload.data.symbol).toBe('BTC');
+    expect(payload.data.assetClass).toBe('CRYPTO');
     expect(payload.data.timeframe).toBe('4h');
   });
 
@@ -1218,6 +1223,7 @@ describe('StrategyLauncherPageComponent', () => {
     const payload = component.buildRunRequest() as any;
     expect(payload.runType).toBe('seasonality');
     expect(payload.data.symbol).toBe('BTC');
+    expect(payload.data.assetClass).toBe('EQUITY');
     expect(payload.data.timeframe).toBe('1d');
     expect(payload.data.startYear).toBe(2021);
     expect(payload.data.endYear).toBe(2024);

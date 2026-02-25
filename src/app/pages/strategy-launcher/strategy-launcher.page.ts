@@ -108,8 +108,10 @@ const FREQUENCY_DAYS: Record<string, number> = {
 };
 const DCA_ALLOWED_EXECUTION_MODES = ['bar_close', 'intracandle'] as const;
 const DCA_ALLOWED_DRAWDOWN_REFERENCES = ['ATH', '1M', '3M', '6M', '1Y'] as const;
-const DCA_ALLOWED_ASSET_CLASSES = ['CRYPTO', 'EQUITY', 'ETF', 'STOCK', 'ACTION'] as const;
+const DCA_ALLOWED_ASSET_CLASSES = ['CRYPTO', 'ETF', 'EQUITY', 'FOREX'] as const;
 const SYMBOL_QUOTE_SUFFIXES = ['USDT', 'USDC', 'USD'] as const;
+const CRYPTO_ALLOWED_CURRENCIES = ['USDT', 'USDC'] as const;
+const NON_CRYPTO_ALLOWED_CURRENCIES = ['USD', 'EUR', 'JPY', 'GBP', 'AUD', 'CAD', 'CHF'] as const;
 const NOT_IMPLEMENTED_YET_MESSAGE = 'Not implemented yet';
 
 type MetricTone = 'positive' | 'negative' | 'neutral';
@@ -468,6 +470,7 @@ export class StrategyLauncherPageComponent {
     includeDcaAdvanced: false,
     strategyType: 'dca_equity' as DcaStrategyType,
     assetClass: 'CRYPTO',
+    currency: 'USDT',
     gridPresets: ['grid_balanced'],
     drawdownReference: 'ATH',
     executionMode: 'bar_close',
@@ -516,6 +519,7 @@ export class StrategyLauncherPageComponent {
     strategy: 'Mean Reversion',
     symbol: 'EUR',
     assetClass: 'CRYPTO',
+    currency: 'USDT',
     timeframe: '1h',
     startDate: new Date(2019, 0, 1),
     endDate: new Date(2024, 11, 31),
@@ -589,6 +593,7 @@ export class StrategyLauncherPageComponent {
 
   private readonly statsDefaults = {
     symbol: 'BTC',
+    assetClass: 'CRYPTO',
     timeframe: '4h',
     useDeltaPreset: false,
     deltaQuerySymbol: '',
@@ -633,6 +638,7 @@ export class StrategyLauncherPageComponent {
 
   private readonly seasonalityDefaults = {
     symbol: 'SPY',
+    assetClass: 'EQUITY',
     timeframe: '1d',
     useDeltaPreset: false,
     deltaQuerySymbol: '',
@@ -758,6 +764,7 @@ export class StrategyLauncherPageComponent {
         this.dcaDefaults.assetClass,
         [Validators.required, oneOfValidator(DCA_ALLOWED_ASSET_CLASSES)]
       ],
+      currency: [this.dcaDefaults.currency, Validators.required],
       gridPresets: [this.dcaDefaults.gridPresets],
       drawdownReference: [this.dcaDefaults.drawdownReference, oneOfValidator(DCA_ALLOWED_DRAWDOWN_REFERENCES)],
       executionMode: [this.dcaDefaults.executionMode, oneOfValidator(DCA_ALLOWED_EXECUTION_MODES)],
@@ -817,6 +824,7 @@ export class StrategyLauncherPageComponent {
         this.backtestDefaults.assetClass,
         [Validators.required, oneOfValidator(DCA_ALLOWED_ASSET_CLASSES)]
       ],
+      currency: [this.backtestDefaults.currency, Validators.required],
       timeframe: [this.backtestDefaults.timeframe, Validators.required],
       startDate: [this.backtestDefaults.startDate, Validators.required],
       endDate: [this.backtestDefaults.endDate, Validators.required],
@@ -897,6 +905,10 @@ export class StrategyLauncherPageComponent {
 
   readonly marketStatsForm = this.fb.group({
     symbol: [this.statsDefaults.symbol, [Validators.required, symbolListValidator(this.symbols)]],
+    assetClass: [
+      this.statsDefaults.assetClass,
+      [Validators.required, oneOfValidator(DCA_ALLOWED_ASSET_CLASSES)]
+    ],
     timeframe: [this.statsDefaults.timeframe, Validators.required],
     useDeltaPreset: [this.statsDefaults.useDeltaPreset],
     deltaQuerySymbol: [this.statsDefaults.deltaQuerySymbol],
@@ -943,6 +955,10 @@ export class StrategyLauncherPageComponent {
 
   readonly seasonalityForm = this.fb.group({
     symbol: [this.seasonalityDefaults.symbol, [Validators.required, symbolListValidator(this.symbols)]],
+    assetClass: [
+      this.seasonalityDefaults.assetClass,
+      [Validators.required, oneOfValidator(DCA_ALLOWED_ASSET_CLASSES)]
+    ],
     timeframe: [this.seasonalityDefaults.timeframe, Validators.required],
     useDeltaPreset: [this.seasonalityDefaults.useDeltaPreset],
     deltaQuerySymbol: [this.seasonalityDefaults.deltaQuerySymbol],
@@ -1106,6 +1122,8 @@ export class StrategyLauncherPageComponent {
     this.bindDcaDeltaPresetControls();
     this.bindBacktestDeltaPresetControls();
     this.bindBacktestSourceControls();
+    this.bindDcaCurrencyControls();
+    this.bindBacktestCurrencyControls();
     this.bindMarketStatsDeltaPresetControls();
     this.bindSeasonalityDeltaPresetControls();
     this.runForSelection(this.selectedRun());
@@ -1310,6 +1328,10 @@ export class StrategyLauncherPageComponent {
     return `${period.startDate} -> ${period.endDate}`;
   }
 
+  selectedDeltaQuoteLabel(): string {
+    return this.deltaQuoteLabelFromRows(this.selectedDeltaRows());
+  }
+
   backtestDeltaAvailableSymbols(): string[] {
     return this.deltaAvailableSymbolsForForm(this.backtestForm);
   }
@@ -1321,6 +1343,10 @@ export class StrategyLauncherPageComponent {
   backtestSelectedDeltaPeriodLabel(): string {
     const period = this.selectedDeltaPeriodForForm(this.backtestForm);
     return period ? `${period.startDate} -> ${period.endDate}` : '';
+  }
+
+  backtestSelectedDeltaQuoteLabel(): string {
+    return this.deltaQuoteLabelFromRows(this.selectedDeltaRowsForForm(this.backtestForm));
   }
 
   marketStatsDeltaAvailableSymbols(): string[] {
@@ -1336,6 +1362,10 @@ export class StrategyLauncherPageComponent {
     return period ? `${period.startDate} -> ${period.endDate}` : '';
   }
 
+  marketStatsSelectedDeltaQuoteLabel(): string {
+    return this.deltaQuoteLabelFromRows(this.selectedDeltaRowsForForm(this.marketStatsForm));
+  }
+
   seasonalityDeltaAvailableSymbols(): string[] {
     return this.deltaAvailableSymbolsForForm(this.seasonalityForm);
   }
@@ -1347,6 +1377,10 @@ export class StrategyLauncherPageComponent {
   seasonalitySelectedDeltaPeriodLabel(): string {
     const period = this.selectedDeltaPeriodForForm(this.seasonalityForm);
     return period ? `${period.startDate} -> ${period.endDate}` : '';
+  }
+
+  seasonalitySelectedDeltaQuoteLabel(): string {
+    return this.deltaQuoteLabelFromRows(this.selectedDeltaRowsForForm(this.seasonalityForm));
   }
 
   private syncDeltaPresetSelection(): void {
@@ -1391,6 +1425,15 @@ export class StrategyLauncherPageComponent {
     return single ? [single] : [];
   }
 
+  private selectedDeltaRows(): DeltaIngestionRange[] {
+    const symbols = this.selectedDeltaSymbols();
+    const timeframe = String(this.dcaForm.get('deltaPresetTimeframe')?.value ?? '').trim();
+    if (symbols.length === 0 || !timeframe) {
+      return [];
+    }
+    return this.deltaRanges().filter(item => symbols.includes(item.symbol) && item.timeframe === timeframe);
+  }
+
   private bindBacktestDeltaPresetControls(): void {
     this.bindSingleDeltaPresetControls(this.backtestForm, period => {
       const startControl = this.backtestForm.get('startDate');
@@ -1413,6 +1456,80 @@ export class StrategyLauncherPageComponent {
     });
   }
 
+  private bindDcaCurrencyControls(): void {
+    const assetClass = this.dcaForm.get('assetClass');
+    const currency = this.dcaForm.get('currency');
+    const useDeltaPreset = this.dcaForm.get('useDeltaPreset');
+    const deltaPresetSymbols = this.dcaForm.get('deltaPresetSymbols');
+    const deltaPresetTimeframe = this.dcaForm.get('deltaPresetTimeframe');
+    if (!assetClass || !currency || !useDeltaPreset || !deltaPresetSymbols || !deltaPresetTimeframe) {
+      return;
+    }
+
+    const sync = () => {
+      const selectedAssetClass = String(assetClass.value ?? this.dcaDefaults.assetClass);
+      const selectedCurrency = String(currency.value ?? this.dcaDefaults.currency);
+      const autoCurrency = Boolean(useDeltaPreset.value)
+        ? this.detectCurrencyFromDeltaRows(this.selectedDeltaRows())
+        : null;
+      const next = this.resolveCurrencyForAssetClass(
+        selectedAssetClass,
+        selectedCurrency,
+        autoCurrency,
+        this.dcaDefaults.currency
+      );
+      currency.setValue(next as any, { emitEvent: false });
+      if (Boolean(useDeltaPreset.value)) {
+        currency.disable({ emitEvent: false });
+      } else {
+        currency.enable({ emitEvent: false });
+      }
+    };
+
+    sync();
+    assetClass.valueChanges.subscribe(sync);
+    useDeltaPreset.valueChanges.subscribe(sync);
+    deltaPresetSymbols.valueChanges.subscribe(sync);
+    deltaPresetTimeframe.valueChanges.subscribe(sync);
+  }
+
+  private bindBacktestCurrencyControls(): void {
+    const assetClass = this.backtestForm.get('assetClass');
+    const currency = this.backtestForm.get('currency');
+    const useDeltaPreset = this.backtestForm.get('useDeltaPreset');
+    const deltaPresetSymbol = this.backtestForm.get('deltaPresetSymbol');
+    const deltaPresetTimeframe = this.backtestForm.get('deltaPresetTimeframe');
+    if (!assetClass || !currency || !useDeltaPreset || !deltaPresetSymbol || !deltaPresetTimeframe) {
+      return;
+    }
+
+    const sync = () => {
+      const selectedAssetClass = String(assetClass.value ?? this.backtestDefaults.assetClass);
+      const selectedCurrency = String(currency.value ?? this.backtestDefaults.currency);
+      const autoCurrency = Boolean(useDeltaPreset.value)
+        ? this.detectCurrencyFromDeltaRows(this.selectedDeltaRowsForForm(this.backtestForm))
+        : null;
+      const next = this.resolveCurrencyForAssetClass(
+        selectedAssetClass,
+        selectedCurrency,
+        autoCurrency,
+        this.backtestDefaults.currency
+      );
+      currency.setValue(next as any, { emitEvent: false });
+      if (Boolean(useDeltaPreset.value)) {
+        currency.disable({ emitEvent: false });
+      } else {
+        currency.enable({ emitEvent: false });
+      }
+    };
+
+    sync();
+    assetClass.valueChanges.subscribe(sync);
+    useDeltaPreset.valueChanges.subscribe(sync);
+    deltaPresetSymbol.valueChanges.subscribe(sync);
+    deltaPresetTimeframe.valueChanges.subscribe(sync);
+  }
+
   backtestSourceModeAvailable(mode: BacktestSourceMode): boolean {
     const implicitSupported = typeof this.backtestImplicitSourceSupported === 'function'
       ? this.backtestImplicitSourceSupported()
@@ -1427,6 +1544,16 @@ export class StrategyLauncherPageComponent {
       return this.backtestMysqlSourceSupported;
     }
     return false;
+  }
+
+  dcaCurrencyOptions(): string[] {
+    const assetClass = String(this.dcaForm.get('assetClass')?.value ?? this.dcaDefaults.assetClass);
+    return allowedCurrenciesForAssetClass(assetClass);
+  }
+
+  backtestCurrencyOptions(): string[] {
+    const assetClass = String(this.backtestForm.get('assetClass')?.value ?? this.backtestDefaults.assetClass);
+    return allowedCurrenciesForAssetClass(assetClass);
   }
 
   private backtestSourceModeValidator(control?: AbstractControl | null): ValidationErrors | null {
@@ -1588,12 +1715,7 @@ export class StrategyLauncherPageComponent {
   }
 
   private selectedDeltaPeriodForForm(form: UntypedFormGroup): DeltaPresetPeriod | null {
-    const symbol = String(form.get('deltaPresetSymbol')?.value ?? '').trim();
-    const timeframe = String(form.get('deltaPresetTimeframe')?.value ?? '').trim();
-    if (!symbol || !timeframe) {
-      return null;
-    }
-    const rows = this.deltaRanges().filter(item => item.symbol === symbol && item.timeframe === timeframe);
+    const rows = this.selectedDeltaRowsForForm(form);
     if (rows.length === 0) {
       return null;
     }
@@ -1606,6 +1728,78 @@ export class StrategyLauncherPageComponent {
       startDate: new Date(Math.min(...starts)).toISOString(),
       endDate: new Date(Math.max(...ends)).toISOString()
     };
+  }
+
+  private selectedDeltaRowsForForm(form: UntypedFormGroup): DeltaIngestionRange[] {
+    const symbol = String(form.get('deltaPresetSymbol')?.value ?? '').trim();
+    const timeframe = String(form.get('deltaPresetTimeframe')?.value ?? '').trim();
+    if (!symbol || !timeframe) {
+      return [];
+    }
+    return this.deltaRanges().filter(item => item.symbol === symbol && item.timeframe === timeframe);
+  }
+
+  private deltaQuoteLabelFromRows(rows: ReadonlyArray<DeltaIngestionRange>): string {
+    if (!rows.length) {
+      return 'Inconnue';
+    }
+    const quoteCurrencies = Array.from(
+      new Set(
+        rows
+          .map(item => detectQuoteCurrencyFromSymbol(item.symbol))
+          .filter((value): value is string => Boolean(value))
+      )
+    );
+    return quoteCurrencies.length > 0 ? quoteCurrencies.join(', ') : 'Inconnue';
+  }
+
+  private detectCurrencyFromDeltaRows(rows: ReadonlyArray<DeltaIngestionRange>): string | null {
+    for (const row of rows) {
+      const quote = detectQuoteCurrencyFromSymbol(row.symbol);
+      if (quote) {
+        return quote;
+      }
+    }
+    return null;
+  }
+
+  private resolveCurrencyForAssetClass(
+    assetClass: string,
+    selectedCurrency: string,
+    deltaCurrency: string | null,
+    fallbackCurrency: string
+  ): string {
+    const allowed = allowedCurrenciesForAssetClass(assetClass);
+    if (deltaCurrency && allowed.includes(deltaCurrency)) {
+      return deltaCurrency;
+    }
+    if (selectedCurrency && allowed.includes(selectedCurrency)) {
+      return selectedCurrency;
+    }
+    if (allowed.includes(fallbackCurrency)) {
+      return fallbackCurrency;
+    }
+    return allowed[0] ?? fallbackCurrency;
+  }
+
+  private buildDeltaCurrencyByBaseSymbol(
+    selectedSymbols: ReadonlyArray<string>,
+    timeframe: string
+  ): Map<string, string> {
+    const map = new Map<string, string>();
+    if (!selectedSymbols.length || !timeframe) {
+      return map;
+    }
+    this.deltaRanges()
+      .filter(item => selectedSymbols.includes(item.symbol) && item.timeframe === timeframe)
+      .forEach(item => {
+        const baseSymbol = toBaseSymbol(item.symbol);
+        const quote = detectQuoteCurrencyFromSymbol(item.symbol);
+        if (baseSymbol && quote && !map.has(baseSymbol)) {
+          map.set(baseSymbol, quote);
+        }
+      });
+    return map;
   }
 
   private syncSingleDeltaPresetSelection(
@@ -2727,15 +2921,29 @@ export class StrategyLauncherPageComponent {
     const v = this.dcaForm.getRawValue();
     const useDeltaPreset = Boolean(v.useDeltaPreset);
     const deltaPeriod = useDeltaPreset ? this.selectedDeltaPeriod() : null;
+    const selectedDeltaTimeframe = String(v.deltaPresetTimeframe ?? '').trim();
+    const dcaDeltaSymbolCurrencyMap = useDeltaPreset
+      ? this.buildDeltaCurrencyByBaseSymbol(
+          ((v.deltaPresetSymbols ?? []) as ReadonlyArray<string>).map(item => String(item).trim()),
+          selectedDeltaTimeframe
+        )
+      : new Map<string, string>();
     const canUseUniverse = this.canUseCanonicalUniverse();
-    const explicitUniverse = canUseUniverse && Boolean(v.includeDcaUniverse) ? this.buildDcaUniverse(v) : undefined;
+    const explicitUniverse = canUseUniverse && Boolean(v.includeDcaUniverse)
+      ? this.buildDcaUniverse(v, String(v.currency ?? this.dcaDefaults.currency), dcaDeltaSymbolCurrencyMap)
+      : undefined;
     const selectedSymbols = Array.from(new Set(((v.symbols ?? []) as ReadonlyArray<string>).map(item => String(item).trim()).filter(Boolean)));
     const deltaSymbols = useDeltaPreset
       ? Array.from(new Set(((v.deltaPresetSymbols ?? []) as ReadonlyArray<string>).map(item => toBaseSymbol(String(item).trim())).filter(Boolean)))
       : [];
     const autoUniverseSymbols = useDeltaPreset ? deltaSymbols : selectedSymbols;
     const autoUniverse = canUseUniverse && autoUniverseSymbols.length > 1
-      ? this.buildUniverseFromSymbols(autoUniverseSymbols, String(v.assetClass ?? this.dcaDefaults.assetClass))
+      ? this.buildUniverseFromSymbols(
+          autoUniverseSymbols,
+          String(v.assetClass ?? this.dcaDefaults.assetClass),
+          String(v.currency ?? this.dcaDefaults.currency),
+          dcaDeltaSymbolCurrencyMap
+        )
       : undefined;
     const selectedUniverse = explicitUniverse ?? autoUniverse;
     const universePrimarySymbol = canUseUniverse ? (selectedUniverse?.[0]?.symbol?.trim() ?? '') : '';
@@ -2757,11 +2965,24 @@ export class StrategyLauncherPageComponent {
       type: (v.strategyType ?? this.dcaDefaults.strategyType) as DcaStrategyType,
       params: this.buildDcaParams(v)
     };
+    const effectiveAssetClass = String((params.params as any)?.assetClass ?? this.dcaDefaults.assetClass);
+    const deltaDetectedCurrency = useDeltaPreset
+      ? this.detectCurrencyFromDeltaRows(this.selectedDeltaRows())
+      : null;
+    const selectedCurrency = String(v.currency ?? this.dcaDefaults.currency);
+    const effectiveCurrency = this.resolveCurrencyForAssetClass(
+      effectiveAssetClass,
+      selectedCurrency,
+      deltaDetectedCurrency,
+      this.dcaDefaults.currency
+    );
 
     return {
       runType: 'dca',
       data: {
         symbol: effectiveSymbol || this.dcaDefaults.symbol,
+        assetClass: effectiveAssetClass,
+        currency: effectiveCurrency,
         timeframe: effectiveTimeframe || this.dcaDefaults.timeframe,
         startDate: effectiveStartDate,
         endDate: effectiveEndDate
@@ -2814,6 +3035,16 @@ export class StrategyLauncherPageComponent {
     const assetClass = (DCA_ALLOWED_ASSET_CLASSES as readonly string[]).includes(assetClassRaw)
       ? assetClassRaw
       : this.backtestDefaults.assetClass;
+    const deltaDetectedCurrency = useDeltaPreset
+      ? this.detectCurrencyFromDeltaRows(this.selectedDeltaRowsForForm(this.backtestForm))
+      : null;
+    const selectedCurrency = String(v.currency ?? this.backtestDefaults.currency);
+    const effectiveCurrency = this.resolveCurrencyForAssetClass(
+      assetClass,
+      selectedCurrency,
+      deltaDetectedCurrency,
+      this.backtestDefaults.currency
+    );
     const strategyParams: Record<string, unknown> = { assetClass };
     if (includeTpSl) {
       strategyParams['tpSl'] = this.buildBacktestTpSl(v);
@@ -2826,6 +3057,8 @@ export class StrategyLauncherPageComponent {
       : undefined;
     const data: Record<string, unknown> = {
       symbol: effectiveSymbol || this.backtestDefaults.symbol,
+      assetClass,
+      currency: effectiveCurrency,
       timeframe: effectiveTimeframe || this.backtestDefaults.timeframe,
       startDate: effectiveStartDate,
       endDate: effectiveEndDate
@@ -2903,6 +3136,10 @@ export class StrategyLauncherPageComponent {
   private buildMarketStatsRequest(): RunRequestInput {
     const v = this.marketStatsForm.getRawValue();
     const useDeltaPreset = Boolean(v.useDeltaPreset);
+    const assetClassRaw = String(v.assetClass ?? this.statsDefaults.assetClass);
+    const assetClass = (DCA_ALLOWED_ASSET_CLASSES as readonly string[]).includes(assetClassRaw)
+      ? assetClassRaw
+      : this.statsDefaults.assetClass;
     const effectiveSymbol = useDeltaPreset
       ? toBaseSymbol(String(v.deltaPresetSymbol ?? '').trim())
       : String(v.symbol ?? this.statsDefaults.symbol);
@@ -2913,6 +3150,7 @@ export class StrategyLauncherPageComponent {
       runType: 'market_stats',
       data: {
         symbol: effectiveSymbol || this.statsDefaults.symbol,
+        assetClass,
         timeframe: effectiveTimeframe || this.statsDefaults.timeframe,
         lookback: Number(v.lookback ?? this.statsDefaults.lookback),
         statsPack: String(v.statsPack ?? this.statsDefaults.statsPack),
@@ -2929,6 +3167,10 @@ export class StrategyLauncherPageComponent {
     const v = this.seasonalityForm.getRawValue();
     const useDeltaPreset = Boolean(v.useDeltaPreset);
     const deltaPeriod = useDeltaPreset ? this.selectedDeltaPeriodForForm(this.seasonalityForm) : null;
+    const assetClassRaw = String(v.assetClass ?? this.seasonalityDefaults.assetClass);
+    const assetClass = (DCA_ALLOWED_ASSET_CLASSES as readonly string[]).includes(assetClassRaw)
+      ? assetClassRaw
+      : this.seasonalityDefaults.assetClass;
     const effectiveSymbol = useDeltaPreset
       ? toBaseSymbol(String(v.deltaPresetSymbol ?? '').trim())
       : String(v.symbol ?? this.seasonalityDefaults.symbol);
@@ -2945,6 +3187,7 @@ export class StrategyLauncherPageComponent {
       runType: 'seasonality',
       data: {
         symbol: effectiveSymbol || this.seasonalityDefaults.symbol,
+        assetClass,
         timeframe: effectiveTimeframe || this.seasonalityDefaults.timeframe,
         window: String(v.window ?? this.seasonalityDefaults.window),
         startYear: effectiveStartYear,
@@ -3115,7 +3358,11 @@ export class StrategyLauncherPageComponent {
     }
   }
 
-  private buildDcaUniverse(value: ReturnType<typeof this.dcaForm.getRawValue>) {
+  private buildDcaUniverse(
+    value: ReturnType<typeof this.dcaForm.getRawValue>,
+    defaultCurrency: string,
+    symbolCurrencyMap?: ReadonlyMap<string, string>
+  ) {
     const universe = Array.from((value.universe ?? []) as ReadonlyArray<string>);
     if (!universe.length) {
       return undefined;
@@ -3123,11 +3370,16 @@ export class StrategyLauncherPageComponent {
     return universe.map(symbol => {
       const item = this.dcaUniverseOptions.find(option => option.id === symbol);
       if (!item) {
-        return { symbol, assetClass: 'Unknown' };
+        return {
+          symbol,
+          assetClass: 'Unknown',
+          currency: symbolCurrencyMap?.get(symbol) ?? defaultCurrency
+        };
       }
       return {
         symbol: item.id,
         assetClass: item.assetClass,
+        currency: symbolCurrencyMap?.get(item.id) ?? defaultCurrency,
         exchange: item.exchange,
         broker: item.broker
       };
@@ -3180,18 +3432,28 @@ export class StrategyLauncherPageComponent {
     return result;
   }
 
-  private buildUniverseFromSymbols(symbols: ReadonlyArray<string>, defaultAssetClass: string) {
+  private buildUniverseFromSymbols(
+    symbols: ReadonlyArray<string>,
+    defaultAssetClass: string,
+    defaultCurrency: string,
+    symbolCurrencyMap?: ReadonlyMap<string, string>
+  ) {
     if (!symbols.length) {
       return undefined;
     }
     return symbols.map(symbol => {
       const item = this.dcaUniverseOptions.find(option => option.id === symbol);
       if (!item) {
-        return { symbol, assetClass: defaultAssetClass || 'Unknown' };
+        return {
+          symbol,
+          assetClass: defaultAssetClass || 'Unknown',
+          currency: symbolCurrencyMap?.get(symbol) ?? defaultCurrency
+        };
       }
       return {
         symbol: item.id,
         assetClass: item.assetClass,
+        currency: symbolCurrencyMap?.get(item.id) ?? defaultCurrency,
         exchange: item.exchange,
         broker: item.broker
       };
@@ -3773,6 +4035,25 @@ function toBaseSymbol(value: string): string {
     }
   }
   return symbol;
+}
+
+function allowedCurrenciesForAssetClass(assetClass: string): string[] {
+  return String(assetClass).toUpperCase() === 'CRYPTO'
+    ? [...CRYPTO_ALLOWED_CURRENCIES]
+    : [...NON_CRYPTO_ALLOWED_CURRENCIES];
+}
+
+function detectQuoteCurrencyFromSymbol(value: string): string | null {
+  const symbol = String(value ?? '').trim().toUpperCase();
+  if (!symbol) {
+    return null;
+  }
+  for (const suffix of SYMBOL_QUOTE_SUFFIXES) {
+    if (symbol.length > suffix.length && symbol.endsWith(suffix)) {
+      return suffix;
+    }
+  }
+  return null;
 }
 
 function symbolBasePrice(symbol: string): number {
