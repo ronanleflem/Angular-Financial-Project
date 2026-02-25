@@ -464,6 +464,7 @@ export class StrategyLauncherPageComponent {
     deltaPresetSymbol: '',
     deltaPresetSymbols: [] as string[],
     deltaPresetTimeframe: '',
+    deltaAssetClassConflict: false,
     feePct: 0.1,
     reinvestDividends: true,
     broker: 'BINANCE',
@@ -757,6 +758,7 @@ export class StrategyLauncherPageComponent {
       deltaPresetSymbol: [this.dcaDefaults.deltaPresetSymbol],
       deltaPresetSymbols: [this.dcaDefaults.deltaPresetSymbols],
       deltaPresetTimeframe: [this.dcaDefaults.deltaPresetTimeframe],
+      deltaAssetClassConflict: [this.dcaDefaults.deltaAssetClassConflict],
       feePct: [this.dcaDefaults.feePct, [Validators.min(0)]],
       reinvestDividends: [this.dcaDefaults.reinvestDividends],
       broker: [this.dcaDefaults.broker],
@@ -815,7 +817,14 @@ export class StrategyLauncherPageComponent {
       presetName: [''],
       presetId: ['']
     },
-    { validators: [dateRangeValidator('startDate', 'endDate'), dcaTpSlValidator(), dcaUniverseSelectionValidator()] }
+    {
+      validators: [
+        dateRangeValidator('startDate', 'endDate'),
+        dcaTpSlValidator(),
+        dcaUniverseSelectionValidator(),
+        dcaDeltaAssetClassValidator()
+      ]
+    }
   );
 
   readonly backtestForm = this.fb.group(
@@ -1102,6 +1111,12 @@ export class StrategyLauncherPageComponent {
   readonly backtestCanonicalSupportedFields = signal<string[]>([]);
   readonly backtestCanonicalAcceptedButNotWiredFields = signal<string[]>([]);
   readonly backtestImplicitSourceSupported = signal(true);
+  readonly marketStatsCapabilitiesInfo = signal<string | null>(null);
+  readonly marketStatsCanonicalSupportedFields = signal<string[]>([]);
+  readonly marketStatsCanonicalAcceptedButNotWiredFields = signal<string[]>([]);
+  readonly seasonalityCapabilitiesInfo = signal<string | null>(null);
+  readonly seasonalityCanonicalSupportedFields = signal<string[]>([]);
+  readonly seasonalityCanonicalAcceptedButNotWiredFields = signal<string[]>([]);
   readonly presetMessages = signal<Record<RunKey, string | null>>({
     'dca': null,
     'backtests': null,
@@ -1119,6 +1134,12 @@ export class StrategyLauncherPageComponent {
   private backtestAcceptedButNotWiredFields = new Set<string>();
   private backtestCsvSourceSupported = true;
   private backtestMysqlSourceSupported = true;
+  private marketStatsCapabilitiesAvailable = false;
+  private marketStatsSupportedFields = new Set<string>();
+  private marketStatsAcceptedButNotWiredFields = new Set<string>();
+  private seasonalityCapabilitiesAvailable = false;
+  private seasonalitySupportedFields = new Set<string>();
+  private seasonalityAcceptedButNotWiredFields = new Set<string>();
 
   constructor() {
     this.setUniverseControlAvailability(false);
@@ -1137,6 +1158,8 @@ export class StrategyLauncherPageComponent {
     this.loadCatalog();
     this.loadDcaCapabilities();
     this.loadBacktestCapabilities();
+    this.loadMarketStatsCapabilities();
+    this.loadSeasonalityCapabilities();
   }
 
   private bindStressAdvancedControls(): void {
@@ -1338,6 +1361,14 @@ export class StrategyLauncherPageComponent {
     return this.deltaQuoteLabelFromRows(this.selectedDeltaRows());
   }
 
+  selectedDeltaAssetClassLabel(): string {
+    return this.deltaAssetClassLabelFromRows(this.selectedDeltaRows());
+  }
+
+  dcaDeltaAssetClassConflict(): boolean {
+    return Boolean(this.dcaForm.errors?.['deltaAssetClassConflict']);
+  }
+
   backtestDeltaAvailableSymbols(): string[] {
     return this.deltaAvailableSymbolsForForm(this.backtestForm);
   }
@@ -1353,6 +1384,10 @@ export class StrategyLauncherPageComponent {
 
   backtestSelectedDeltaQuoteLabel(): string {
     return this.deltaQuoteLabelFromRows(this.selectedDeltaRowsForForm(this.backtestForm));
+  }
+
+  backtestSelectedDeltaAssetClassLabel(): string {
+    return this.deltaAssetClassLabelFromRows(this.selectedDeltaRowsForForm(this.backtestForm));
   }
 
   marketStatsDeltaAvailableSymbols(): string[] {
@@ -1372,6 +1407,10 @@ export class StrategyLauncherPageComponent {
     return this.deltaQuoteLabelFromRows(this.selectedDeltaRowsForForm(this.marketStatsForm));
   }
 
+  marketStatsSelectedDeltaAssetClassLabel(): string {
+    return this.deltaAssetClassLabelFromRows(this.selectedDeltaRowsForForm(this.marketStatsForm));
+  }
+
   seasonalityDeltaAvailableSymbols(): string[] {
     return this.deltaAvailableSymbolsForForm(this.seasonalityForm);
   }
@@ -1387,6 +1426,10 @@ export class StrategyLauncherPageComponent {
 
   seasonalitySelectedDeltaQuoteLabel(): string {
     return this.deltaQuoteLabelFromRows(this.selectedDeltaRowsForForm(this.seasonalityForm));
+  }
+
+  seasonalitySelectedDeltaAssetClassLabel(): string {
+    return this.deltaAssetClassLabelFromRows(this.selectedDeltaRowsForForm(this.seasonalityForm));
   }
 
   private syncDeltaPresetSelection(): void {
@@ -1473,10 +1516,25 @@ export class StrategyLauncherPageComponent {
     }
 
     const sync = () => {
+      const useDelta = Boolean(useDeltaPreset.value);
+      const rows = useDelta ? this.selectedDeltaRows() : [];
+      const detectedAssetClass = this.detectAssetClassFromDeltaRows(rows);
+      const hasConflict = this.hasMultipleAssetClassesInDeltaRows(rows);
+      const deltaConflict = this.dcaForm.get('deltaAssetClassConflict');
+      if (deltaConflict) {
+        deltaConflict.setValue((useDelta && hasConflict) as any, { emitEvent: false });
+        deltaConflict.updateValueAndValidity({ emitEvent: false });
+      }
+      if (useDelta && detectedAssetClass && !hasConflict) {
+        assetClass.setValue(detectedAssetClass as any, { emitEvent: false });
+        assetClass.disable({ emitEvent: false });
+      } else if (!useDelta) {
+        assetClass.enable({ emitEvent: false });
+      }
       const selectedAssetClass = String(assetClass.value ?? this.dcaDefaults.assetClass);
       const selectedCurrency = String(currency.value ?? this.dcaDefaults.currency);
-      const autoCurrency = Boolean(useDeltaPreset.value)
-        ? this.detectCurrencyFromDeltaRows(this.selectedDeltaRows())
+      const autoCurrency = useDelta
+        ? this.detectCurrencyFromDeltaRows(rows)
         : null;
       const next = this.resolveCurrencyForAssetClass(
         selectedAssetClass,
@@ -1485,7 +1543,7 @@ export class StrategyLauncherPageComponent {
         this.dcaDefaults.currency
       );
       currency.setValue(next as any, { emitEvent: false });
-      if (Boolean(useDeltaPreset.value)) {
+      if (useDelta) {
         currency.disable({ emitEvent: false });
       } else {
         currency.enable({ emitEvent: false });
@@ -1510,10 +1568,19 @@ export class StrategyLauncherPageComponent {
     }
 
     const sync = () => {
+      const useDelta = Boolean(useDeltaPreset.value);
+      const rows = useDelta ? this.selectedDeltaRowsForForm(this.backtestForm) : [];
+      const detectedAssetClass = this.detectAssetClassFromDeltaRows(rows);
+      if (useDelta && detectedAssetClass) {
+        assetClass.setValue(detectedAssetClass as any, { emitEvent: false });
+        assetClass.disable({ emitEvent: false });
+      } else if (!useDelta) {
+        assetClass.enable({ emitEvent: false });
+      }
       const selectedAssetClass = String(assetClass.value ?? this.backtestDefaults.assetClass);
       const selectedCurrency = String(currency.value ?? this.backtestDefaults.currency);
-      const autoCurrency = Boolean(useDeltaPreset.value)
-        ? this.detectCurrencyFromDeltaRows(this.selectedDeltaRowsForForm(this.backtestForm))
+      const autoCurrency = useDelta
+        ? this.detectCurrencyFromDeltaRows(rows)
         : null;
       const next = this.resolveCurrencyForAssetClass(
         selectedAssetClass,
@@ -1522,7 +1589,7 @@ export class StrategyLauncherPageComponent {
         this.backtestDefaults.currency
       );
       currency.setValue(next as any, { emitEvent: false });
-      if (Boolean(useDeltaPreset.value)) {
+      if (useDelta) {
         currency.disable({ emitEvent: false });
       } else {
         currency.enable({ emitEvent: false });
@@ -1547,10 +1614,19 @@ export class StrategyLauncherPageComponent {
     }
 
     const sync = () => {
+      const useDelta = Boolean(useDeltaPreset.value);
+      const rows = useDelta ? this.selectedDeltaRowsForForm(this.marketStatsForm) : [];
+      const detectedAssetClass = this.detectAssetClassFromDeltaRows(rows);
+      if (useDelta && detectedAssetClass) {
+        assetClass.setValue(detectedAssetClass as any, { emitEvent: false });
+        assetClass.disable({ emitEvent: false });
+      } else if (!useDelta) {
+        assetClass.enable({ emitEvent: false });
+      }
       const selectedAssetClass = String(assetClass.value ?? this.statsDefaults.assetClass);
       const selectedCurrency = String(currency.value ?? this.statsDefaults.currency);
-      const autoCurrency = Boolean(useDeltaPreset.value)
-        ? this.detectCurrencyFromDeltaRows(this.selectedDeltaRowsForForm(this.marketStatsForm))
+      const autoCurrency = useDelta
+        ? this.detectCurrencyFromDeltaRows(rows)
         : null;
       const next = this.resolveCurrencyForAssetClass(
         selectedAssetClass,
@@ -1559,7 +1635,7 @@ export class StrategyLauncherPageComponent {
         this.statsDefaults.currency
       );
       currency.setValue(next as any, { emitEvent: false });
-      if (Boolean(useDeltaPreset.value)) {
+      if (useDelta) {
         currency.disable({ emitEvent: false });
       } else {
         currency.enable({ emitEvent: false });
@@ -1584,10 +1660,19 @@ export class StrategyLauncherPageComponent {
     }
 
     const sync = () => {
+      const useDelta = Boolean(useDeltaPreset.value);
+      const rows = useDelta ? this.selectedDeltaRowsForForm(this.seasonalityForm) : [];
+      const detectedAssetClass = this.detectAssetClassFromDeltaRows(rows);
+      if (useDelta && detectedAssetClass) {
+        assetClass.setValue(detectedAssetClass as any, { emitEvent: false });
+        assetClass.disable({ emitEvent: false });
+      } else if (!useDelta) {
+        assetClass.enable({ emitEvent: false });
+      }
       const selectedAssetClass = String(assetClass.value ?? this.seasonalityDefaults.assetClass);
       const selectedCurrency = String(currency.value ?? this.seasonalityDefaults.currency);
-      const autoCurrency = Boolean(useDeltaPreset.value)
-        ? this.detectCurrencyFromDeltaRows(this.selectedDeltaRowsForForm(this.seasonalityForm))
+      const autoCurrency = useDelta
+        ? this.detectCurrencyFromDeltaRows(rows)
         : null;
       const next = this.resolveCurrencyForAssetClass(
         selectedAssetClass,
@@ -1596,7 +1681,7 @@ export class StrategyLauncherPageComponent {
         this.seasonalityDefaults.currency
       );
       currency.setValue(next as any, { emitEvent: false });
-      if (Boolean(useDeltaPreset.value)) {
+      if (useDelta) {
         currency.disable({ emitEvent: false });
       } else {
         currency.enable({ emitEvent: false });
@@ -1853,6 +1938,49 @@ export class StrategyLauncherPageComponent {
     return null;
   }
 
+  private deltaAssetClassLabelFromRows(rows: ReadonlyArray<DeltaIngestionRange>): string {
+    const assetClasses = Array.from(
+      new Set(
+        rows
+          .map(item => mapInsertedTypeToAssetClass(item.insertedType))
+          .filter(
+            (value): value is Exclude<ReturnType<typeof mapInsertedTypeToAssetClass>, null> =>
+              Boolean(value)
+          )
+      )
+    );
+    if (assetClasses.length === 0) {
+      return 'Inconnue';
+    }
+    return assetClasses.join(', ');
+  }
+
+  private detectAssetClassFromDeltaRows(rows: ReadonlyArray<DeltaIngestionRange>): string | null {
+    const assetClasses = Array.from(
+      new Set(
+        rows
+          .map(item => mapInsertedTypeToAssetClass(item.insertedType))
+          .filter(
+            (value): value is Exclude<ReturnType<typeof mapInsertedTypeToAssetClass>, null> =>
+              Boolean(value)
+          )
+      )
+    );
+    return assetClasses.length === 1 ? assetClasses[0] : null;
+  }
+
+  private hasMultipleAssetClassesInDeltaRows(rows: ReadonlyArray<DeltaIngestionRange>): boolean {
+    const assetClasses = new Set(
+      rows
+        .map(item => mapInsertedTypeToAssetClass(item.insertedType))
+        .filter(
+          (value): value is Exclude<ReturnType<typeof mapInsertedTypeToAssetClass>, null> =>
+            Boolean(value)
+        )
+    );
+    return assetClasses.size > 1;
+  }
+
   private resolveCurrencyForAssetClass(
     assetClass: string,
     selectedCurrency: string,
@@ -1994,6 +2122,40 @@ export class StrategyLauncherPageComponent {
       return false;
     }
     return !this.hasCapabilityFieldAtOrAbove(this.backtestAcceptedButNotWiredFields, path);
+  }
+
+  isMarketStatsFieldSupported(path: string): boolean {
+    if (!this.marketStatsCapabilitiesAvailable) {
+      return true;
+    }
+    return this.hasCapabilityField(this.marketStatsSupportedFields, path);
+  }
+
+  isMarketStatsFieldRuntimeWired(path: string): boolean {
+    if (!this.marketStatsCapabilitiesAvailable) {
+      return true;
+    }
+    if (!this.hasCapabilityField(this.marketStatsSupportedFields, path)) {
+      return false;
+    }
+    return !this.hasCapabilityFieldAtOrAbove(this.marketStatsAcceptedButNotWiredFields, path);
+  }
+
+  isSeasonalityFieldSupported(path: string): boolean {
+    if (!this.seasonalityCapabilitiesAvailable) {
+      return true;
+    }
+    return this.hasCapabilityField(this.seasonalitySupportedFields, path);
+  }
+
+  isSeasonalityFieldRuntimeWired(path: string): boolean {
+    if (!this.seasonalityCapabilitiesAvailable) {
+      return true;
+    }
+    if (!this.hasCapabilityField(this.seasonalitySupportedFields, path)) {
+      return false;
+    }
+    return !this.hasCapabilityFieldAtOrAbove(this.seasonalityAcceptedButNotWiredFields, path);
   }
 
   hasDcaCapabilitiesDetails(): boolean {
@@ -2359,6 +2521,68 @@ export class StrategyLauncherPageComponent {
           this.backtestCapabilitiesAvailable
             ? 'Mode capabilities backtest actif.'
             : null
+        );
+      });
+  }
+
+  private loadMarketStatsCapabilities(): void {
+    this.runsService
+      .getRunCapabilities('market_stats')
+      .pipe(
+        catchError(err => {
+          console.warn('[StrategyLauncher] /runs/capabilities(market_stats) unavailable, fallback static mode', err);
+          this.marketStatsCapabilitiesAvailable = false;
+          this.marketStatsSupportedFields = new Set<string>();
+          this.marketStatsAcceptedButNotWiredFields = new Set<string>();
+          this.marketStatsCapabilitiesInfo.set('Capabilities market_stats indisponibles, mode statique active.');
+          this.marketStatsCanonicalSupportedFields.set([]);
+          this.marketStatsCanonicalAcceptedButNotWiredFields.set([]);
+          return of(null);
+        })
+      )
+      .subscribe(capabilities => {
+        if (!capabilities) {
+          return;
+        }
+        const fields = this.extractCanonicalFields(capabilities as Record<string, unknown>);
+        this.marketStatsCapabilitiesAvailable = fields.supported.length > 0 || fields.acceptedButNotWired.length > 0;
+        this.marketStatsSupportedFields = new Set(fields.supported);
+        this.marketStatsAcceptedButNotWiredFields = new Set(fields.acceptedButNotWired);
+        this.marketStatsCanonicalSupportedFields.set(fields.supported);
+        this.marketStatsCanonicalAcceptedButNotWiredFields.set(fields.acceptedButNotWired);
+        this.marketStatsCapabilitiesInfo.set(
+          this.marketStatsCapabilitiesAvailable ? 'Mode capabilities market_stats actif.' : null
+        );
+      });
+  }
+
+  private loadSeasonalityCapabilities(): void {
+    this.runsService
+      .getRunCapabilities('seasonality')
+      .pipe(
+        catchError(err => {
+          console.warn('[StrategyLauncher] /runs/capabilities(seasonality) unavailable, fallback static mode', err);
+          this.seasonalityCapabilitiesAvailable = false;
+          this.seasonalitySupportedFields = new Set<string>();
+          this.seasonalityAcceptedButNotWiredFields = new Set<string>();
+          this.seasonalityCapabilitiesInfo.set('Capabilities seasonality indisponibles, mode statique active.');
+          this.seasonalityCanonicalSupportedFields.set([]);
+          this.seasonalityCanonicalAcceptedButNotWiredFields.set([]);
+          return of(null);
+        })
+      )
+      .subscribe(capabilities => {
+        if (!capabilities) {
+          return;
+        }
+        const fields = this.extractCanonicalFields(capabilities as Record<string, unknown>);
+        this.seasonalityCapabilitiesAvailable = fields.supported.length > 0 || fields.acceptedButNotWired.length > 0;
+        this.seasonalitySupportedFields = new Set(fields.supported);
+        this.seasonalityAcceptedButNotWiredFields = new Set(fields.acceptedButNotWired);
+        this.seasonalityCanonicalSupportedFields.set(fields.supported);
+        this.seasonalityCanonicalAcceptedButNotWiredFields.set(fields.acceptedButNotWired);
+        this.seasonalityCapabilitiesInfo.set(
+          this.seasonalityCapabilitiesAvailable ? 'Mode capabilities seasonality actif.' : null
         );
       });
   }
@@ -3071,7 +3295,6 @@ export class StrategyLauncherPageComponent {
       runType: 'dca',
       data: {
         symbol: effectiveSymbol || this.dcaDefaults.symbol,
-        assetClass: effectiveAssetClass,
         currency: effectiveCurrency,
         timeframe: effectiveTimeframe || this.dcaDefaults.timeframe,
         startDate: effectiveStartDate,
@@ -3147,7 +3370,6 @@ export class StrategyLauncherPageComponent {
       : undefined;
     const data: Record<string, unknown> = {
       symbol: effectiveSymbol || this.backtestDefaults.symbol,
-      assetClass,
       currency: effectiveCurrency,
       timeframe: effectiveTimeframe || this.backtestDefaults.timeframe,
       startDate: effectiveStartDate,
@@ -4104,6 +4326,17 @@ function dcaUniverseSelectionValidator() {
   };
 }
 
+function dcaDeltaAssetClassValidator() {
+  return (control: AbstractControl): ValidationErrors | null => {
+    const useDeltaPreset = Boolean(control.get('useDeltaPreset')?.value);
+    if (!useDeltaPreset) {
+      return null;
+    }
+    const conflict = Boolean(control.get('deltaAssetClassConflict')?.value);
+    return conflict ? { deltaAssetClassConflict: true } : null;
+  };
+}
+
 function pad2(value: number): string {
   return String(value).padStart(2, '0');
 }
@@ -4164,6 +4397,17 @@ function detectQuoteCurrencyFromSymbol(value: string): string | null {
     if (symbol.length > suffix.length && symbol.endsWith(suffix)) {
       return suffix;
     }
+  }
+  return null;
+}
+
+function mapInsertedTypeToAssetClass(insertedType: string): 'CRYPTO' | 'ETF' | 'FOREX' | 'EQUITY' | null {
+  const value = String(insertedType ?? '').trim().toUpperCase();
+  if (value === 'CRYPTO' || value === 'ETF' || value === 'FOREX') {
+    return value;
+  }
+  if (value === 'STOCK') {
+    return 'EQUITY';
   }
   return null;
 }

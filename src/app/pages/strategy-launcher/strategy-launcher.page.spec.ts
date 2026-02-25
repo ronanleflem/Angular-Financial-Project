@@ -47,7 +47,11 @@ describe('StrategyLauncherPageComponent', () => {
         accepted_but_not_wired: ['strategy.name', 'performance', 'strategy.params.screening']
       }
     },
-    backtestCapabilitiesStatus: { status: number; statusText: string } | null = null
+    backtestCapabilitiesStatus: { status: number; statusText: string } | null = null,
+    marketStatsCapabilities: unknown = {},
+    marketStatsCapabilitiesStatus: { status: number; statusText: string } | null = null,
+    seasonalityCapabilities: unknown = {},
+    seasonalityCapabilitiesStatus: { status: number; statusText: string } | null = null
   ) {
     const catalogReq = httpMock.expectOne('/parameter_catalog.json');
     catalogReq.flush({ meta: { version: 'v1' } });
@@ -64,9 +68,25 @@ describe('StrategyLauncherPageComponent', () => {
     );
     if (backtestCapabilitiesStatus) {
       backtestCapabilitiesReq.flush((backtestCapabilities ?? {}) as any, backtestCapabilitiesStatus);
+    } else {
+      backtestCapabilitiesReq.flush(backtestCapabilities as any);
+    }
+    const marketStatsCapabilitiesReq = httpMock.expectOne(
+      `${environment.apiUrl}/api/runs/capabilities?spec_type=market_stats`
+    );
+    if (marketStatsCapabilitiesStatus) {
+      marketStatsCapabilitiesReq.flush((marketStatsCapabilities ?? {}) as any, marketStatsCapabilitiesStatus);
+    } else {
+      marketStatsCapabilitiesReq.flush(marketStatsCapabilities as any);
+    }
+    const seasonalityCapabilitiesReq = httpMock.expectOne(
+      `${environment.apiUrl}/api/runs/capabilities?spec_type=seasonality`
+    );
+    if (seasonalityCapabilitiesStatus) {
+      seasonalityCapabilitiesReq.flush((seasonalityCapabilities ?? {}) as any, seasonalityCapabilitiesStatus);
       return;
     }
-    backtestCapabilitiesReq.flush(backtestCapabilities as any);
+    seasonalityCapabilitiesReq.flush(seasonalityCapabilities as any);
   }
 
   it('maps backend 422 errors to form controls and global panel', () => {
@@ -197,6 +217,7 @@ describe('StrategyLauncherPageComponent', () => {
 
     const payload = component.buildRunRequest() as any;
     expect(payload.strategy.params.assetClass).toBe('CRYPTO');
+    expect(payload.data.assetClass).toBeUndefined();
     expect(payload.data.source).toBeUndefined();
     expect(payload.data.path).toBeUndefined();
     expect(payload.data.mysql).toBeUndefined();
@@ -215,6 +236,7 @@ describe('StrategyLauncherPageComponent', () => {
 
     const payload = component.buildRunRequest() as any;
     expect(payload.strategy.params.assetClass).toBe('CRYPTO');
+    expect(payload.data.assetClass).toBeUndefined();
     expect(payload.data.currency).toBe('USDT');
     expect(payload.data.source).toBe('csv');
     expect(payload.data.path).toBe('C:\\\\data\\\\backtest.csv');
@@ -298,6 +320,66 @@ describe('StrategyLauncherPageComponent', () => {
     expect(component.backtestCapabilitiesInfo()).toContain('mode statique');
     expect(payload.runType).toBe('backtest');
     expect(payload.filters).toBeDefined();
+  });
+
+  it('uses market_stats capabilities to mark accepted-but-not-wired fields', () => {
+    fixture.detectChanges();
+    flushInitRequests(
+      {},
+      null,
+      {},
+      null,
+      {
+        fields: {
+          supported: ['data.symbol', 'data.timeframe', 'data.currency'],
+          accepted_but_not_wired: ['data.currency']
+        }
+      }
+    );
+
+    expect(component.marketStatsCapabilitiesInfo()).toContain('capabilities market_stats actif');
+    expect(component.isMarketStatsFieldSupported('data.symbol')).toBeTrue();
+    expect(component.isMarketStatsFieldRuntimeWired('data.symbol')).toBeTrue();
+    expect(component.isMarketStatsFieldSupported('data.currency')).toBeTrue();
+    expect(component.isMarketStatsFieldRuntimeWired('data.currency')).toBeFalse();
+  });
+
+  it('falls back to static mode when market_stats capabilities endpoint is unavailable', () => {
+    fixture.detectChanges();
+    flushInitRequests(
+      {},
+      null,
+      {},
+      null,
+      {},
+      { status: 503, statusText: 'Service Unavailable' }
+    );
+
+    expect(component.marketStatsCapabilitiesInfo()).toContain('mode statique');
+    expect(component.isMarketStatsFieldSupported('data.currency')).toBeTrue();
+    expect(component.isMarketStatsFieldRuntimeWired('data.currency')).toBeTrue();
+  });
+
+  it('uses seasonality capabilities to mark accepted-but-not-wired fields', () => {
+    fixture.detectChanges();
+    flushInitRequests(
+      {},
+      null,
+      {},
+      null,
+      {},
+      null,
+      {
+        fields: {
+          supported: ['data.symbol', 'data.window', 'data.timeframe'],
+          accepted_but_not_wired: ['data.window']
+        }
+      }
+    );
+
+    expect(component.seasonalityCapabilitiesInfo()).toContain('capabilities seasonality actif');
+    expect(component.isSeasonalityFieldSupported('data.window')).toBeTrue();
+    expect(component.isSeasonalityFieldRuntimeWired('data.window')).toBeFalse();
   });
 
   it('normalizes backend unsupported errors to Not implemented yet', () => {
@@ -411,7 +493,7 @@ describe('StrategyLauncherPageComponent', () => {
 
     const payload = component.buildRunRequest() as any;
     expect(payload.strategy.grid).toBeUndefined();
-    expect(payload.data.assetClass).toBe('CRYPTO');
+    expect(payload.data.assetClass).toBeUndefined();
     expect(payload.data.currency).toBe('USDT');
     expect(payload.strategy.params.assetClass).toBe('CRYPTO');
     expect(payload.strategy.params.grid).toEqual([
@@ -669,6 +751,14 @@ describe('StrategyLauncherPageComponent', () => {
         }
       }
     } as any);
+    const marketStatsCapabilitiesReq = httpMock.expectOne(
+      `${environment.apiUrl}/api/runs/capabilities?spec_type=market_stats`
+    );
+    marketStatsCapabilitiesReq.flush({} as any);
+    const seasonalityCapabilitiesReq = httpMock.expectOne(
+      `${environment.apiUrl}/api/runs/capabilities?spec_type=seasonality`
+    );
+    seasonalityCapabilitiesReq.flush({} as any);
 
     component.selectRun('backtests');
     component.backtestForm.patchValue({
@@ -887,6 +977,14 @@ describe('StrategyLauncherPageComponent', () => {
       `${environment.apiUrl}/api/runs/capabilities?spec_type=backtest`
     );
     backtestCapabilitiesReq.flush({} as any);
+    const marketStatsCapabilitiesReq = httpMock.expectOne(
+      `${environment.apiUrl}/api/runs/capabilities?spec_type=market_stats`
+    );
+    marketStatsCapabilitiesReq.flush({} as any);
+    const seasonalityCapabilitiesReq = httpMock.expectOne(
+      `${environment.apiUrl}/api/runs/capabilities?spec_type=seasonality`
+    );
+    seasonalityCapabilitiesReq.flush({} as any);
 
     component.selectRun('dca');
     component.dcaForm.patchValue({
@@ -1157,6 +1255,58 @@ describe('StrategyLauncherPageComponent', () => {
     expect(payload.data.endDate).toBe('2024-01-20T00:00:00.000Z');
   });
 
+  it('switches backtest assetClass from delta preset insertedType', () => {
+    fixture.detectChanges();
+    flushInitRequests();
+
+    component.selectRun('backtests');
+    component.backtestForm.patchValue({
+      useDeltaPreset: true,
+      assetClass: 'CRYPTO',
+      deltaQueryInsertedType: 'FOREX'
+    } as any);
+
+    component.loadBacktestDeltaRanges();
+    const req = httpMock.expectOne(`${environment.apiUrl}/api/data-import/ranges?insertedType=FOREX&limit=200`);
+    req.flush([
+      {
+        symbol: 'EURUSD',
+        insertedType: 'FOREX',
+        startDate: '2024-01-02T00:00:00Z',
+        endDate: '2024-01-20T00:00:00Z',
+        timeframe: '1h',
+        insertedAt: '2026-02-20T10:00:00Z'
+      }
+    ]);
+
+    component.backtestForm.patchValue({
+      deltaPresetSymbol: 'EURUSD',
+      deltaPresetTimeframe: '1h'
+    } as any);
+
+    expect(String(component.backtestForm.get('assetClass')?.value ?? '')).toBe('FOREX');
+    expect(component.backtestSelectedDeltaAssetClassLabel()).toBe('FOREX');
+  });
+
+  it('builds market-stats payload with data.assetClass and data.currency', () => {
+    fixture.detectChanges();
+    flushInitRequests();
+
+    component.selectRun('market-stats');
+    component.marketStatsForm.patchValue({
+      useDeltaPreset: false,
+      symbol: 'BTC',
+      assetClass: 'CRYPTO',
+      currency: 'USDT',
+      timeframe: '4h'
+    } as any);
+
+    const payload = component.buildRunRequest() as any;
+    expect(payload.runType).toBe('market_stats');
+    expect(payload.data.assetClass).toBe('CRYPTO');
+    expect(payload.data.currency).toBe('USDT');
+  });
+
   it('uses delta preset on market-stats (single symbol)', () => {
     fixture.detectChanges();
     flushInitRequests();
@@ -1193,6 +1343,25 @@ describe('StrategyLauncherPageComponent', () => {
     expect(payload.data.timeframe).toBe('4h');
   });
 
+  it('builds seasonality payload with data.assetClass and data.currency', () => {
+    fixture.detectChanges();
+    flushInitRequests();
+
+    component.selectRun('seasonality');
+    component.seasonalityForm.patchValue({
+      useDeltaPreset: false,
+      symbol: 'BTC',
+      assetClass: 'CRYPTO',
+      currency: 'USDT',
+      timeframe: '1d'
+    } as any);
+
+    const payload = component.buildRunRequest() as any;
+    expect(payload.runType).toBe('seasonality');
+    expect(payload.data.assetClass).toBe('CRYPTO');
+    expect(payload.data.currency).toBe('USDT');
+  });
+
   it('uses delta preset on seasonality (single symbol) and maps period to years', () => {
     fixture.detectChanges();
     flushInitRequests();
@@ -1224,10 +1393,52 @@ describe('StrategyLauncherPageComponent', () => {
     const payload = component.buildRunRequest() as any;
     expect(payload.runType).toBe('seasonality');
     expect(payload.data.symbol).toBe('BTC');
-    expect(payload.data.assetClass).toBe('EQUITY');
+    expect(payload.data.assetClass).toBe('CRYPTO');
     expect(payload.data.currency).toBe('USDT');
     expect(payload.data.timeframe).toBe('1d');
     expect(payload.data.startYear).toBe(2021);
     expect(payload.data.endYear).toBe(2024);
+  });
+
+  it('marks dca form invalid when delta preset mixes multiple asset classes', () => {
+    fixture.detectChanges();
+    flushInitRequests();
+
+    component.selectRun('dca');
+    component.dcaForm.patchValue({
+      useDeltaPreset: true,
+      deltaQueryInsertedType: ''
+    } as any);
+
+    component.loadDeltaRanges();
+    const req = httpMock.expectOne(`${environment.apiUrl}/api/data-import/ranges?limit=200`);
+    req.flush([
+      {
+        symbol: 'BTCUSDT',
+        insertedType: 'CRYPTO',
+        startDate: '2024-01-01T00:00:00Z',
+        endDate: '2024-01-10T00:00:00Z',
+        timeframe: '1h',
+        insertedAt: '2026-02-20T10:00:00Z'
+      },
+      {
+        symbol: 'EURUSD',
+        insertedType: 'FOREX',
+        startDate: '2024-01-01T00:00:00Z',
+        endDate: '2024-01-10T00:00:00Z',
+        timeframe: '1h',
+        insertedAt: '2026-02-20T09:00:00Z'
+      }
+    ]);
+
+    component.dcaForm.patchValue({
+      deltaPresetSymbols: ['BTCUSDT', 'EURUSD'],
+      deltaPresetTimeframe: '1h'
+    } as any);
+    component.dcaForm.updateValueAndValidity();
+
+    expect(component.dcaDeltaAssetClassConflict()).toBeTrue();
+    expect(component.dcaForm.invalid).toBeTrue();
+    expect(component.selectedDeltaAssetClassLabel()).toBe('CRYPTO, FOREX');
   });
 });

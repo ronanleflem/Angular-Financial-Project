@@ -67,6 +67,11 @@ describe('backend-validation', () => {
     );
   });
 
+  it('maps data.asset_class and data.currency to market-stats controls', () => {
+    expect(mapBackendFieldToControlName('data.asset_class', 'market-stats', {})).toBe('assetClass');
+    expect(mapBackendFieldToControlName('data.currency', 'market-stats', {})).toBe('currency');
+  });
+
   it('maps market stats top-level persistence and output fields', () => {
     expect(mapBackendFieldToControlName('persistence.enabled', 'market-stats', {})).toBe('persistenceEnabled');
     expect(mapBackendFieldToControlName('output.out_dir', 'market-stats', {})).toBe('artifactsOutDir');
@@ -77,6 +82,8 @@ describe('backend-validation', () => {
     expect(mapBackendFieldToControlName('seasonality.profile.params.bin_size', 'seasonality', ctx)).toBe(
       'profile_by_hour_bin_size'
     );
+    expect(mapBackendFieldToControlName('data.asset_class', 'seasonality', {})).toBe('assetClass');
+    expect(mapBackendFieldToControlName('data.currency', 'seasonality', {})).toBe('currency');
     expect(mapBackendFieldToControlName('persistence.enabled', 'seasonality', {})).toBe('persistenceEnabled');
     expect(mapBackendFieldToControlName('output.out_dir', 'seasonality', {})).toBe('artifactsOutDir');
   });

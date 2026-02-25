@@ -174,6 +174,14 @@ function mapDataField(segments: string[], runTheme: RunTheme): string | null {
       return runTheme === 'dca' ? 'frequency' : null;
     case 'amount':
       return runTheme === 'dca' ? 'amount' : null;
+    case 'asset_class':
+      return runTheme === 'dca' || runTheme === 'backtests' || runTheme === 'market-stats' || runTheme === 'seasonality'
+        ? 'assetClass'
+        : null;
+    case 'currency':
+      return runTheme === 'dca' || runTheme === 'backtests' || runTheme === 'market-stats' || runTheme === 'seasonality'
+        ? 'currency'
+        : null;
     case 'start_date':
       return runTheme === 'dca' || runTheme === 'backtests' || runTheme === 'stress-tests' ? 'startDate' : null;
     case 'end_date':

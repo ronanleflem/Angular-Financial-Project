@@ -48,7 +48,7 @@ describe('RunsService', () => {
   it('normalizes run id from response', () => {
     let response: any;
 
-    service.submitRun({ runType: 'market_stats', data: { symbol: 'BTCUSD', timeframe: '1h', lookback: 200, statsPack: 'Volatility' }, stats: {
+    service.submitRun({ runType: 'market_stats', data: { symbol: 'BTCUSD', assetClass: 'CRYPTO', currency: 'USDT', timeframe: '1h', lookback: 200, statsPack: 'Volatility' }, stats: {
       event: { id: 'vol_spike', params: {} },
       condition: { id: 'trend_regime', params: {} },
       target: { id: 'mean_reversion', params: {} },
@@ -60,6 +60,8 @@ describe('RunsService', () => {
     const req = httpMock.expectOne(`${environment.apiUrl}/api/runs`);
     expect(req.request.body.persistence).toEqual({ enabled: false });
     expect(req.request.body.output).toEqual({ out_dir: 'artifacts/market-stats' });
+    expect(req.request.body.data.asset_class).toBe('CRYPTO');
+    expect(req.request.body.data.currency).toBe('USDT');
     req.flush({ request_id: 'req-123', status: 'PENDING' });
 
     expect(response.runId).toBe('req-123');
@@ -84,7 +86,7 @@ describe('RunsService', () => {
   it('submits seasonality canonical payload without unsupported nested fields', () => {
     service.submitRun({
       runType: 'seasonality',
-      data: { symbol: 'SPY', timeframe: '1d', window: 'Monthly', startYear: 2015, endYear: 2024 },
+      data: { symbol: 'SPY', assetClass: 'EQUITY', currency: 'USD', timeframe: '1d', window: 'Monthly', startYear: 2015, endYear: 2024 },
       seasonality: {
         profile: { id: 'by_session', bySession: true, measure: 'return', retHorizon: 5, minSamplesBin: 100, params: {} },
         signal: { method: 'threshold', threshold: 0.01, dims: ['session'], combine: 'and' },
@@ -99,6 +101,8 @@ describe('RunsService', () => {
     expect(req.request.method).toBe('POST');
     expect(req.request.body.data.filter).toBeUndefined();
     expect(req.request.body.data.normalize).toBeUndefined();
+    expect(req.request.body.data.asset_class).toBe('EQUITY');
+    expect(req.request.body.data.currency).toBe('USD');
     expect(req.request.body.seasonality.validation).toBeUndefined();
     expect(req.request.body.seasonality.persistence).toBeUndefined();
     expect(req.request.body.seasonality.artifacts).toBeUndefined();

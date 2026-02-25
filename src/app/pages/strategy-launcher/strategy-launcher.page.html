@@ -144,6 +144,12 @@
             <div class="param-hint" *ngIf="deltaRanges().length > 0">
               Devise detectee: {{ selectedDeltaQuoteLabel() }}
             </div>
+            <div class="param-hint" *ngIf="deltaRanges().length > 0">
+              asset_class detectee: {{ selectedDeltaAssetClassLabel() }}
+            </div>
+            <div class="param-hint" *ngIf="dcaDeltaAssetClassConflict()">
+              Erreur: plusieurs asset_class detectees dans la selection Delta. Selectionne des symboles de meme classe.
+            </div>
           </ng-container>
 
           <section class="section-block">
@@ -916,6 +922,9 @@
             <div class="param-hint" *ngIf="deltaRanges().length > 0">
               Devise detectee: {{ backtestSelectedDeltaQuoteLabel() }}
             </div>
+            <div class="param-hint" *ngIf="deltaRanges().length > 0">
+              asset_class detectee: {{ backtestSelectedDeltaAssetClassLabel() }}
+            </div>
           </ng-container>
 
           <section class="section-block">
@@ -1417,34 +1426,37 @@
       </mat-card-header>
       <mat-card-content>
         <form class="strategy-form" [formGroup]="marketStatsForm" (ngSubmit)="runMarketStats()">
-          <mat-form-field appearance="outline">
+          <mat-form-field appearance="outline" *ngIf="isMarketStatsFieldSupported('data.symbol')">
             <mat-label>Symbole</mat-label>
-            <input matInput type="text" [matAutocomplete]="symbolAutoStats" formControlName="symbol" />
+            <input matInput type="text" [matAutocomplete]="symbolAutoStats" formControlName="symbol" [disabled]="!isMarketStatsFieldRuntimeWired('data.symbol')" />
             <mat-autocomplete #symbolAutoStats="matAutocomplete" autoActiveFirstOption>
               <mat-option *ngFor="let symbol of symbols" [value]="symbol">{{ displaySymbol(symbol) }}</mat-option>
             </mat-autocomplete>
           </mat-form-field>
 
-          <mat-form-field appearance="outline">
+          <mat-form-field appearance="outline" *ngIf="isMarketStatsFieldSupported('data.asset_class') || isMarketStatsFieldSupported('data.assetClass')">
             <mat-label>Classe d'actif</mat-label>
-            <mat-select formControlName="assetClass">
+            <mat-select formControlName="assetClass" [disabled]="!isMarketStatsFieldRuntimeWired('data.asset_class') && !isMarketStatsFieldRuntimeWired('data.assetClass')">
               <mat-option *ngFor="let option of dcaAssetClasses" [value]="option">{{ option }}</mat-option>
             </mat-select>
           </mat-form-field>
 
-          <mat-form-field appearance="outline">
+          <mat-form-field appearance="outline" *ngIf="isMarketStatsFieldSupported('data.currency')">
             <mat-label>Devise</mat-label>
-            <mat-select formControlName="currency">
-              <mat-option *ngFor="let option of seasonalityCurrencyOptions()" [value]="option">{{ option }}</mat-option>
+            <mat-select formControlName="currency" [disabled]="!isMarketStatsFieldRuntimeWired('data.currency')">
+              <mat-option *ngFor="let option of marketStatsCurrencyOptions()" [value]="option">{{ option }}</mat-option>
             </mat-select>
           </mat-form-field>
 
-          <mat-form-field appearance="outline">
+          <mat-form-field appearance="outline" *ngIf="isMarketStatsFieldSupported('data.timeframe')">
             <mat-label>Timeframe</mat-label>
-            <mat-select formControlName="timeframe">
+            <mat-select formControlName="timeframe" [disabled]="!isMarketStatsFieldRuntimeWired('data.timeframe')">
               <mat-option *ngFor="let tf of timeframes" [value]="tf">{{ tf }}</mat-option>
             </mat-select>
           </mat-form-field>
+          <div class="param-hint" *ngIf="isMarketStatsFieldSupported('data') && !isMarketStatsFieldRuntimeWired('data')">
+            Champs data non cables runtime (Not implemented yet).
+          </div>
 
           <div class="checkbox-row checkbox-full">
             <mat-checkbox formControlName="useDeltaPreset" (change)="onMarketStatsUseDeltaPresetChange($event)">
@@ -1509,6 +1521,9 @@
             </div>
             <div class="param-hint" *ngIf="deltaRanges().length > 0">
               Devise detectee: {{ marketStatsSelectedDeltaQuoteLabel() }}
+            </div>
+            <div class="param-hint" *ngIf="deltaRanges().length > 0">
+              asset_class detectee: {{ marketStatsSelectedDeltaAssetClassLabel() }}
             </div>
           </ng-container>
 
@@ -1854,34 +1869,44 @@
       </mat-card-header>
       <mat-card-content>
         <form class="strategy-form" [formGroup]="seasonalityForm" (ngSubmit)="runSeasonality()">
-          <mat-form-field appearance="outline">
+          <mat-form-field appearance="outline" *ngIf="isSeasonalityFieldSupported('data.symbol')">
             <mat-label>Symbole</mat-label>
-            <input matInput type="text" [matAutocomplete]="symbolAutoSeason" formControlName="symbol" />
+            <input matInput type="text" [matAutocomplete]="symbolAutoSeason" formControlName="symbol" [disabled]="!isSeasonalityFieldRuntimeWired('data.symbol')" />
             <mat-autocomplete #symbolAutoSeason="matAutocomplete" autoActiveFirstOption>
               <mat-option *ngFor="let symbol of symbols" [value]="symbol">{{ displaySymbol(symbol) }}</mat-option>
             </mat-autocomplete>
           </mat-form-field>
 
-          <mat-form-field appearance="outline">
+          <mat-form-field appearance="outline" *ngIf="isSeasonalityFieldSupported('data.asset_class') || isSeasonalityFieldSupported('data.assetClass')">
             <mat-label>Classe d'actif</mat-label>
-            <mat-select formControlName="assetClass">
+            <mat-select formControlName="assetClass" [disabled]="!isSeasonalityFieldRuntimeWired('data.asset_class') && !isSeasonalityFieldRuntimeWired('data.assetClass')">
               <mat-option *ngFor="let option of dcaAssetClasses" [value]="option">{{ option }}</mat-option>
             </mat-select>
           </mat-form-field>
 
-          <mat-form-field appearance="outline">
+          <mat-form-field appearance="outline" *ngIf="isSeasonalityFieldSupported('data.currency')">
+            <mat-label>Devise</mat-label>
+            <mat-select formControlName="currency" [disabled]="!isSeasonalityFieldRuntimeWired('data.currency')">
+              <mat-option *ngFor="let option of seasonalityCurrencyOptions()" [value]="option">{{ option }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" *ngIf="isSeasonalityFieldSupported('data.timeframe')">
             <mat-label>Timeframe</mat-label>
-            <mat-select formControlName="timeframe">
+            <mat-select formControlName="timeframe" [disabled]="!isSeasonalityFieldRuntimeWired('data.timeframe')">
               <mat-option *ngFor="let tf of timeframes" [value]="tf">{{ tf }}</mat-option>
             </mat-select>
           </mat-form-field>
 
-          <mat-form-field appearance="outline">
+          <mat-form-field appearance="outline" *ngIf="isSeasonalityFieldSupported('data.window')">
             <mat-label>Fenetre</mat-label>
-            <mat-select formControlName="window">
+            <mat-select formControlName="window" [disabled]="!isSeasonalityFieldRuntimeWired('data.window')">
               <mat-option *ngFor="let window of seasonalityWindows" [value]="window">{{ window }}</mat-option>
             </mat-select>
           </mat-form-field>
+          <div class="param-hint" *ngIf="isSeasonalityFieldSupported('data') && !isSeasonalityFieldRuntimeWired('data')">
+            Champs data non cables runtime (Not implemented yet).
+          </div>
 
           <div class="checkbox-row checkbox-full">
             <mat-checkbox formControlName="useDeltaPreset" (change)="onSeasonalityUseDeltaPresetChange($event)">
@@ -1946,6 +1971,9 @@
             </div>
             <div class="param-hint" *ngIf="deltaRanges().length > 0">
               Devise detectee: {{ seasonalitySelectedDeltaQuoteLabel() }}
+            </div>
+            <div class="param-hint" *ngIf="deltaRanges().length > 0">
+              asset_class detectee: {{ seasonalitySelectedDeltaAssetClassLabel() }}
             </div>
           </ng-container>
 
