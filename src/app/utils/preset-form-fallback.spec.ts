@@ -78,6 +78,8 @@ describe('preset-form-fallback', () => {
       data: {
         symbol: 'BTCUSD',
         timeframe: '1h',
+        startDate: '2024-01-01',
+        endDate: '2024-12-31',
         lookback: 500,
         statsPack: 'Volatility'
       },

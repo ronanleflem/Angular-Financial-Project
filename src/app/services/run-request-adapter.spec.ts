@@ -188,6 +188,8 @@ describe('run-request-adapter', () => {
       data: {
         symbols: ['BTC', 'ETH'],
         timeframe: '4h',
+        startDate: '2024-01-01',
+        endDate: '2024-12-31',
         assetClass: 'CRYPTO',
         currency: 'USDT',
         lookback: 200,

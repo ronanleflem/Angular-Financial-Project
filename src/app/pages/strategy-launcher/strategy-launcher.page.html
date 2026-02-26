@@ -1454,6 +1454,26 @@
               <mat-option *ngFor="let tf of timeframes" [value]="tf">{{ tf }}</mat-option>
             </mat-select>
           </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Periode</mat-label>
+            <mat-date-range-input [rangePicker]="marketStatsRangePicker">
+              <input
+                matStartDate
+                placeholder="Debut"
+                formControlName="startDate"
+                [disabled]="!isMarketStatsFieldRuntimeWired('data.start_date') && !isMarketStatsFieldRuntimeWired('data.startDate')"
+              />
+              <input
+                matEndDate
+                placeholder="Fin"
+                formControlName="endDate"
+                [disabled]="!isMarketStatsFieldRuntimeWired('data.end_date') && !isMarketStatsFieldRuntimeWired('data.endDate')"
+              />
+            </mat-date-range-input>
+            <mat-datepicker-toggle matIconSuffix [for]="marketStatsRangePicker"></mat-datepicker-toggle>
+            <mat-date-range-picker #marketStatsRangePicker></mat-date-range-picker>
+          </mat-form-field>
           <div class="param-hint" *ngIf="isMarketStatsFieldSupported('data') && !isMarketStatsFieldRuntimeWired('data')">
             Champs data non cables runtime (Not implemented yet).
           </div>
@@ -1905,6 +1925,32 @@
             </mat-select>
           </mat-form-field>
 
+          <mat-form-field
+            appearance="outline"
+            *ngIf="
+              (isSeasonalityFieldSupported('data.start_date') || isSeasonalityFieldSupported('data.startDate')) &&
+              (isSeasonalityFieldSupported('data.end_date') || isSeasonalityFieldSupported('data.endDate'))
+            "
+          >
+            <mat-label>Periode</mat-label>
+            <mat-date-range-input [rangePicker]="seasonalityRangePicker">
+              <input
+                matStartDate
+                placeholder="Debut"
+                formControlName="startDate"
+                [disabled]="!isSeasonalityFieldRuntimeWired('data.start_date') && !isSeasonalityFieldRuntimeWired('data.startDate')"
+              />
+              <input
+                matEndDate
+                placeholder="Fin"
+                formControlName="endDate"
+                [disabled]="!isSeasonalityFieldRuntimeWired('data.end_date') && !isSeasonalityFieldRuntimeWired('data.endDate')"
+              />
+            </mat-date-range-input>
+            <mat-datepicker-toggle matIconSuffix [for]="seasonalityRangePicker"></mat-datepicker-toggle>
+            <mat-date-range-picker #seasonalityRangePicker></mat-date-range-picker>
+          </mat-form-field>
+
           <mat-form-field appearance="outline" *ngIf="isSeasonalityFieldSupported('data.window')">
             <mat-label>Fenetre</mat-label>
             <mat-select formControlName="window" [disabled]="!isSeasonalityFieldRuntimeWired('data.window')">
@@ -2133,10 +2179,13 @@
                 </mat-expansion-panel-header>
                 <div class="param-section">
                   <div class="param-title">Execution / Risk / TP-SL</div>
+                  <div class="param-hint" *ngIf="!isSeasonalityExecutionRuntimeWired()">
+                    accepted_but_not_wired runtime (Not implemented yet).
+                  </div>
                   <div class="param-grid">
                     <mat-form-field appearance="outline">
                       <mat-label>risk model</mat-label>
-                      <mat-select formControlName="executionRiskModel">
+                      <mat-select formControlName="executionRiskModel" [disabled]="!isSeasonalityExecutionRuntimeWired()">
                         <mat-option value="fixed_fraction">fixed_fraction</mat-option>
                         <mat-option value="vol_target">vol_target</mat-option>
                         <mat-option value="equal_weight">equal_weight</mat-option>
@@ -2145,7 +2194,7 @@
 
                     <mat-form-field appearance="outline">
                       <mat-label>tp_sl</mat-label>
-                      <mat-select formControlName="executionTpSl">
+                      <mat-select formControlName="executionTpSl" [disabled]="!isSeasonalityExecutionRuntimeWired()">
                         <mat-option value="none">none</mat-option>
                         <mat-option value="tp_2_sl_1">tp_2_sl_1</mat-option>
                         <mat-option value="tp_3_sl_1.5">tp_3_sl_1.5</mat-option>

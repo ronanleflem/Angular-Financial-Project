@@ -1028,11 +1028,20 @@
     },
     "market_stats": {
       "required": [
-        "data"
+        "data",
+        "stats"
       ],
       "fields": [
         {
+          "path": "data.symbol",
+          "type": "string"
+        },
+        {
           "path": "data.dataset_path",
+          "type": "string"
+        },
+        {
+          "path": "data.path",
           "type": "string"
         },
         {
@@ -1052,43 +1061,85 @@
           "type": "string"
         },
         {
-          "path": "data.start",
+          "path": "data.start_date",
           "type": "string"
         },
         {
-          "path": "data.end",
+          "path": "data.end_date",
           "type": "string"
         },
         {
-          "path": "events",
-          "type": "array",
-          "items": {
-            "type": "object"
-          }
+          "path": "data.asset_class",
+          "type": "string"
         },
         {
-          "path": "conditions",
-          "type": "array",
-          "items": {
-            "type": "object"
-          }
+          "path": "data.currency",
+          "type": "string"
         },
         {
-          "path": "targets",
-          "type": "array",
-          "items": {
-            "type": "object"
-          }
+          "path": "data.lookback",
+          "type": "integer"
         },
         {
-          "path": "validation",
-          "type": [
-            "object",
-            "null"
-          ]
+          "path": "data.stats_pack",
+          "type": "string"
         },
         {
-          "path": "artifacts.out_dir",
+          "path": "data.session",
+          "type": "string"
+        },
+        {
+          "path": "data.include_weekends",
+          "type": "boolean"
+        },
+        {
+          "path": "stats.event.id",
+          "type": "string",
+          "enum_ref": "stats.events"
+        },
+        {
+          "path": "stats.event.params",
+          "type": "object",
+          "additional_fields": true
+        },
+        {
+          "path": "stats.condition.id",
+          "type": "string",
+          "enum_ref": "stats.conditions"
+        },
+        {
+          "path": "stats.condition.params",
+          "type": "object",
+          "additional_fields": true
+        },
+        {
+          "path": "stats.target.id",
+          "type": "string",
+          "enum_ref": "stats.targets"
+        },
+        {
+          "path": "stats.target.params",
+          "type": "object",
+          "additional_fields": true
+        },
+        {
+          "path": "stats.validation.train_months",
+          "type": "integer"
+        },
+        {
+          "path": "stats.validation.test_months",
+          "type": "integer"
+        },
+        {
+          "path": "stats.validation.folds",
+          "type": "integer"
+        },
+        {
+          "path": "stats.validation.embargo_days",
+          "type": "integer"
+        },
+        {
+          "path": "output.out_dir",
           "type": [
             "string",
             "null"
@@ -1110,11 +1161,20 @@
     },
     "seasonality": {
       "required": [
-        "data"
+        "data",
+        "seasonality"
       ],
       "fields": [
         {
+          "path": "data.symbol",
+          "type": "string"
+        },
+        {
           "path": "data.dataset_path",
+          "type": "string"
+        },
+        {
+          "path": "data.path",
           "type": "string"
         },
         {
@@ -1134,50 +1194,65 @@
           "type": "string"
         },
         {
-          "path": "data.start",
+          "path": "data.start_date",
           "type": "string"
         },
         {
-          "path": "data.end",
+          "path": "data.end_date",
           "type": "string"
         },
         {
-          "path": "profile",
+          "path": "data.start_year",
+          "type": "integer"
+        },
+        {
+          "path": "data.end_year",
+          "type": "integer"
+        },
+        {
+          "path": "data.window",
+          "type": "string"
+        },
+        {
+          "path": "data.asset_class",
+          "type": "string"
+        },
+        {
+          "path": "data.currency",
+          "type": "string"
+        },
+        {
+          "path": "seasonality.profile",
           "type": "object",
           "additional_fields": true
         },
         {
-          "path": "signal",
+          "path": "seasonality.signal",
           "type": "object",
           "additional_fields": true
         },
         {
-          "path": "compute",
+          "path": "seasonality.compute",
           "type": "object",
           "additional_fields": true
         },
         {
-          "path": "execution",
+          "path": "seasonality.execution",
           "type": "object",
           "additional_fields": true
         },
         {
-          "path": "risk",
+          "path": "seasonality.risk",
           "type": "object",
           "additional_fields": true
         },
         {
-          "path": "tp_sl",
+          "path": "seasonality.tp_sl",
           "type": "object",
           "additional_fields": true
         },
         {
-          "path": "validation",
-          "type": "object",
-          "additional_fields": true
-        },
-        {
-          "path": "artifacts.out_dir",
+          "path": "output.out_dir",
           "type": "string"
         },
         {
@@ -1193,6 +1268,128 @@
           "type": "string"
         }
       ]
+    }
+  },
+  "stats_expanded": {
+    "description": "Expanded market stats event/condition/target parameter catalog.",
+    "events": {
+      "k_consecutive": {
+        "params": [
+          {
+            "name": "k",
+            "type": "int",
+            "required": true
+          },
+          {
+            "name": "direction",
+            "type": "string",
+            "enum": [
+              "up",
+              "down"
+            ],
+            "required": true
+          }
+        ]
+      },
+      "shock_atr": {
+        "params": [
+          {
+            "name": "mult",
+            "type": "float",
+            "required": true
+          },
+          {
+            "name": "window",
+            "type": "int",
+            "required": true
+          }
+        ]
+      },
+      "breakout_hhll": {
+        "params": [
+          {
+            "name": "lookback",
+            "type": "int",
+            "required": true
+          },
+          {
+            "name": "type",
+            "type": "string",
+            "enum": [
+              "hh",
+              "ll"
+            ],
+            "required": true
+          }
+        ]
+      }
+    },
+    "conditions": {
+      "htf_trend": {
+        "params": [
+          {
+            "name": "tf_multiplier",
+            "type": "int",
+            "required": true
+          },
+          {
+            "name": "ema_period",
+            "type": "int",
+            "required": true
+          }
+        ]
+      },
+      "vol_tertile": {
+        "params": [
+          {
+            "name": "window",
+            "type": "int",
+            "required": true
+          }
+        ]
+      },
+      "session": {
+        "params": [
+          {
+            "name": "col",
+            "type": "string",
+            "required": false,
+            "default": "session_id"
+          }
+        ]
+      }
+    },
+    "targets": {
+      "up_next_bar": {
+        "params": []
+      },
+      "continuation_n": {
+        "params": [
+          {
+            "name": "n",
+            "type": "int",
+            "required": true
+          },
+          {
+            "name": "direction",
+            "type": "string",
+            "enum": [
+              "up",
+              "down"
+            ],
+            "required": true
+          }
+        ]
+      },
+      "time_to_reversal": {
+        "params": [
+          {
+            "name": "max_horizon",
+            "type": "int",
+            "required": true
+          }
+        ]
+      }
     }
   },
   "filters_expanded": {

@@ -48,7 +48,7 @@ describe('RunsService', () => {
   it('normalizes run id from response', () => {
     let response: any;
 
-    service.submitRun({ runType: 'market_stats', data: { symbol: 'BTCUSD', assetClass: 'CRYPTO', currency: 'USDT', timeframe: '1h', lookback: 200, statsPack: 'Volatility' }, stats: {
+    service.submitRun({ runType: 'market_stats', data: { symbol: 'BTCUSD', assetClass: 'CRYPTO', currency: 'USDT', timeframe: '1h', startDate: '2024-01-01', endDate: '2024-12-31', lookback: 200, statsPack: 'Volatility' }, stats: {
       event: { id: 'vol_spike', params: {} },
       condition: { id: 'trend_regime', params: {} },
       target: { id: 'mean_reversion', params: {} },
@@ -86,7 +86,7 @@ describe('RunsService', () => {
   it('submits seasonality canonical payload without unsupported nested fields', () => {
     service.submitRun({
       runType: 'seasonality',
-      data: { symbol: 'SPY', assetClass: 'EQUITY', currency: 'USD', timeframe: '1d', window: 'Monthly', startYear: 2015, endYear: 2024 },
+      data: { symbol: 'SPY', assetClass: 'EQUITY', currency: 'USD', timeframe: '1d', startDate: '2015-01-01', endDate: '2024-12-31', window: 'Monthly', startYear: 2015, endYear: 2024 },
       seasonality: {
         profile: { id: 'by_session', bySession: true, measure: 'return', retHorizon: 5, minSamplesBin: 100, params: {} },
         signal: { method: 'threshold', threshold: 0.01, dims: ['session'], combine: 'and' },
@@ -125,6 +125,8 @@ describe('RunsService', () => {
         assetClass: 'CRYPTO',
         currency: 'USDT',
         timeframe: '4h',
+        startDate: '2024-01-01',
+        endDate: '2024-12-31',
         lookback: 200,
         statsPack: 'Volatility'
       },
@@ -151,6 +153,8 @@ describe('RunsService', () => {
         assetClass: 'CRYPTO',
         currency: 'USDT',
         timeframe: '1d',
+        startDate: '2015-01-01',
+        endDate: '2024-12-31',
         window: 'Monthly',
         startYear: 2015,
         endYear: 2024

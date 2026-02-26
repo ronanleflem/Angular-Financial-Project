@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { AbstractControl, FormBuilder, ReactiveFormsModule, UntypedFormGroup, ValidationErrors, Validators } from '@angular/forms';
+import { AbstractControl, FormBuilder, ReactiveFormsModule, UntypedFormGroup, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -148,6 +148,8 @@ interface FilterParam {
   key: string;
   label: string;
   type: 'number' | 'text' | 'select';
+  rawType?: string;
+  required?: boolean;
   min?: number;
   max?: number;
   step?: number;
@@ -598,6 +600,8 @@ export class StrategyLauncherPageComponent {
     assetClass: 'CRYPTO',
     currency: 'USDT',
     timeframe: '4h',
+    startDate: new Date(2022, 0, 1),
+    endDate: new Date(2024, 11, 31),
     useDeltaPreset: false,
     deltaQuerySymbol: '',
     deltaQueryInsertedType: 'CRYPTO' as DeltaInsertedType,
@@ -645,6 +649,8 @@ export class StrategyLauncherPageComponent {
     assetClass: 'EQUITY',
     currency: 'USD',
     timeframe: '1d',
+    startDate: new Date(2010, 0, 1),
+    endDate: new Date(2024, 11, 31),
     useDeltaPreset: false,
     deltaQuerySymbol: '',
     deltaQueryInsertedType: 'CRYPTO' as DeltaInsertedType,
@@ -925,6 +931,8 @@ export class StrategyLauncherPageComponent {
     ],
     currency: [this.statsDefaults.currency, Validators.required],
     timeframe: [this.statsDefaults.timeframe, Validators.required],
+    startDate: [this.statsDefaults.startDate, Validators.required],
+    endDate: [this.statsDefaults.endDate, Validators.required],
     useDeltaPreset: [this.statsDefaults.useDeltaPreset],
     deltaQuerySymbol: [this.statsDefaults.deltaQuerySymbol],
     deltaQueryInsertedType: [this.statsDefaults.deltaQueryInsertedType],
@@ -967,7 +975,7 @@ export class StrategyLauncherPageComponent {
     presetName: [''],
     presetId: ['']
   }, {
-    validators: control => this.marketStatsSymbolsValidator(control)
+    validators: [dateRangeValidator('startDate', 'endDate'), control => this.marketStatsSymbolsValidator(control)]
   });
 
   readonly seasonalityForm = this.fb.group({
@@ -979,6 +987,8 @@ export class StrategyLauncherPageComponent {
     ],
     currency: [this.seasonalityDefaults.currency, Validators.required],
     timeframe: [this.seasonalityDefaults.timeframe, Validators.required],
+    startDate: [this.seasonalityDefaults.startDate, Validators.required],
+    endDate: [this.seasonalityDefaults.endDate, Validators.required],
     useDeltaPreset: [this.seasonalityDefaults.useDeltaPreset],
     deltaQuerySymbol: [this.seasonalityDefaults.deltaQuerySymbol],
     deltaQueryInsertedType: [this.seasonalityDefaults.deltaQueryInsertedType],
@@ -1017,7 +1027,7 @@ export class StrategyLauncherPageComponent {
     presetName: [''],
     presetId: ['']
   }, {
-    validators: control => this.seasonalitySymbolsValidator(control)
+    validators: [dateRangeValidator('startDate', 'endDate'), control => this.seasonalitySymbolsValidator(control)]
   });
 
   readonly stressForm = this.fb.group({
@@ -1163,6 +1173,11 @@ export class StrategyLauncherPageComponent {
     this.bindSeasonalityCurrencyControls();
     this.bindMarketStatsDeltaPresetControls();
     this.bindSeasonalityDeltaPresetControls();
+    this.ensureMarketStatsParamControls('event', this.marketEventOptions);
+    this.ensureMarketStatsParamControls('condition', this.marketConditionOptions);
+    this.ensureMarketStatsParamControls('target', this.marketTargetOptions);
+    this.bindMarketStatsDynamicParamValidators();
+    this.ensureSeasonalityProfileParamControls(this.seasonalityProfileOptions);
     this.runForSelection(this.selectedRun());
     this.loadPresets();
     this.loadCatalog();
@@ -1170,6 +1185,24 @@ export class StrategyLauncherPageComponent {
     this.loadBacktestCapabilities();
     this.loadMarketStatsCapabilities();
     this.loadSeasonalityCapabilities();
+  }
+
+  private bindMarketStatsDynamicParamValidators(): void {
+    const eventId = this.marketStatsForm.get('eventId');
+    const conditionId = this.marketStatsForm.get('conditionId');
+    const targetId = this.marketStatsForm.get('targetId');
+    if (!eventId || !conditionId || !targetId) {
+      return;
+    }
+    eventId.valueChanges.subscribe(() => {
+      this.ensureMarketStatsParamControls('event', this.marketEventOptions);
+    });
+    conditionId.valueChanges.subscribe(() => {
+      this.ensureMarketStatsParamControls('condition', this.marketConditionOptions);
+    });
+    targetId.valueChanges.subscribe(() => {
+      this.ensureMarketStatsParamControls('target', this.marketTargetOptions);
+    });
   }
 
   private bindStressAdvancedControls(): void {
@@ -1802,16 +1835,28 @@ export class StrategyLauncherPageComponent {
   }
 
   private bindMarketStatsDeltaPresetControls(): void {
-    this.bindMultiDeltaPresetControls(this.marketStatsForm);
+    this.bindMultiDeltaPresetControls(this.marketStatsForm, period => {
+      const startDateControl = this.marketStatsForm.get('startDate');
+      const endDateControl = this.marketStatsForm.get('endDate');
+      if (!startDateControl || !endDateControl) {
+        return;
+      }
+      startDateControl.setValue(new Date(period.startDate) as any, { emitEvent: false });
+      endDateControl.setValue(new Date(period.endDate) as any, { emitEvent: false });
+    });
   }
 
   private bindSeasonalityDeltaPresetControls(): void {
     this.bindMultiDeltaPresetControls(this.seasonalityForm, period => {
+      const startDateControl = this.seasonalityForm.get('startDate');
+      const endDateControl = this.seasonalityForm.get('endDate');
       const startYearControl = this.seasonalityForm.get('startYear');
       const endYearControl = this.seasonalityForm.get('endYear');
-      if (!startYearControl || !endYearControl) {
+      if (!startDateControl || !endDateControl || !startYearControl || !endYearControl) {
         return;
       }
+      startDateControl.setValue(new Date(period.startDate) as any, { emitEvent: false });
+      endDateControl.setValue(new Date(period.endDate) as any, { emitEvent: false });
       startYearControl.setValue(new Date(period.startDate).getUTCFullYear() as any, { emitEvent: false });
       endYearControl.setValue(new Date(period.endDate).getUTCFullYear() as any, { emitEvent: false });
     });
@@ -1935,6 +1980,7 @@ export class StrategyLauncherPageComponent {
           } else {
             this.syncSingleDeltaPresetSelection(form, this.singleDeltaPeriodApplierForForm(form));
           }
+          this.triggerDeltaPresetSelectionSync(form);
         },
         error: err => {
           console.error('[StrategyLauncher] Failed to load delta ranges', err);
@@ -1953,13 +1999,37 @@ export class StrategyLauncherPageComponent {
         this.backtestForm.get('endDate')?.setValue(new Date(period.endDate) as any, { emitEvent: false });
       };
     }
+    if (form === this.marketStatsForm) {
+      return period => {
+        this.marketStatsForm.get('startDate')?.setValue(new Date(period.startDate) as any, { emitEvent: false });
+        this.marketStatsForm.get('endDate')?.setValue(new Date(period.endDate) as any, { emitEvent: false });
+      };
+    }
     if (form === this.seasonalityForm) {
       return period => {
+        this.seasonalityForm.get('startDate')?.setValue(new Date(period.startDate) as any, { emitEvent: false });
+        this.seasonalityForm.get('endDate')?.setValue(new Date(period.endDate) as any, { emitEvent: false });
         this.seasonalityForm.get('startYear')?.setValue(new Date(period.startDate).getUTCFullYear() as any, { emitEvent: false });
         this.seasonalityForm.get('endYear')?.setValue(new Date(period.endDate).getUTCFullYear() as any, { emitEvent: false });
       };
     }
     return undefined;
+  }
+
+  private triggerDeltaPresetSelectionSync(form: UntypedFormGroup): void {
+    const multiSymbols = form.get('deltaPresetSymbols');
+    const singleSymbol = form.get('deltaPresetSymbol');
+    const timeframe = form.get('deltaPresetTimeframe');
+    if (multiSymbols) {
+      const value = multiSymbols.value;
+      const next = Array.isArray(value) ? [...value] : [];
+      multiSymbols.setValue(next as any);
+    } else if (singleSymbol) {
+      singleSymbol.setValue(String(singleSymbol.value ?? '') as any);
+    }
+    if (timeframe) {
+      timeframe.setValue(String(timeframe.value ?? '') as any);
+    }
   }
 
   private deltaAvailableSymbolsForForm(form: UntypedFormGroup): string[] {
@@ -2308,6 +2378,27 @@ export class StrategyLauncherPageComponent {
     return !this.hasCapabilityFieldAtOrAbove(this.seasonalityAcceptedButNotWiredFields, path);
   }
 
+  isSeasonalityExecutionRuntimeWired(): boolean {
+    if (!this.seasonalityCapabilitiesAvailable) {
+      return true;
+    }
+    const candidatePaths = [
+      'seasonality.execution',
+      'seasonality.execution.risk_model',
+      'seasonality.execution.tp_sl',
+      'seasonality.execution.riskModel',
+      'seasonality.execution.tpSl'
+    ];
+    const hasExecutionSignal = candidatePaths.some(path =>
+      this.hasCapabilityField(this.seasonalitySupportedFields, path) ||
+      this.hasCapabilityField(this.seasonalityAcceptedButNotWiredFields, path)
+    );
+    if (!hasExecutionSignal) {
+      return true;
+    }
+    return candidatePaths.some(path => this.isSeasonalityFieldRuntimeWired(path));
+  }
+
   marketStatsUsesMultiSymbols(): boolean {
     return this.marketStatsDataSymbolsSupported;
   }
@@ -2465,10 +2556,17 @@ export class StrategyLauncherPageComponent {
 
     const statsEvents = enums['stats.events'];
     if (Array.isArray(statsEvents) && statsEvents.length > 0) {
-      const filtered = this.marketEventOptions.filter(option => statsEvents.includes(option.id));
-      this.marketEventOptions = filtered.length
-        ? filtered
-        : statsEvents.map(id => ({ id, label: id, params: [] }));
+      const knownById = new Map(this.marketEventOptions.map(option => [option.id, option]));
+      this.marketEventOptions = statsEvents.map(id => {
+        const known = knownById.get(id);
+        const catalogParams = this.buildStatsCatalogParams('events', id);
+        return {
+          id,
+          label: known?.label ?? humanizeId(id),
+          params: catalogParams.length > 0 ? catalogParams : (known?.params ?? [])
+        };
+      });
+      this.ensureMarketStatsParamControls('event', this.marketEventOptions);
       if (!statsEvents.includes(String(this.marketStatsForm.get('eventId')?.value ?? ''))) {
         this.marketStatsForm.get('eventId')?.setValue(statsEvents[0] as any);
       }
@@ -2476,10 +2574,17 @@ export class StrategyLauncherPageComponent {
 
     const statsConditions = enums['stats.conditions'];
     if (Array.isArray(statsConditions) && statsConditions.length > 0) {
-      const filtered = this.marketConditionOptions.filter(option => statsConditions.includes(option.id));
-      this.marketConditionOptions = filtered.length
-        ? filtered
-        : statsConditions.map(id => ({ id, label: id, params: [] }));
+      const knownById = new Map(this.marketConditionOptions.map(option => [option.id, option]));
+      this.marketConditionOptions = statsConditions.map(id => {
+        const known = knownById.get(id);
+        const catalogParams = this.buildStatsCatalogParams('conditions', id);
+        return {
+          id,
+          label: known?.label ?? humanizeId(id),
+          params: catalogParams.length > 0 ? catalogParams : (known?.params ?? [])
+        };
+      });
+      this.ensureMarketStatsParamControls('condition', this.marketConditionOptions);
       if (!statsConditions.includes(String(this.marketStatsForm.get('conditionId')?.value ?? ''))) {
         this.marketStatsForm.get('conditionId')?.setValue(statsConditions[0] as any);
       }
@@ -2487,14 +2592,30 @@ export class StrategyLauncherPageComponent {
 
     const statsTargets = enums['stats.targets'];
     if (Array.isArray(statsTargets) && statsTargets.length > 0) {
-      const filtered = this.marketTargetOptions.filter(option => statsTargets.includes(option.id));
-      this.marketTargetOptions = filtered.length
-        ? filtered
-        : statsTargets.map(id => ({ id, label: id, params: [] }));
+      const knownById = new Map(this.marketTargetOptions.map(option => [option.id, option]));
+      this.marketTargetOptions = statsTargets.map(id => {
+        const known = knownById.get(id);
+        const catalogParams = this.buildStatsCatalogParams('targets', id);
+        return {
+          id,
+          label: known?.label ?? humanizeId(id),
+          params: catalogParams.length > 0 ? catalogParams : (known?.params ?? [])
+        };
+      });
+      this.ensureMarketStatsParamControls('target', this.marketTargetOptions);
       if (!statsTargets.includes(String(this.marketStatsForm.get('targetId')?.value ?? ''))) {
         this.marketStatsForm.get('targetId')?.setValue(statsTargets[0] as any);
       }
     }
+
+    this.seasonalityProfileOptions = this.seasonalityProfileOptions.map(option => {
+      const catalogParams = this.buildSeasonalityCatalogParams(option.id);
+      return {
+        ...option,
+        params: catalogParams.length > 0 ? catalogParams : option.params
+      };
+    });
+    this.ensureSeasonalityProfileParamControls(this.seasonalityProfileOptions);
 
     const mcSources = enums['monte_carlo.source'];
     if (Array.isArray(mcSources) && mcSources.length > 0) {
@@ -3114,24 +3235,108 @@ export class StrategyLauncherPageComponent {
     return this.catalogService.filterParams(id).map(param => this.mapCatalogParam(param));
   }
 
-  private mapCatalogParam(param: { name: string; type: string; enum?: string[] }): FilterParam {
+  private mapCatalogParam(param: { name: string; type: string; enum?: string[]; required?: boolean }): FilterParam {
     const rawType = String(param.type ?? '').trim().toLowerCase();
     const enumOptions = Array.isArray(param.enum) ? param.enum : [];
     if (enumOptions.length > 0) {
-      return { key: param.name, label: humanizeId(param.name), type: 'select', options: enumOptions };
+      return {
+        key: param.name,
+        label: humanizeId(param.name),
+        type: 'select',
+        options: enumOptions,
+        rawType,
+        required: Boolean(param.required)
+      };
     }
     const mappedType = ['int', 'float', 'number', 'numeric'].includes(rawType) ? 'number' : 'text';
-    return { key: param.name, label: humanizeId(param.name), type: mappedType };
+    return {
+      key: param.name,
+      label: humanizeId(param.name),
+      type: mappedType,
+      rawType,
+      required: Boolean(param.required)
+    };
   }
 
-  private defaultParamValue(param: FilterParam): number | string {
+  private buildStatsCatalogParams(kind: 'events' | 'conditions' | 'targets', id: string): FilterParam[] {
+    return this.catalogService.statsParams(kind, id).map(param => this.mapCatalogParam(param));
+  }
+
+  private buildSeasonalityCatalogParams(id: string): FilterParam[] {
+    return this.catalogService.seasonalityProfileParams(id).map(param => this.mapCatalogParam(param));
+  }
+
+  private defaultParamValue(param: FilterParam): number | string | null {
     if (param.type === 'number') {
+      if (param.required) {
+        return null;
+      }
       return 0;
     }
     if (param.type === 'select') {
+      if (param.required) {
+        return null;
+      }
       return (param.options ?? [])[0] ?? '';
     }
+    if (param.required) {
+      return null;
+    }
     return '';
+  }
+
+  private ensureMarketStatsParamControls(
+    prefix: 'event' | 'condition' | 'target',
+    options: ReadonlyArray<MarketOption>
+  ): void {
+    const form = this.marketStatsForm as UntypedFormGroup;
+    const activeIdByPrefix: Record<'event' | 'condition' | 'target', string> = {
+      event: String(form.get('eventId')?.value ?? ''),
+      condition: String(form.get('conditionId')?.value ?? ''),
+      target: String(form.get('targetId')?.value ?? '')
+    };
+    const activeId = activeIdByPrefix[prefix];
+    options.forEach(option => {
+      option.params.forEach(param => {
+        const controlName = this.marketParamControlName(prefix, option.id, param.key);
+        const validators = option.id === activeId ? this.dynamicParamValidators(param) : [];
+        if (!form.contains(controlName)) {
+          form.addControl(controlName, this.fb.control(this.defaultParamValue(param), validators));
+          return;
+        }
+        form.get(controlName)?.setValidators(validators);
+        form.get(controlName)?.updateValueAndValidity({ emitEvent: false });
+      });
+    });
+  }
+
+  private ensureSeasonalityProfileParamControls(options: ReadonlyArray<SeasonalityOption>): void {
+    const form = this.seasonalityForm as UntypedFormGroup;
+    options.forEach(option => {
+      option.params.forEach(param => {
+        const controlName = this.seasonalityProfileControlName(option.id, param.key);
+        if (!form.contains(controlName)) {
+          form.addControl(controlName, this.fb.control(this.defaultParamValue(param)));
+        }
+      });
+    });
+  }
+
+  private dynamicParamValidators(param: FilterParam): ValidatorFn[] {
+    const validators: ValidatorFn[] = [];
+    if (param.required) {
+      validators.push(Validators.required);
+    }
+    if (param.type === 'number' && this.isStrictPositiveIntegerParam(param)) {
+      validators.push(Validators.min(1));
+    }
+    return validators;
+  }
+
+  private isStrictPositiveIntegerParam(param: FilterParam): boolean {
+    const rawType = String(param.rawType ?? '').toLowerCase();
+    const isInteger = rawType.includes('int');
+    return isInteger;
   }
 
   private extractStringArray(value: unknown): string[] {
@@ -3522,10 +3727,10 @@ export class StrategyLauncherPageComponent {
     const includeFilters = this.isBacktestFieldRuntimeWired('filters');
     const includeFilterRules = this.isBacktestFieldRuntimeWired('filters.rules');
     const includePerformance = this.isBacktestFieldRuntimeWired('performance');
-    const assetClassRaw = String(v.assetClass ?? this.backtestDefaults.assetClass);
-    const assetClass = (DCA_ALLOWED_ASSET_CLASSES as readonly string[]).includes(assetClassRaw)
-      ? assetClassRaw
-      : this.backtestDefaults.assetClass;
+    const assetClass = normalizeAssetClassOrFallback(
+      v.assetClass,
+      this.backtestDefaults.assetClass
+    );
     const deltaDetectedCurrency = useDeltaPreset
       ? this.detectCurrencyFromDeltaRows(this.selectedDeltaRowsForForm(this.backtestForm))
       : null;
@@ -3626,10 +3831,11 @@ export class StrategyLauncherPageComponent {
   private buildMarketStatsRequest(): RunRequestInput {
     const v = this.marketStatsForm.getRawValue();
     const useDeltaPreset = Boolean(v.useDeltaPreset);
-    const assetClassRaw = String(v.assetClass ?? this.statsDefaults.assetClass);
-    const assetClass = (DCA_ALLOWED_ASSET_CLASSES as readonly string[]).includes(assetClassRaw)
-      ? assetClassRaw
-      : this.statsDefaults.assetClass;
+    const deltaPeriod = useDeltaPreset ? this.selectedDeltaPeriodForForm(this.marketStatsForm) : null;
+    const assetClass = normalizeAssetClassOrFallback(
+      v.assetClass,
+      this.statsDefaults.assetClass
+    );
     const deltaSelectedSymbols = useDeltaPreset
       ? Array.from(
           new Set(
@@ -3651,6 +3857,12 @@ export class StrategyLauncherPageComponent {
     const effectiveTimeframe = useDeltaPreset
       ? String(v.deltaPresetTimeframe ?? '').trim()
       : String(v.timeframe ?? this.statsDefaults.timeframe);
+    const effectiveStartDate = useDeltaPreset && deltaPeriod
+      ? deltaPeriod.startDate
+      : toIsoDate(v.startDate ?? this.statsDefaults.startDate);
+    const effectiveEndDate = useDeltaPreset && deltaPeriod
+      ? deltaPeriod.endDate
+      : toIsoDate(v.endDate ?? this.statsDefaults.endDate);
     const deltaDetectedCurrency = useDeltaPreset
       ? this.detectCurrencyFromDeltaRows(this.selectedDeltaRowsForForm(this.marketStatsForm))
       : null;
@@ -3669,6 +3881,8 @@ export class StrategyLauncherPageComponent {
         assetClass,
         currency: effectiveCurrency,
         timeframe: effectiveTimeframe || this.statsDefaults.timeframe,
+        startDate: effectiveStartDate,
+        endDate: effectiveEndDate,
         lookback: Number(v.lookback ?? this.statsDefaults.lookback),
         statsPack: String(v.statsPack ?? this.statsDefaults.statsPack),
         session: String(v.session ?? this.statsDefaults.session),
@@ -3684,10 +3898,10 @@ export class StrategyLauncherPageComponent {
     const v = this.seasonalityForm.getRawValue();
     const useDeltaPreset = Boolean(v.useDeltaPreset);
     const deltaPeriod = useDeltaPreset ? this.selectedDeltaPeriodForForm(this.seasonalityForm) : null;
-    const assetClassRaw = String(v.assetClass ?? this.seasonalityDefaults.assetClass);
-    const assetClass = (DCA_ALLOWED_ASSET_CLASSES as readonly string[]).includes(assetClassRaw)
-      ? assetClassRaw
-      : this.seasonalityDefaults.assetClass;
+    const assetClass = normalizeAssetClassOrFallback(
+      v.assetClass,
+      this.seasonalityDefaults.assetClass
+    );
     const deltaSelectedSymbols = useDeltaPreset
       ? Array.from(
           new Set(
@@ -3709,6 +3923,12 @@ export class StrategyLauncherPageComponent {
     const effectiveTimeframe = useDeltaPreset
       ? String(v.deltaPresetTimeframe ?? '').trim()
       : String(v.timeframe ?? this.seasonalityDefaults.timeframe);
+    const effectiveStartDate = useDeltaPreset && deltaPeriod
+      ? deltaPeriod.startDate
+      : toIsoDate(v.startDate ?? this.seasonalityDefaults.startDate);
+    const effectiveEndDate = useDeltaPreset && deltaPeriod
+      ? deltaPeriod.endDate
+      : toIsoDate(v.endDate ?? this.seasonalityDefaults.endDate);
     const effectiveStartYear = useDeltaPreset && deltaPeriod
       ? new Date(deltaPeriod.startDate).getUTCFullYear()
       : Number(v.startYear ?? this.seasonalityDefaults.startYear);
@@ -3733,6 +3953,8 @@ export class StrategyLauncherPageComponent {
         assetClass,
         currency: effectiveCurrency,
         timeframe: effectiveTimeframe || this.seasonalityDefaults.timeframe,
+        startDate: effectiveStartDate,
+        endDate: effectiveEndDate,
         window: String(v.window ?? this.seasonalityDefaults.window),
         startYear: effectiveStartYear,
         endYear: effectiveEndYear
@@ -3769,10 +3991,10 @@ export class StrategyLauncherPageComponent {
 
   private buildDcaParams(value: ReturnType<typeof this.dcaForm.getRawValue>): DcaStrategyCore['params'] {
     const type = (value.strategyType ?? this.dcaDefaults.strategyType) as DcaStrategyType;
-    const assetClassRaw = String(value.assetClass ?? this.dcaDefaults.assetClass);
-    const assetClass = (DCA_ALLOWED_ASSET_CLASSES as readonly string[]).includes(assetClassRaw)
-      ? assetClassRaw
-      : this.dcaDefaults.assetClass;
+    const assetClass = normalizeAssetClassOrFallback(
+      value.assetClass,
+      this.dcaDefaults.assetClass
+    );
     switch (type) {
       case 'dca_etf':
         return {
@@ -4093,9 +4315,18 @@ export class StrategyLauncherPageComponent {
         ? this.marketConditionParams(id)
         : this.marketTargetParams(id);
     const result: Record<string, number | string | boolean> = {};
+    const form = this.marketStatsForm as UntypedFormGroup;
     params.forEach(param => {
       const controlName = `${prefix}_${id}_${param.key}`;
-      result[param.key] = coerceParamValue(this.getControlValue(controlName));
+      const control = form.get(controlName);
+      const rawValue = control?.value;
+      if (!this.hasUsableParamValue(rawValue, param.type)) {
+        return;
+      }
+      if (control?.invalid) {
+        return;
+      }
+      result[param.key] = coerceParamValue(rawValue);
     });
     return result;
   }
@@ -4104,6 +4335,12 @@ export class StrategyLauncherPageComponent {
     const profileId = String(value.profileId ?? this.seasonalityDefaults.profileId);
     const baseDims = Array.from((value.signalDims ?? this.seasonalityDefaults.signalDims) as ReadonlyArray<string>);
     const dims = Array.from(new Set([...baseDims, 'session']));
+    const execution = this.isSeasonalityExecutionRuntimeWired()
+      ? {
+          riskModel: String(value.executionRiskModel ?? this.seasonalityDefaults.executionRiskModel),
+          tpSl: String(value.executionTpSl ?? this.seasonalityDefaults.executionTpSl)
+        }
+      : undefined;
     return {
       profile: {
         id: profileId,
@@ -4124,10 +4361,7 @@ export class StrategyLauncherPageComponent {
         maxTrials: Number(value.optunaMaxTrials ?? this.seasonalityDefaults.optunaMaxTrials),
         searchSpace: String(value.optunaSearchSpace ?? this.seasonalityDefaults.optunaSearchSpace)
       },
-      execution: {
-        riskModel: String(value.executionRiskModel ?? this.seasonalityDefaults.executionRiskModel),
-        tpSl: String(value.executionTpSl ?? this.seasonalityDefaults.executionTpSl)
-      }
+      execution
     };
   }
 
@@ -4156,6 +4390,24 @@ export class StrategyLauncherPageComponent {
       result[param.key] = coerceParamValue(this.getControlValue(`profile_${profileId}_${param.key}`));
     });
     return result;
+  }
+
+  private hasUsableParamValue(
+    value: unknown,
+    paramType: FilterParam['type']
+  ): boolean {
+    if (value === null || value === undefined) {
+      return false;
+    }
+    if (paramType === 'number') {
+      return typeof value === 'number'
+        ? Number.isFinite(value)
+        : value !== '' && Number.isFinite(Number(value));
+    }
+    if (paramType === 'select' || paramType === 'text') {
+      return String(value).trim().length > 0;
+    }
+    return true;
   }
 
   private buildPerformanceBlock(
@@ -4620,6 +4872,19 @@ function mapInsertedTypeToAssetClass(insertedType: string): 'CRYPTO' | 'ETF' | '
     return 'EQUITY';
   }
   return null;
+}
+
+function normalizeAssetClassOrFallback(
+  value: unknown,
+  fallback: string
+): 'CRYPTO' | 'ETF' | 'EQUITY' | 'FOREX' {
+  const normalized = String(value ?? '').trim().toUpperCase();
+  if ((DCA_ALLOWED_ASSET_CLASSES as readonly string[]).includes(normalized)) {
+    return normalized as 'CRYPTO' | 'ETF' | 'EQUITY' | 'FOREX';
+  }
+  return String(fallback).trim().toUpperCase() === 'STOCK'
+    ? 'EQUITY'
+    : (String(fallback).trim().toUpperCase() as 'CRYPTO' | 'ETF' | 'EQUITY' | 'FOREX');
 }
 
 function symbolBasePrice(symbol: string): number {

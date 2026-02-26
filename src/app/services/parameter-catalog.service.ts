@@ -19,11 +19,30 @@ interface FilterExpandedEntry {
   params?: Array<{ name: string; type: string; enum?: string[] }>;
 }
 
+interface CatalogParamEntry {
+  name: string;
+  type: string;
+  enum?: string[];
+  required?: boolean;
+}
+
+interface StatsExpandedEntry {
+  params?: CatalogParamEntry[];
+}
+
 export interface ParameterCatalog {
   meta?: { version?: string };
   enums?: Record<string, string[]>;
   specs?: Record<string, CatalogSpec>;
   filters_expanded?: { items?: Record<string, FilterExpandedEntry> };
+  stats_expanded?: {
+    events?: Record<string, StatsExpandedEntry>;
+    conditions?: Record<string, StatsExpandedEntry>;
+    targets?: Record<string, StatsExpandedEntry>;
+  };
+  seasonality_expanded?: {
+    profiles?: Record<string, StatsExpandedEntry>;
+  };
 }
 
 @Injectable({ providedIn: 'root' })
@@ -76,6 +95,32 @@ export class ParameterCatalogService {
         name: param.name,
         type: param.type,
         enum: Array.isArray(param.enum) ? param.enum.filter(value => typeof value === 'string') : undefined
+      }));
+  }
+
+  statsParams(kind: 'events' | 'conditions' | 'targets', id: string): CatalogParamEntry[] {
+    const entry = this.catalog?.stats_expanded?.[kind]?.[id];
+    return this.normalizeCatalogParams(entry?.params);
+  }
+
+  seasonalityProfileParams(id: string): CatalogParamEntry[] {
+    const entry = this.catalog?.seasonality_expanded?.profiles?.[id];
+    return this.normalizeCatalogParams(entry?.params);
+  }
+
+  private normalizeCatalogParams(params: unknown): CatalogParamEntry[] {
+    if (!Array.isArray(params)) {
+      return [];
+    }
+    return params
+      .filter(param => typeof param === 'object' && param !== null)
+      .map(param => param as Record<string, unknown>)
+      .filter(param => typeof param['name'] === 'string' && typeof param['type'] === 'string')
+      .map(param => ({
+        name: String(param['name']),
+        type: String(param['type']),
+        enum: Array.isArray(param['enum']) ? param['enum'].filter(value => typeof value === 'string') as string[] : undefined,
+        required: typeof param['required'] === 'boolean' ? Boolean(param['required']) : undefined
       }));
   }
 }

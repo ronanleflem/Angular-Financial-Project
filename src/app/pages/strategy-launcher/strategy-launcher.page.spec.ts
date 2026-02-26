@@ -344,6 +344,218 @@ describe('StrategyLauncherPageComponent', () => {
     expect(component.isMarketStatsFieldRuntimeWired('data.currency')).toBeFalse();
   });
 
+  it('enforces required dynamic market-stats params with min(1) for integer required fields', () => {
+    fixture.detectChanges();
+    const catalogReq = httpMock.expectOne('/parameter_catalog.json');
+    catalogReq.flush({
+      meta: { version: 'v1' },
+      enums: {
+        'stats.events': ['k_consecutive'],
+        'stats.conditions': ['htf_trend'],
+        'stats.targets': ['time_to_reversal']
+      },
+      stats_expanded: {
+        events: {
+          k_consecutive: {
+            params: [
+              { name: 'k', type: 'int', required: true },
+              { name: 'direction', type: 'string', enum: ['up', 'down'], required: true }
+            ]
+          }
+        },
+        conditions: {
+          htf_trend: {
+            params: [
+              { name: 'tf_multiplier', type: 'int', required: true },
+              { name: 'ema_period', type: 'int', required: true }
+            ]
+          }
+        },
+        targets: {
+          time_to_reversal: {
+            params: [{ name: 'max_horizon', type: 'int', required: true }]
+          }
+        }
+      }
+    } as any);
+    const dcaCapabilitiesReq = httpMock.expectOne(`${environment.apiUrl}/api/runs/capabilities?spec_type=dca`);
+    dcaCapabilitiesReq.flush({} as any);
+    const backtestCapabilitiesReq = httpMock.expectOne(`${environment.apiUrl}/api/runs/capabilities?spec_type=backtest`);
+    backtestCapabilitiesReq.flush({} as any);
+    const marketStatsCapabilitiesReq = httpMock.expectOne(`${environment.apiUrl}/api/runs/capabilities?spec_type=market_stats`);
+    marketStatsCapabilitiesReq.flush({} as any);
+    const seasonalityCapabilitiesReq = httpMock.expectOne(`${environment.apiUrl}/api/runs/capabilities?spec_type=seasonality`);
+    seasonalityCapabilitiesReq.flush({} as any);
+
+    component.selectRun('market-stats');
+    component.marketStatsForm.patchValue({
+      eventId: 'k_consecutive',
+      conditionId: 'htf_trend',
+      targetId: 'time_to_reversal',
+      event_k_consecutive_k: 0,
+      event_k_consecutive_direction: '',
+      condition_htf_trend_tf_multiplier: 0,
+      condition_htf_trend_ema_period: 0,
+      target_time_to_reversal_max_horizon: 0
+    } as any);
+    component.marketStatsForm.updateValueAndValidity();
+
+    expect(component.marketStatsForm.get('event_k_consecutive_k')?.invalid).toBeTrue();
+    expect(component.marketStatsForm.get('event_k_consecutive_direction')?.invalid).toBeTrue();
+    expect(component.marketStatsForm.get('condition_htf_trend_tf_multiplier')?.invalid).toBeTrue();
+    expect(component.marketStatsForm.get('condition_htf_trend_ema_period')?.invalid).toBeTrue();
+    expect(component.marketStatsForm.get('target_time_to_reversal_max_horizon')?.invalid).toBeTrue();
+    expect(component.marketStatsForm.invalid).toBeTrue();
+  });
+
+  it('does not auto-send invalid/empty required market-stats params', () => {
+    fixture.detectChanges();
+    const catalogReq = httpMock.expectOne('/parameter_catalog.json');
+    catalogReq.flush({
+      meta: { version: 'v1' },
+      enums: {
+        'stats.events': ['k_consecutive'],
+        'stats.conditions': ['htf_trend'],
+        'stats.targets': ['continuation_n']
+      },
+      stats_expanded: {
+        events: {
+          k_consecutive: {
+            params: [
+              { name: 'k', type: 'int', required: true },
+              { name: 'direction', type: 'string', enum: ['up', 'down'], required: true }
+            ]
+          }
+        },
+        conditions: {
+          htf_trend: {
+            params: [
+              { name: 'tf_multiplier', type: 'int', required: true },
+              { name: 'ema_period', type: 'int', required: true }
+            ]
+          }
+        },
+        targets: {
+          continuation_n: {
+            params: [
+              { name: 'n', type: 'int', required: true },
+              { name: 'direction', type: 'string', enum: ['up', 'down'], required: true }
+            ]
+          }
+        }
+      }
+    } as any);
+    const dcaCapabilitiesReq = httpMock.expectOne(`${environment.apiUrl}/api/runs/capabilities?spec_type=dca`);
+    dcaCapabilitiesReq.flush({} as any);
+    const backtestCapabilitiesReq = httpMock.expectOne(`${environment.apiUrl}/api/runs/capabilities?spec_type=backtest`);
+    backtestCapabilitiesReq.flush({} as any);
+    const marketStatsCapabilitiesReq = httpMock.expectOne(`${environment.apiUrl}/api/runs/capabilities?spec_type=market_stats`);
+    marketStatsCapabilitiesReq.flush({} as any);
+    const seasonalityCapabilitiesReq = httpMock.expectOne(`${environment.apiUrl}/api/runs/capabilities?spec_type=seasonality`);
+    seasonalityCapabilitiesReq.flush({} as any);
+
+    component.selectRun('market-stats');
+    component.marketStatsForm.patchValue({
+      eventId: 'k_consecutive',
+      conditionId: 'htf_trend',
+      targetId: 'continuation_n',
+      event_k_consecutive_k: null,
+      event_k_consecutive_direction: '',
+      condition_htf_trend_tf_multiplier: 0,
+      condition_htf_trend_ema_period: null,
+      target_continuation_n_n: 0,
+      target_continuation_n_direction: ''
+    } as any);
+
+    const payload = component.buildRunRequest() as any;
+    expect(payload.stats.event.params).toEqual({});
+    expect(payload.stats.condition.params).toEqual({});
+    expect(payload.stats.target.params).toEqual({});
+  });
+
+  it('does not invalidate market-stats form with required params from non-selected ids', () => {
+    fixture.detectChanges();
+    const catalogReq = httpMock.expectOne('/parameter_catalog.json');
+    catalogReq.flush({
+      meta: { version: 'v1' },
+      enums: {
+        'stats.events': ['k_consecutive', 'shock_atr'],
+        'stats.conditions': ['htf_trend', 'vol_tertile'],
+        'stats.targets': ['continuation_n', 'time_to_reversal']
+      },
+      stats_expanded: {
+        events: {
+          k_consecutive: {
+            params: [
+              { name: 'k', type: 'int', required: true },
+              { name: 'direction', type: 'string', enum: ['up', 'down'], required: true }
+            ]
+          },
+          shock_atr: {
+            params: [
+              { name: 'mult', type: 'float', required: true },
+              { name: 'window', type: 'int', required: true }
+            ]
+          }
+        },
+        conditions: {
+          htf_trend: {
+            params: [
+              { name: 'tf_multiplier', type: 'int', required: true },
+              { name: 'ema_period', type: 'int', required: true }
+            ]
+          },
+          vol_tertile: {
+            params: [{ name: 'window', type: 'int', required: true }]
+          }
+        },
+        targets: {
+          continuation_n: {
+            params: [
+              { name: 'n', type: 'int', required: true },
+              { name: 'direction', type: 'string', enum: ['up', 'down'], required: true }
+            ]
+          },
+          time_to_reversal: {
+            params: [{ name: 'max_horizon', type: 'int', required: true }]
+          }
+        }
+      }
+    } as any);
+    const dcaCapabilitiesReq = httpMock.expectOne(`${environment.apiUrl}/api/runs/capabilities?spec_type=dca`);
+    dcaCapabilitiesReq.flush({} as any);
+    const backtestCapabilitiesReq = httpMock.expectOne(`${environment.apiUrl}/api/runs/capabilities?spec_type=backtest`);
+    backtestCapabilitiesReq.flush({} as any);
+    const marketStatsCapabilitiesReq = httpMock.expectOne(`${environment.apiUrl}/api/runs/capabilities?spec_type=market_stats`);
+    marketStatsCapabilitiesReq.flush({} as any);
+    const seasonalityCapabilitiesReq = httpMock.expectOne(`${environment.apiUrl}/api/runs/capabilities?spec_type=seasonality`);
+    seasonalityCapabilitiesReq.flush({} as any);
+
+    component.selectRun('market-stats');
+    component.marketStatsForm.patchValue({
+      eventId: 'k_consecutive',
+      conditionId: 'htf_trend',
+      targetId: 'continuation_n',
+      event_k_consecutive_k: 3,
+      event_k_consecutive_direction: 'up',
+      condition_htf_trend_tf_multiplier: 2,
+      condition_htf_trend_ema_period: 20,
+      target_continuation_n_n: 2,
+      target_continuation_n_direction: 'up',
+      event_shock_atr_mult: null,
+      event_shock_atr_window: null,
+      condition_vol_tertile_window: null,
+      target_time_to_reversal_max_horizon: null
+    } as any);
+    component.marketStatsForm.updateValueAndValidity();
+
+    expect(component.marketStatsForm.get('event_shock_atr_mult')?.invalid).toBeFalse();
+    expect(component.marketStatsForm.get('event_shock_atr_window')?.invalid).toBeFalse();
+    expect(component.marketStatsForm.get('condition_vol_tertile_window')?.invalid).toBeFalse();
+    expect(component.marketStatsForm.get('target_time_to_reversal_max_horizon')?.invalid).toBeFalse();
+    expect(component.marketStatsForm.invalid).toBeFalse();
+  });
+
   it('enables market-stats multi-symbol mode when data.symbols is supported', () => {
     fixture.detectChanges();
     flushInitRequests(
@@ -409,6 +621,34 @@ describe('StrategyLauncherPageComponent', () => {
     expect(component.seasonalityCapabilitiesInfo()).toContain('capabilities seasonality actif');
     expect(component.isSeasonalityFieldSupported('data.window')).toBeTrue();
     expect(component.isSeasonalityFieldRuntimeWired('data.window')).toBeFalse();
+  });
+
+  it('disables seasonality execution block and omits execution payload when runtime is not wired', () => {
+    fixture.detectChanges();
+    flushInitRequests(
+      {},
+      null,
+      {},
+      null,
+      {},
+      null,
+      {
+        fields: {
+          supported: ['data.symbol', 'seasonality.execution'],
+          accepted_but_not_wired: ['seasonality.execution']
+        }
+      }
+    );
+
+    component.selectRun('seasonality');
+    fixture.detectChanges();
+
+    expect(component.isSeasonalityExecutionRuntimeWired()).toBeFalse();
+    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(text).toContain('accepted_but_not_wired runtime (Not implemented yet).');
+
+    const payload = component.buildRunRequest() as any;
+    expect(payload.seasonality.execution).toBeUndefined();
   });
 
   it('enables seasonality multi-symbol mode when data.symbols is supported', () => {
@@ -1365,6 +1605,8 @@ describe('StrategyLauncherPageComponent', () => {
     expect(payload.runType).toBe('market_stats');
     expect(payload.data.assetClass).toBe('CRYPTO');
     expect(payload.data.currency).toBe('USDT');
+    expect(payload.data.startDate).toBeTruthy();
+    expect(payload.data.endDate).toBeTruthy();
   });
 
   it('uses delta preset on market-stats (multi symbol)', () => {
@@ -1401,6 +1643,8 @@ describe('StrategyLauncherPageComponent', () => {
     expect(payload.data.assetClass).toBe('CRYPTO');
     expect(payload.data.currency).toBe('USDT');
     expect(payload.data.timeframe).toBe('4h');
+    expect(payload.data.startDate).toBe('2024-01-02T00:00:00.000Z');
+    expect(payload.data.endDate).toBe('2024-01-20T00:00:00.000Z');
   });
 
   it('builds seasonality payload with data.assetClass and data.currency', () => {
@@ -1420,6 +1664,26 @@ describe('StrategyLauncherPageComponent', () => {
     expect(payload.runType).toBe('seasonality');
     expect(payload.data.assetClass).toBe('CRYPTO');
     expect(payload.data.currency).toBe('USDT');
+    expect(payload.data.startDate).toBeTruthy();
+    expect(payload.data.endDate).toBeTruthy();
+  });
+
+  it('normalizes seasonality assetClass value casing before payload serialization', () => {
+    fixture.detectChanges();
+    flushInitRequests();
+
+    component.selectRun('seasonality');
+    component.seasonalityForm.patchValue({
+      useDeltaPreset: false,
+      symbol: 'BTC',
+      assetClass: 'Crypto',
+      currency: 'USDT',
+      timeframe: '1d'
+    } as any);
+
+    const payload = component.buildRunRequest() as any;
+    expect(payload.runType).toBe('seasonality');
+    expect(payload.data.assetClass).toBe('CRYPTO');
   });
 
   it('uses delta preset on seasonality (multi symbol) and maps period to years', () => {
@@ -1456,8 +1720,39 @@ describe('StrategyLauncherPageComponent', () => {
     expect(payload.data.assetClass).toBe('CRYPTO');
     expect(payload.data.currency).toBe('USDT');
     expect(payload.data.timeframe).toBe('1d');
+    expect(payload.data.startDate).toBe('2021-03-01T00:00:00.000Z');
+    expect(payload.data.endDate).toBe('2024-08-01T00:00:00.000Z');
     expect(payload.data.startYear).toBe(2021);
     expect(payload.data.endYear).toBe(2024);
+  });
+
+  it('auto-syncs seasonality assetClass from delta preset after ranges load without manual reselection', () => {
+    fixture.detectChanges();
+    flushInitRequests();
+
+    component.selectRun('seasonality');
+    component.seasonalityForm.patchValue({
+      useDeltaPreset: true,
+      deltaQueryInsertedType: 'CRYPTO'
+    } as any);
+
+    component.loadSeasonalityDeltaRanges();
+    const req = httpMock.expectOne(`${environment.apiUrl}/api/data-import/ranges?insertedType=CRYPTO&limit=200`);
+    req.flush([
+      {
+        symbol: 'BTCUSDT',
+        insertedType: 'CRYPTO',
+        startDate: '2022-01-01T00:00:00Z',
+        endDate: '2024-12-31T00:00:00Z',
+        timeframe: '1d',
+        insertedAt: '2026-02-20T10:00:00Z'
+      }
+    ]);
+
+    const payload = component.buildRunRequest() as any;
+    expect(payload.runType).toBe('seasonality');
+    expect(payload.data.assetClass).toBe('CRYPTO');
+    expect(payload.data.currency).toBe('USDT');
   });
 
   it('marks dca form invalid when delta preset mixes multiple asset classes', () => {

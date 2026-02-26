@@ -1,11 +1,11 @@
 # Agents-Safe Catalog Alignment
 
-Ce document recense ce qui a été **masqué / désactivé / filtré** côté UI parce que **non présent** dans `docs/parameter_catalog.json`.
+Ce document recense ce qui a été **masqué / désactivé / filtré** côté UI parce que **non présent** dans `public/parameter_catalog.json` (miroir docs: `docs/parameter_catalog.json`).
 Objectif : garder une trace des idées “hors‑catalog” pour une implémentation future.
 
 ## 1) Filtres (Backtest + DCA)
 **Source UI actuelle :** `src/app/pages/strategy-launcher/strategy-launcher.page.ts`  
-**Vérification :** `filters_expanded.items` dans `docs/parameter_catalog.json`
+**Vérification :** `filters_expanded.items` dans `public/parameter_catalog.json`
 
 ### Filtres UI non présents dans le catalog
 - `volatility_guard`
@@ -68,5 +68,5 @@ Si l’id n’existe pas, le tooltip affiche `Non supporte par le catalog`.
 
 ---
 Si tu veux ré‑introduire des éléments hors‑catalog, on peut soit :
-- étendre `docs/parameter_catalog.json`, soit
+- étendre `public/parameter_catalog.json` puis synchroniser le miroir docs, soit
 - créer un mode “custom / experimental” qui ne bloque pas.

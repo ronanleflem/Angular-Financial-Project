@@ -172,7 +172,7 @@ export interface BacktestStrategyParamsBlock {
   screening?: BacktestScreeningBlock;
 }
 
-export interface MarketStatsDataBlock extends DataBlockBase {
+export interface MarketStatsDataBlock extends DataBlockBase, PeriodBlock {
   assetClass?: 'CRYPTO' | 'ETF' | 'EQUITY' | 'FOREX' | string;
   lookback: number;
   statsPack: string;
@@ -211,7 +211,7 @@ export interface MarketStatsOutputBlock {
   outDir?: string;
 }
 
-export interface SeasonalityDataBlock extends DataBlockBase {
+export interface SeasonalityDataBlock extends DataBlockBase, PeriodBlock {
   assetClass?: 'CRYPTO' | 'ETF' | 'EQUITY' | 'FOREX' | string;
   window: string;
   startYear: number;
@@ -259,7 +259,7 @@ export interface SeasonalityBlock {
   profile: SeasonalityProfileBlock;
   signal: SeasonalitySignalBlock;
   compute: SeasonalityComputeBlock;
-  execution: SeasonalityExecutionBlock;
+  execution?: SeasonalityExecutionBlock;
 }
 
 export interface StressTestsDataBlock extends DataBlockBase, PeriodBlock {}
@@ -397,6 +397,9 @@ export function validateRunRequest(input: RunRequestInput): ValidationError[] {
     case 'market_stats':
       validateSymbolSelection(errors, input.data.symbol, input.data.symbols);
       validateRequired(errors, 'data.timeframe', input.data.timeframe);
+      validateRequired(errors, 'data.startDate', input.data.startDate);
+      validateRequired(errors, 'data.endDate', input.data.endDate);
+      validateDateOrder(errors, 'data.startDate', 'data.endDate', input.data.startDate, input.data.endDate);
       validateRequired(errors, 'stats.event.id', input.stats.event.id);
       validateRequired(errors, 'stats.condition.id', input.stats.condition.id);
       validateRequired(errors, 'stats.target.id', input.stats.target.id);
@@ -404,6 +407,9 @@ export function validateRunRequest(input: RunRequestInput): ValidationError[] {
     case 'seasonality':
       validateSymbolSelection(errors, input.data.symbol, input.data.symbols);
       validateRequired(errors, 'data.timeframe', input.data.timeframe);
+      validateRequired(errors, 'data.startDate', input.data.startDate);
+      validateRequired(errors, 'data.endDate', input.data.endDate);
+      validateDateOrder(errors, 'data.startDate', 'data.endDate', input.data.startDate, input.data.endDate);
       validateRequired(errors, 'seasonality.profile.id', input.seasonality.profile.id);
       validateRequired(errors, 'seasonality.signal.method', input.seasonality.signal.method);
       if (!input.seasonality.signal.dims?.length) {
