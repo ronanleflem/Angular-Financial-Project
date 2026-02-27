@@ -506,6 +506,56 @@ export class StrategyLauncherPageComponent {
     mcHorizonDays: 180,
     mcShockVolPct: 22,
     mcSeed: 7,
+    mcIncludeAdvanced: false,
+    mcSource: 'equity',
+    mcMethod: 'block_bootstrap',
+    mcBlockSize: 20,
+    mcOverlapping: true,
+    mcTimeDistMode: 'business',
+    mcTimeDistSeed: 11,
+    mcParamDriftMode: 'stochastic',
+    mcParamDriftDist: 'normal',
+    mcParamDriftMu: 0.0,
+    mcParamDriftSigma: 0.25,
+    mcParamDriftLow: -0.5,
+    mcParamDriftHigh: 0.5,
+    mcParamDriftMin: -0.8,
+    mcParamDriftMax: 0.8,
+    mcParamDriftSeed: 21,
+    mcSizingDist: 'lognormal',
+    mcSizingMu: 0.0,
+    mcSizingSigma: 0.6,
+    mcSizingLow: 0.5,
+    mcSizingHigh: 1.8,
+    mcSizingMin: 0.2,
+    mcSizingMax: 2.5,
+    mcOutputMode: 'summary',
+    mcOutputMaxCurves: 40,
+    mcOutputCurveStride: 5,
+    mcScenario1Type: 'shock',
+    mcScenario1Name: 'Shock scenario',
+    mcScenario1ShockPct: 12,
+    mcScenario1VolMultiplier: 1.4,
+    mcScenario1DrawdownPct: 18,
+    mcScenario1Window: 30,
+    mcScenario1Index: 'start',
+    mcScenario2Type: 'vol_shift',
+    mcScenario2Name: 'Vol shift scenario',
+    mcScenario2ShockPct: 6,
+    mcScenario2VolMultiplier: 1.8,
+    mcScenario2DrawdownPct: 10,
+    mcScenario2Window: 45,
+    mcScenario2Index: 'mid',
+    mcScenario3Type: 'drawdown',
+    mcScenario3Name: 'Drawdown scenario',
+    mcScenario3ShockPct: 8,
+    mcScenario3VolMultiplier: 1.2,
+    mcScenario3DrawdownPct: 22,
+    mcScenario3Window: 60,
+    mcScenario3Index: 'end',
+    mcAggregation: 'weighted',
+    mcWeights: '0.5,0.3,0.2',
+    mcTimestampAlignment: 'asof',
     includePerformance: false,
     dca_filter_volatility_guard_window: 30,
     dca_filter_volatility_guard_threshold: 22,
@@ -594,6 +644,56 @@ export class StrategyLauncherPageComponent {
     mcHorizonDays: 120,
     mcShockVolPct: 18,
     mcSeed: 11,
+    mcIncludeAdvanced: false,
+    mcSource: 'equity',
+    mcMethod: 'block_bootstrap',
+    mcBlockSize: 20,
+    mcOverlapping: true,
+    mcTimeDistMode: 'business',
+    mcTimeDistSeed: 11,
+    mcParamDriftMode: 'stochastic',
+    mcParamDriftDist: 'normal',
+    mcParamDriftMu: 0.0,
+    mcParamDriftSigma: 0.25,
+    mcParamDriftLow: -0.5,
+    mcParamDriftHigh: 0.5,
+    mcParamDriftMin: -0.8,
+    mcParamDriftMax: 0.8,
+    mcParamDriftSeed: 21,
+    mcSizingDist: 'lognormal',
+    mcSizingMu: 0.0,
+    mcSizingSigma: 0.6,
+    mcSizingLow: 0.5,
+    mcSizingHigh: 1.8,
+    mcSizingMin: 0.2,
+    mcSizingMax: 2.5,
+    mcOutputMode: 'summary',
+    mcOutputMaxCurves: 40,
+    mcOutputCurveStride: 5,
+    mcScenario1Type: 'shock',
+    mcScenario1Name: 'Shock scenario',
+    mcScenario1ShockPct: 12,
+    mcScenario1VolMultiplier: 1.4,
+    mcScenario1DrawdownPct: 18,
+    mcScenario1Window: 30,
+    mcScenario1Index: 'start',
+    mcScenario2Type: 'vol_shift',
+    mcScenario2Name: 'Vol shift scenario',
+    mcScenario2ShockPct: 6,
+    mcScenario2VolMultiplier: 1.8,
+    mcScenario2DrawdownPct: 10,
+    mcScenario2Window: 45,
+    mcScenario2Index: 'mid',
+    mcScenario3Type: 'drawdown',
+    mcScenario3Name: 'Drawdown scenario',
+    mcScenario3ShockPct: 8,
+    mcScenario3VolMultiplier: 1.2,
+    mcScenario3DrawdownPct: 22,
+    mcScenario3Window: 60,
+    mcScenario3Index: 'end',
+    mcAggregation: 'weighted',
+    mcWeights: '0.5,0.3,0.2',
+    mcTimestampAlignment: 'asof',
     includePerformance: false
   } as const;
 
@@ -817,6 +917,56 @@ export class StrategyLauncherPageComponent {
       mcHorizonDays: [this.dcaDefaults.mcHorizonDays, [Validators.min(1)]],
       mcShockVolPct: [this.dcaDefaults.mcShockVolPct, [Validators.min(0)]],
       mcSeed: [this.dcaDefaults.mcSeed, [Validators.min(0)]],
+      mcIncludeAdvanced: [this.dcaDefaults.mcIncludeAdvanced],
+      mcSource: [this.dcaDefaults.mcSource],
+      mcMethod: [this.dcaDefaults.mcMethod, Validators.required],
+      mcBlockSize: [this.dcaDefaults.mcBlockSize, [Validators.min(1)]],
+      mcOverlapping: [this.dcaDefaults.mcOverlapping],
+      mcTimeDistMode: [this.dcaDefaults.mcTimeDistMode],
+      mcTimeDistSeed: [this.dcaDefaults.mcTimeDistSeed, [Validators.min(0)]],
+      mcParamDriftMode: [this.dcaDefaults.mcParamDriftMode],
+      mcParamDriftDist: [this.dcaDefaults.mcParamDriftDist],
+      mcParamDriftMu: [this.dcaDefaults.mcParamDriftMu],
+      mcParamDriftSigma: [this.dcaDefaults.mcParamDriftSigma, [Validators.min(0)]],
+      mcParamDriftLow: [this.dcaDefaults.mcParamDriftLow],
+      mcParamDriftHigh: [this.dcaDefaults.mcParamDriftHigh],
+      mcParamDriftMin: [this.dcaDefaults.mcParamDriftMin],
+      mcParamDriftMax: [this.dcaDefaults.mcParamDriftMax],
+      mcParamDriftSeed: [this.dcaDefaults.mcParamDriftSeed, [Validators.min(0)]],
+      mcSizingDist: [this.dcaDefaults.mcSizingDist],
+      mcSizingMu: [this.dcaDefaults.mcSizingMu],
+      mcSizingSigma: [this.dcaDefaults.mcSizingSigma, [Validators.min(0)]],
+      mcSizingLow: [this.dcaDefaults.mcSizingLow],
+      mcSizingHigh: [this.dcaDefaults.mcSizingHigh],
+      mcSizingMin: [this.dcaDefaults.mcSizingMin],
+      mcSizingMax: [this.dcaDefaults.mcSizingMax],
+      mcOutputMode: [this.dcaDefaults.mcOutputMode],
+      mcOutputMaxCurves: [this.dcaDefaults.mcOutputMaxCurves, [Validators.min(1)]],
+      mcOutputCurveStride: [this.dcaDefaults.mcOutputCurveStride, [Validators.min(1)]],
+      mcScenario1Type: [this.dcaDefaults.mcScenario1Type],
+      mcScenario1Name: [this.dcaDefaults.mcScenario1Name],
+      mcScenario1ShockPct: [this.dcaDefaults.mcScenario1ShockPct, [Validators.min(0)]],
+      mcScenario1VolMultiplier: [this.dcaDefaults.mcScenario1VolMultiplier, [Validators.min(0)]],
+      mcScenario1DrawdownPct: [this.dcaDefaults.mcScenario1DrawdownPct, [Validators.min(0)]],
+      mcScenario1Window: [this.dcaDefaults.mcScenario1Window, [Validators.min(1)]],
+      mcScenario1Index: [this.dcaDefaults.mcScenario1Index, [stressScenarioIndexValidator()]],
+      mcScenario2Type: [this.dcaDefaults.mcScenario2Type],
+      mcScenario2Name: [this.dcaDefaults.mcScenario2Name],
+      mcScenario2ShockPct: [this.dcaDefaults.mcScenario2ShockPct, [Validators.min(0)]],
+      mcScenario2VolMultiplier: [this.dcaDefaults.mcScenario2VolMultiplier, [Validators.min(0)]],
+      mcScenario2DrawdownPct: [this.dcaDefaults.mcScenario2DrawdownPct, [Validators.min(0)]],
+      mcScenario2Window: [this.dcaDefaults.mcScenario2Window, [Validators.min(1)]],
+      mcScenario2Index: [this.dcaDefaults.mcScenario2Index, [stressScenarioIndexValidator()]],
+      mcScenario3Type: [this.dcaDefaults.mcScenario3Type],
+      mcScenario3Name: [this.dcaDefaults.mcScenario3Name],
+      mcScenario3ShockPct: [this.dcaDefaults.mcScenario3ShockPct, [Validators.min(0)]],
+      mcScenario3VolMultiplier: [this.dcaDefaults.mcScenario3VolMultiplier, [Validators.min(0)]],
+      mcScenario3DrawdownPct: [this.dcaDefaults.mcScenario3DrawdownPct, [Validators.min(0)]],
+      mcScenario3Window: [this.dcaDefaults.mcScenario3Window, [Validators.min(1)]],
+      mcScenario3Index: [this.dcaDefaults.mcScenario3Index, [stressScenarioIndexValidator()]],
+      mcAggregation: [this.dcaDefaults.mcAggregation],
+      mcWeights: [this.dcaDefaults.mcWeights],
+      mcTimestampAlignment: [this.dcaDefaults.mcTimestampAlignment],
       includePerformance: [this.dcaDefaults.includePerformance],
       dca_filter_volatility_guard_window: [this.dcaDefaults.dca_filter_volatility_guard_window, [Validators.min(1)]],
       dca_filter_volatility_guard_threshold: [this.dcaDefaults.dca_filter_volatility_guard_threshold, [Validators.min(1)]],
@@ -926,6 +1076,56 @@ export class StrategyLauncherPageComponent {
       mcHorizonDays: [this.backtestDefaults.mcHorizonDays, [Validators.min(1)]],
       mcShockVolPct: [this.backtestDefaults.mcShockVolPct, [Validators.min(0)]],
       mcSeed: [this.backtestDefaults.mcSeed, [Validators.min(0)]],
+      mcIncludeAdvanced: [this.backtestDefaults.mcIncludeAdvanced],
+      mcSource: [this.backtestDefaults.mcSource],
+      mcMethod: [this.backtestDefaults.mcMethod, Validators.required],
+      mcBlockSize: [this.backtestDefaults.mcBlockSize, [Validators.min(1)]],
+      mcOverlapping: [this.backtestDefaults.mcOverlapping],
+      mcTimeDistMode: [this.backtestDefaults.mcTimeDistMode],
+      mcTimeDistSeed: [this.backtestDefaults.mcTimeDistSeed, [Validators.min(0)]],
+      mcParamDriftMode: [this.backtestDefaults.mcParamDriftMode],
+      mcParamDriftDist: [this.backtestDefaults.mcParamDriftDist],
+      mcParamDriftMu: [this.backtestDefaults.mcParamDriftMu],
+      mcParamDriftSigma: [this.backtestDefaults.mcParamDriftSigma, [Validators.min(0)]],
+      mcParamDriftLow: [this.backtestDefaults.mcParamDriftLow],
+      mcParamDriftHigh: [this.backtestDefaults.mcParamDriftHigh],
+      mcParamDriftMin: [this.backtestDefaults.mcParamDriftMin],
+      mcParamDriftMax: [this.backtestDefaults.mcParamDriftMax],
+      mcParamDriftSeed: [this.backtestDefaults.mcParamDriftSeed, [Validators.min(0)]],
+      mcSizingDist: [this.backtestDefaults.mcSizingDist],
+      mcSizingMu: [this.backtestDefaults.mcSizingMu],
+      mcSizingSigma: [this.backtestDefaults.mcSizingSigma, [Validators.min(0)]],
+      mcSizingLow: [this.backtestDefaults.mcSizingLow],
+      mcSizingHigh: [this.backtestDefaults.mcSizingHigh],
+      mcSizingMin: [this.backtestDefaults.mcSizingMin],
+      mcSizingMax: [this.backtestDefaults.mcSizingMax],
+      mcOutputMode: [this.backtestDefaults.mcOutputMode],
+      mcOutputMaxCurves: [this.backtestDefaults.mcOutputMaxCurves, [Validators.min(1)]],
+      mcOutputCurveStride: [this.backtestDefaults.mcOutputCurveStride, [Validators.min(1)]],
+      mcScenario1Type: [this.backtestDefaults.mcScenario1Type],
+      mcScenario1Name: [this.backtestDefaults.mcScenario1Name],
+      mcScenario1ShockPct: [this.backtestDefaults.mcScenario1ShockPct, [Validators.min(0)]],
+      mcScenario1VolMultiplier: [this.backtestDefaults.mcScenario1VolMultiplier, [Validators.min(0)]],
+      mcScenario1DrawdownPct: [this.backtestDefaults.mcScenario1DrawdownPct, [Validators.min(0)]],
+      mcScenario1Window: [this.backtestDefaults.mcScenario1Window, [Validators.min(1)]],
+      mcScenario1Index: [this.backtestDefaults.mcScenario1Index, [stressScenarioIndexValidator()]],
+      mcScenario2Type: [this.backtestDefaults.mcScenario2Type],
+      mcScenario2Name: [this.backtestDefaults.mcScenario2Name],
+      mcScenario2ShockPct: [this.backtestDefaults.mcScenario2ShockPct, [Validators.min(0)]],
+      mcScenario2VolMultiplier: [this.backtestDefaults.mcScenario2VolMultiplier, [Validators.min(0)]],
+      mcScenario2DrawdownPct: [this.backtestDefaults.mcScenario2DrawdownPct, [Validators.min(0)]],
+      mcScenario2Window: [this.backtestDefaults.mcScenario2Window, [Validators.min(1)]],
+      mcScenario2Index: [this.backtestDefaults.mcScenario2Index, [stressScenarioIndexValidator()]],
+      mcScenario3Type: [this.backtestDefaults.mcScenario3Type],
+      mcScenario3Name: [this.backtestDefaults.mcScenario3Name],
+      mcScenario3ShockPct: [this.backtestDefaults.mcScenario3ShockPct, [Validators.min(0)]],
+      mcScenario3VolMultiplier: [this.backtestDefaults.mcScenario3VolMultiplier, [Validators.min(0)]],
+      mcScenario3DrawdownPct: [this.backtestDefaults.mcScenario3DrawdownPct, [Validators.min(0)]],
+      mcScenario3Window: [this.backtestDefaults.mcScenario3Window, [Validators.min(1)]],
+      mcScenario3Index: [this.backtestDefaults.mcScenario3Index, [stressScenarioIndexValidator()]],
+      mcAggregation: [this.backtestDefaults.mcAggregation],
+      mcWeights: [this.backtestDefaults.mcWeights],
+      mcTimestampAlignment: [this.backtestDefaults.mcTimestampAlignment],
       includePerformance: [this.backtestDefaults.includePerformance],
       presetName: [''],
       presetId: ['']
@@ -3867,7 +4067,7 @@ export class StrategyLauncherPageComponent {
             v.maxCapitalPerTrade,
             undefined,
             undefined,
-            this.buildDcaStressTests(v)
+            Boolean(v.mcEnabled ?? this.dcaDefaults.mcEnabled) ? this.buildDcaStressTests(v) : undefined
           )
         : undefined
     };
@@ -3990,7 +4190,7 @@ export class StrategyLauncherPageComponent {
             undefined,
             v.riskPct,
             v.riskFreeRate,
-            this.buildBacktestStressTests(v)
+            Boolean(v.mcEnabled ?? this.backtestDefaults.mcEnabled) ? this.buildBacktestStressTests(v) : undefined
           )
         : undefined
     };
@@ -4588,31 +4788,107 @@ export class StrategyLauncherPageComponent {
   }
 
   private buildDcaStressTests(value: ReturnType<typeof this.dcaForm.getRawValue>): MonteCarloStressTests {
-    return {
+    const includeAdvanced = Boolean(value.mcIncludeAdvanced ?? this.dcaDefaults.mcIncludeAdvanced);
+    const block: MonteCarloStressTests = {
       enabled: Boolean(value.mcEnabled ?? this.dcaDefaults.mcEnabled),
       nSims: Number(value.mcPaths ?? this.dcaDefaults.mcPaths),
       seed: Number(value.mcSeed ?? this.dcaDefaults.mcSeed),
-      method: 'monte_carlo',
-      output: {
-        mode: 'summary'
-      },
-      scenarios: [],
-      multiAsset: undefined
+      method: String(value.mcMethod ?? this.dcaDefaults.mcMethod),
+      blockSize: Number(value.mcBlockSize ?? this.dcaDefaults.mcBlockSize),
+      scenarios: []
     };
+    if (!includeAdvanced) {
+      return block;
+    }
+    block.overlapping = Boolean(value.mcOverlapping ?? this.dcaDefaults.mcOverlapping);
+    block.timeDistribution = {
+      mode: String(value.mcTimeDistMode ?? this.dcaDefaults.mcTimeDistMode),
+      seed: Number(value.mcTimeDistSeed ?? this.dcaDefaults.mcTimeDistSeed)
+    };
+    block.paramDrift = {
+      mode: String(value.mcParamDriftMode ?? this.dcaDefaults.mcParamDriftMode),
+      dist: String(value.mcParamDriftDist ?? this.dcaDefaults.mcParamDriftDist),
+      mu: Number(value.mcParamDriftMu ?? this.dcaDefaults.mcParamDriftMu),
+      sigma: Number(value.mcParamDriftSigma ?? this.dcaDefaults.mcParamDriftSigma),
+      low: Number(value.mcParamDriftLow ?? this.dcaDefaults.mcParamDriftLow),
+      high: Number(value.mcParamDriftHigh ?? this.dcaDefaults.mcParamDriftHigh),
+      min: Number(value.mcParamDriftMin ?? this.dcaDefaults.mcParamDriftMin),
+      max: Number(value.mcParamDriftMax ?? this.dcaDefaults.mcParamDriftMax),
+      seed: Number(value.mcParamDriftSeed ?? this.dcaDefaults.mcParamDriftSeed)
+    };
+    block.sizing = {
+      dist: String(value.mcSizingDist ?? this.dcaDefaults.mcSizingDist),
+      mu: Number(value.mcSizingMu ?? this.dcaDefaults.mcSizingMu),
+      sigma: Number(value.mcSizingSigma ?? this.dcaDefaults.mcSizingSigma),
+      low: Number(value.mcSizingLow ?? this.dcaDefaults.mcSizingLow),
+      high: Number(value.mcSizingHigh ?? this.dcaDefaults.mcSizingHigh),
+      min: Number(value.mcSizingMin ?? this.dcaDefaults.mcSizingMin),
+      max: Number(value.mcSizingMax ?? this.dcaDefaults.mcSizingMax)
+    };
+    block.output = {
+      mode: String(value.mcOutputMode ?? this.dcaDefaults.mcOutputMode),
+      maxCurves: Number(value.mcOutputMaxCurves ?? this.dcaDefaults.mcOutputMaxCurves),
+      curveStride: Number(value.mcOutputCurveStride ?? this.dcaDefaults.mcOutputCurveStride)
+    };
+    block.scenarios = this.buildStressScenarioSlots(value as Record<string, unknown>, 'mcScenario');
+    block.multiAsset = {
+      aggregation: String(value.mcAggregation ?? this.dcaDefaults.mcAggregation),
+      weights: this.parseStressWeights(value.mcWeights ?? this.dcaDefaults.mcWeights),
+      timestampAlignment: String(value.mcTimestampAlignment ?? this.dcaDefaults.mcTimestampAlignment)
+    };
+    return block;
   }
 
   private buildBacktestStressTests(value: ReturnType<typeof this.backtestForm.getRawValue>): MonteCarloStressTests {
-    return {
+    const includeAdvanced = Boolean(value.mcIncludeAdvanced ?? this.backtestDefaults.mcIncludeAdvanced);
+    const block: MonteCarloStressTests = {
       enabled: Boolean(value.mcEnabled ?? this.backtestDefaults.mcEnabled),
       nSims: Number(value.mcPaths ?? this.backtestDefaults.mcPaths),
       seed: Number(value.mcSeed ?? this.backtestDefaults.mcSeed),
-      method: 'monte_carlo',
-      output: {
-        mode: 'summary'
-      },
-      scenarios: [],
-      multiAsset: undefined
+      method: String(value.mcMethod ?? this.backtestDefaults.mcMethod),
+      blockSize: Number(value.mcBlockSize ?? this.backtestDefaults.mcBlockSize),
+      scenarios: []
     };
+    if (!includeAdvanced) {
+      return block;
+    }
+    block.overlapping = Boolean(value.mcOverlapping ?? this.backtestDefaults.mcOverlapping);
+    block.timeDistribution = {
+      mode: String(value.mcTimeDistMode ?? this.backtestDefaults.mcTimeDistMode),
+      seed: Number(value.mcTimeDistSeed ?? this.backtestDefaults.mcTimeDistSeed)
+    };
+    block.paramDrift = {
+      mode: String(value.mcParamDriftMode ?? this.backtestDefaults.mcParamDriftMode),
+      dist: String(value.mcParamDriftDist ?? this.backtestDefaults.mcParamDriftDist),
+      mu: Number(value.mcParamDriftMu ?? this.backtestDefaults.mcParamDriftMu),
+      sigma: Number(value.mcParamDriftSigma ?? this.backtestDefaults.mcParamDriftSigma),
+      low: Number(value.mcParamDriftLow ?? this.backtestDefaults.mcParamDriftLow),
+      high: Number(value.mcParamDriftHigh ?? this.backtestDefaults.mcParamDriftHigh),
+      min: Number(value.mcParamDriftMin ?? this.backtestDefaults.mcParamDriftMin),
+      max: Number(value.mcParamDriftMax ?? this.backtestDefaults.mcParamDriftMax),
+      seed: Number(value.mcParamDriftSeed ?? this.backtestDefaults.mcParamDriftSeed)
+    };
+    block.sizing = {
+      dist: String(value.mcSizingDist ?? this.backtestDefaults.mcSizingDist),
+      mu: Number(value.mcSizingMu ?? this.backtestDefaults.mcSizingMu),
+      sigma: Number(value.mcSizingSigma ?? this.backtestDefaults.mcSizingSigma),
+      low: Number(value.mcSizingLow ?? this.backtestDefaults.mcSizingLow),
+      high: Number(value.mcSizingHigh ?? this.backtestDefaults.mcSizingHigh),
+      min: Number(value.mcSizingMin ?? this.backtestDefaults.mcSizingMin),
+      max: Number(value.mcSizingMax ?? this.backtestDefaults.mcSizingMax)
+    };
+    block.output = {
+      mode: String(value.mcOutputMode ?? this.backtestDefaults.mcOutputMode),
+      maxCurves: Number(value.mcOutputMaxCurves ?? this.backtestDefaults.mcOutputMaxCurves),
+      curveStride: Number(value.mcOutputCurveStride ?? this.backtestDefaults.mcOutputCurveStride)
+    };
+    block.scenarios = this.buildStressScenarioSlots(value as Record<string, unknown>, 'mcScenario');
+    block.multiAsset = {
+      aggregation: String(value.mcAggregation ?? this.backtestDefaults.mcAggregation),
+      weights: this.parseStressWeights(value.mcWeights ?? this.backtestDefaults.mcWeights),
+      timestampAlignment: String(value.mcTimestampAlignment ?? this.backtestDefaults.mcTimestampAlignment)
+    };
+    return block;
   }
 
   private buildStressTestsBlock(value: ReturnType<typeof this.stressForm.getRawValue>): MonteCarloStressTests {
@@ -4742,7 +5018,7 @@ export class StrategyLauncherPageComponent {
     }
 
     if (this.isStressFieldRuntimeWired('performance.stress_tests.scenarios')) {
-      block.scenarios = this.buildStressScenarioSlots(value);
+      block.scenarios = this.buildStressScenarioSlots(value as Record<string, unknown>, 'scenario');
     }
 
     if (
@@ -4766,22 +5042,25 @@ export class StrategyLauncherPageComponent {
     return block;
   }
 
-  private buildStressScenarioSlots(value: ReturnType<typeof this.stressForm.getRawValue>): MonteCarloStressTests['scenarios'] {
+  private buildStressScenarioSlots(
+    value: Record<string, unknown>,
+    prefix: 'scenario' | 'mcScenario'
+  ): MonteCarloStressTests['scenarios'] {
     const scenarios: NonNullable<MonteCarloStressTests['scenarios']> = [];
     for (const slot of this.stressScenarioSlots) {
-      const type = String((value as Record<string, unknown>)[`scenario${slot}Type`] ?? '').trim();
-      const name = String((value as Record<string, unknown>)[`scenario${slot}Name`] ?? '').trim();
+      const type = String(value[`${prefix}${slot}Type`] ?? '').trim();
+      const name = String(value[`${prefix}${slot}Name`] ?? '').trim();
       if (!type || !name) {
         continue;
       }
       scenarios.push({
         name,
         type,
-        shockPct: Number((value as Record<string, unknown>)[`scenario${slot}ShockPct`] ?? 0),
-        volMultiplier: Number((value as Record<string, unknown>)[`scenario${slot}VolMultiplier`] ?? 0),
-        drawdownPct: Number((value as Record<string, unknown>)[`scenario${slot}DrawdownPct`] ?? 0),
-        window: Number((value as Record<string, unknown>)[`scenario${slot}Window`] ?? 0),
-        index: this.normalizeScenarioIndex((value as Record<string, unknown>)[`scenario${slot}Index`])
+        shockPct: Number(value[`${prefix}${slot}ShockPct`] ?? 0),
+        volMultiplier: Number(value[`${prefix}${slot}VolMultiplier`] ?? 0),
+        drawdownPct: Number(value[`${prefix}${slot}DrawdownPct`] ?? 0),
+        window: Number(value[`${prefix}${slot}Window`] ?? 0),
+        index: this.normalizeScenarioIndex(value[`${prefix}${slot}Index`])
       });
     }
     return scenarios;

@@ -613,31 +613,82 @@
             <ng-container *ngIf="selectedDcaTab() === 'stress'">
               <div class="param-section">
                 <div class="param-title">Monte Carlo</div>
+                <div class="checkbox-row">
+                  <mat-checkbox formControlName="mcIncludeAdvanced">Inclure options avancees stress tests</mat-checkbox>
+                </div>
                 <div class="param-grid">
                   <div class="checkbox-row">
                     <mat-checkbox formControlName="mcEnabled">Enabled</mat-checkbox>
                   </div>
-
                   <mat-form-field appearance="outline">
-                    <mat-label>Paths</mat-label>
+                    <mat-label>n_sims</mat-label>
                     <input matInput type="number" formControlName="mcPaths" min="10" />
                   </mat-form-field>
-
                   <mat-form-field appearance="outline">
-                    <mat-label>Horizon (days)</mat-label>
-                    <input matInput type="number" formControlName="mcHorizonDays" min="1" />
-                  </mat-form-field>
-
-                  <mat-form-field appearance="outline">
-                    <mat-label>Shock vol (%)</mat-label>
-                    <input matInput type="number" formControlName="mcShockVolPct" min="0" />
-                  </mat-form-field>
-
-                  <mat-form-field appearance="outline">
-                    <mat-label>Seed</mat-label>
+                    <mat-label>seed</mat-label>
                     <input matInput type="number" formControlName="mcSeed" min="0" />
                   </mat-form-field>
+                  <mat-form-field appearance="outline">
+                    <mat-label>method</mat-label>
+                    <mat-select formControlName="mcMethod" [matTooltip]="enumTooltip('monte_carlo.method')">
+                      <mat-option *ngFor="let option of stressMethodOptions" [value]="option">{{ option }}</mat-option>
+                    </mat-select>
+                  </mat-form-field>
+                  <mat-form-field appearance="outline">
+                    <mat-label>block_size</mat-label>
+                    <input matInput type="number" formControlName="mcBlockSize" min="1" />
+                  </mat-form-field>
                 </div>
+                <div class="param-grid" *ngIf="dcaForm.get('mcIncludeAdvanced')?.value">
+                  <mat-form-field appearance="outline">
+                    <mat-label>source</mat-label>
+                    <mat-select formControlName="mcSource" [disabled]="true">
+                      <mat-option *ngFor="let option of stressSourceOptions" [value]="option">{{ option }}</mat-option>
+                    </mat-select>
+                    <mat-hint class="not-implemented">accepted, currently not wired</mat-hint>
+                  </mat-form-field>
+                  <div class="checkbox-row">
+                    <mat-checkbox formControlName="mcOverlapping">overlapping</mat-checkbox>
+                  </div>
+                  <mat-form-field appearance="outline"><mat-label>time_distribution.mode</mat-label><mat-select formControlName="mcTimeDistMode"><mat-option *ngFor="let option of stressTimeDistModes" [value]="option">{{ option }}</mat-option></mat-select></mat-form-field>
+                  <mat-form-field appearance="outline"><mat-label>time_distribution.seed</mat-label><input matInput type="number" formControlName="mcTimeDistSeed" min="0" /></mat-form-field>
+                  <mat-form-field appearance="outline"><mat-label>param_drift.mode</mat-label><mat-select formControlName="mcParamDriftMode"><mat-option *ngFor="let option of stressParamDriftModes" [value]="option">{{ option }}</mat-option></mat-select></mat-form-field>
+                  <mat-form-field appearance="outline"><mat-label>param_drift.dist</mat-label><mat-select formControlName="mcParamDriftDist"><mat-option *ngFor="let option of stressParamDriftDists" [value]="option">{{ option }}</mat-option></mat-select></mat-form-field>
+                  <mat-form-field appearance="outline"><mat-label>param_drift.mu</mat-label><input matInput type="number" formControlName="mcParamDriftMu" /></mat-form-field>
+                  <mat-form-field appearance="outline"><mat-label>param_drift.sigma</mat-label><input matInput type="number" formControlName="mcParamDriftSigma" min="0" /></mat-form-field>
+                  <mat-form-field appearance="outline"><mat-label>param_drift.low</mat-label><input matInput type="number" formControlName="mcParamDriftLow" /></mat-form-field>
+                  <mat-form-field appearance="outline"><mat-label>param_drift.high</mat-label><input matInput type="number" formControlName="mcParamDriftHigh" /></mat-form-field>
+                  <mat-form-field appearance="outline"><mat-label>param_drift.min</mat-label><input matInput type="number" formControlName="mcParamDriftMin" /></mat-form-field>
+                  <mat-form-field appearance="outline"><mat-label>param_drift.max</mat-label><input matInput type="number" formControlName="mcParamDriftMax" /></mat-form-field>
+                  <mat-form-field appearance="outline"><mat-label>param_drift.seed</mat-label><input matInput type="number" formControlName="mcParamDriftSeed" min="0" /></mat-form-field>
+                  <mat-form-field appearance="outline"><mat-label>sizing.dist</mat-label><mat-select formControlName="mcSizingDist"><mat-option *ngFor="let option of stressSizingDists" [value]="option">{{ option }}</mat-option></mat-select></mat-form-field>
+                  <mat-form-field appearance="outline"><mat-label>sizing.mu</mat-label><input matInput type="number" formControlName="mcSizingMu" /></mat-form-field>
+                  <mat-form-field appearance="outline"><mat-label>sizing.sigma</mat-label><input matInput type="number" formControlName="mcSizingSigma" min="0" /></mat-form-field>
+                  <mat-form-field appearance="outline"><mat-label>sizing.low</mat-label><input matInput type="number" formControlName="mcSizingLow" /></mat-form-field>
+                  <mat-form-field appearance="outline"><mat-label>sizing.high</mat-label><input matInput type="number" formControlName="mcSizingHigh" /></mat-form-field>
+                  <mat-form-field appearance="outline"><mat-label>sizing.min</mat-label><input matInput type="number" formControlName="mcSizingMin" /></mat-form-field>
+                  <mat-form-field appearance="outline"><mat-label>sizing.max</mat-label><input matInput type="number" formControlName="mcSizingMax" /></mat-form-field>
+                  <mat-form-field appearance="outline"><mat-label>output.mode</mat-label><mat-select formControlName="mcOutputMode"><mat-option *ngFor="let option of stressOutputModes" [value]="option">{{ option }}</mat-option></mat-select></mat-form-field>
+                  <mat-form-field appearance="outline"><mat-label>output.max_curves</mat-label><input matInput type="number" formControlName="mcOutputMaxCurves" min="1" /></mat-form-field>
+                  <mat-form-field appearance="outline"><mat-label>output.curve_stride</mat-label><input matInput type="number" formControlName="mcOutputCurveStride" min="1" /></mat-form-field>
+                  <mat-form-field appearance="outline"><mat-label>multi_asset.aggregation</mat-label><mat-select formControlName="mcAggregation"><mat-option *ngFor="let option of stressAggregationModes" [value]="option">{{ option }}</mat-option></mat-select></mat-form-field>
+                  <mat-form-field appearance="outline"><mat-label>multi_asset.weights</mat-label><input matInput type="text" formControlName="mcWeights" placeholder="0.4,0.3,0.3" /></mat-form-field>
+                  <mat-form-field appearance="outline"><mat-label>multi_asset.timestamp_alignment</mat-label><mat-select formControlName="mcTimestampAlignment"><mat-option *ngFor="let option of stressAlignmentModes" [value]="option">{{ option }}</mat-option></mat-select></mat-form-field>
+                </div>
+                <ng-container *ngIf="dcaForm.get('mcIncludeAdvanced')?.value">
+                <div class="param-group" *ngFor="let slot of stressScenarioSlots">
+                  <div class="param-hint">scenario {{ slot }}</div>
+                  <div class="param-grid">
+                    <mat-form-field appearance="outline"><mat-label>name</mat-label><input matInput type="text" [formControlName]="'mcScenario' + slot + 'Name'" /></mat-form-field>
+                    <mat-form-field appearance="outline"><mat-label>type</mat-label><mat-select [formControlName]="'mcScenario' + slot + 'Type'" [matTooltip]="enumTooltip('scenario.types')"><mat-option *ngFor="let option of stressScenarioTypes" [value]="option">{{ option }}</mat-option></mat-select></mat-form-field>
+                    <mat-form-field appearance="outline"><mat-label>shock_pct</mat-label><input matInput type="number" [formControlName]="'mcScenario' + slot + 'ShockPct'" min="0" /></mat-form-field>
+                    <mat-form-field appearance="outline"><mat-label>vol_multiplier</mat-label><input matInput type="number" [formControlName]="'mcScenario' + slot + 'VolMultiplier'" min="0" step="0.1" /></mat-form-field>
+                    <mat-form-field appearance="outline"><mat-label>drawdown_pct</mat-label><input matInput type="number" [formControlName]="'mcScenario' + slot + 'DrawdownPct'" min="0" /></mat-form-field>
+                    <mat-form-field appearance="outline"><mat-label>window</mat-label><input matInput type="number" [formControlName]="'mcScenario' + slot + 'Window'" min="1" /></mat-form-field>
+                    <mat-form-field appearance="outline"><mat-label>index (start|mid|end|int)</mat-label><input matInput type="text" [formControlName]="'mcScenario' + slot + 'Index'" /></mat-form-field>
+                  </div>
+                </div>
+                </ng-container>
               </div>
             </ng-container>
           </section>
@@ -1296,31 +1347,60 @@
             </ng-container><ng-container *ngIf="selectedBacktestTab() === 'stress'">
               <div class="param-section">
                 <div class="param-title">Monte Carlo</div>
+                <div class="checkbox-row">
+                  <mat-checkbox formControlName="mcIncludeAdvanced">Inclure options avancees stress tests</mat-checkbox>
+                </div>
                 <div class="param-grid">
                   <div class="checkbox-row">
                     <mat-checkbox formControlName="mcEnabled">Enabled</mat-checkbox>
                   </div>
-
-                  <mat-form-field appearance="outline">
-                    <mat-label>Paths</mat-label>
-                    <input matInput type="number" formControlName="mcPaths" min="10" />
-                  </mat-form-field>
-
-                  <mat-form-field appearance="outline">
-                    <mat-label>Horizon (days)</mat-label>
-                    <input matInput type="number" formControlName="mcHorizonDays" min="1" />
-                  </mat-form-field>
-
-                  <mat-form-field appearance="outline">
-                    <mat-label>Shock vol (%)</mat-label>
-                    <input matInput type="number" formControlName="mcShockVolPct" min="0" />
-                  </mat-form-field>
-
-                  <mat-form-field appearance="outline">
-                    <mat-label>Seed</mat-label>
-                    <input matInput type="number" formControlName="mcSeed" min="0" />
-                  </mat-form-field>
+                  <mat-form-field appearance="outline"><mat-label>n_sims</mat-label><input matInput type="number" formControlName="mcPaths" min="10" /></mat-form-field>
+                  <mat-form-field appearance="outline"><mat-label>seed</mat-label><input matInput type="number" formControlName="mcSeed" min="0" /></mat-form-field>
+                  <mat-form-field appearance="outline"><mat-label>method</mat-label><mat-select formControlName="mcMethod" [matTooltip]="enumTooltip('monte_carlo.method')"><mat-option *ngFor="let option of stressMethodOptions" [value]="option">{{ option }}</mat-option></mat-select></mat-form-field>
+                  <mat-form-field appearance="outline"><mat-label>block_size</mat-label><input matInput type="number" formControlName="mcBlockSize" min="1" /></mat-form-field>
                 </div>
+                <div class="param-grid" *ngIf="backtestForm.get('mcIncludeAdvanced')?.value">
+                  <mat-form-field appearance="outline"><mat-label>source</mat-label><mat-select formControlName="mcSource" [disabled]="true"><mat-option *ngFor="let option of stressSourceOptions" [value]="option">{{ option }}</mat-option></mat-select><mat-hint class="not-implemented">accepted, currently not wired</mat-hint></mat-form-field>
+                  <div class="checkbox-row"><mat-checkbox formControlName="mcOverlapping">overlapping</mat-checkbox></div>
+                  <mat-form-field appearance="outline"><mat-label>time_distribution.mode</mat-label><mat-select formControlName="mcTimeDistMode"><mat-option *ngFor="let option of stressTimeDistModes" [value]="option">{{ option }}</mat-option></mat-select></mat-form-field>
+                  <mat-form-field appearance="outline"><mat-label>time_distribution.seed</mat-label><input matInput type="number" formControlName="mcTimeDistSeed" min="0" /></mat-form-field>
+                  <mat-form-field appearance="outline"><mat-label>param_drift.mode</mat-label><mat-select formControlName="mcParamDriftMode"><mat-option *ngFor="let option of stressParamDriftModes" [value]="option">{{ option }}</mat-option></mat-select></mat-form-field>
+                  <mat-form-field appearance="outline"><mat-label>param_drift.dist</mat-label><mat-select formControlName="mcParamDriftDist"><mat-option *ngFor="let option of stressParamDriftDists" [value]="option">{{ option }}</mat-option></mat-select></mat-form-field>
+                  <mat-form-field appearance="outline"><mat-label>param_drift.mu</mat-label><input matInput type="number" formControlName="mcParamDriftMu" /></mat-form-field>
+                  <mat-form-field appearance="outline"><mat-label>param_drift.sigma</mat-label><input matInput type="number" formControlName="mcParamDriftSigma" min="0" /></mat-form-field>
+                  <mat-form-field appearance="outline"><mat-label>param_drift.low</mat-label><input matInput type="number" formControlName="mcParamDriftLow" /></mat-form-field>
+                  <mat-form-field appearance="outline"><mat-label>param_drift.high</mat-label><input matInput type="number" formControlName="mcParamDriftHigh" /></mat-form-field>
+                  <mat-form-field appearance="outline"><mat-label>param_drift.min</mat-label><input matInput type="number" formControlName="mcParamDriftMin" /></mat-form-field>
+                  <mat-form-field appearance="outline"><mat-label>param_drift.max</mat-label><input matInput type="number" formControlName="mcParamDriftMax" /></mat-form-field>
+                  <mat-form-field appearance="outline"><mat-label>param_drift.seed</mat-label><input matInput type="number" formControlName="mcParamDriftSeed" min="0" /></mat-form-field>
+                  <mat-form-field appearance="outline"><mat-label>sizing.dist</mat-label><mat-select formControlName="mcSizingDist"><mat-option *ngFor="let option of stressSizingDists" [value]="option">{{ option }}</mat-option></mat-select></mat-form-field>
+                  <mat-form-field appearance="outline"><mat-label>sizing.mu</mat-label><input matInput type="number" formControlName="mcSizingMu" /></mat-form-field>
+                  <mat-form-field appearance="outline"><mat-label>sizing.sigma</mat-label><input matInput type="number" formControlName="mcSizingSigma" min="0" /></mat-form-field>
+                  <mat-form-field appearance="outline"><mat-label>sizing.low</mat-label><input matInput type="number" formControlName="mcSizingLow" /></mat-form-field>
+                  <mat-form-field appearance="outline"><mat-label>sizing.high</mat-label><input matInput type="number" formControlName="mcSizingHigh" /></mat-form-field>
+                  <mat-form-field appearance="outline"><mat-label>sizing.min</mat-label><input matInput type="number" formControlName="mcSizingMin" /></mat-form-field>
+                  <mat-form-field appearance="outline"><mat-label>sizing.max</mat-label><input matInput type="number" formControlName="mcSizingMax" /></mat-form-field>
+                  <mat-form-field appearance="outline"><mat-label>output.mode</mat-label><mat-select formControlName="mcOutputMode"><mat-option *ngFor="let option of stressOutputModes" [value]="option">{{ option }}</mat-option></mat-select></mat-form-field>
+                  <mat-form-field appearance="outline"><mat-label>output.max_curves</mat-label><input matInput type="number" formControlName="mcOutputMaxCurves" min="1" /></mat-form-field>
+                  <mat-form-field appearance="outline"><mat-label>output.curve_stride</mat-label><input matInput type="number" formControlName="mcOutputCurveStride" min="1" /></mat-form-field>
+                  <mat-form-field appearance="outline"><mat-label>multi_asset.aggregation</mat-label><mat-select formControlName="mcAggregation"><mat-option *ngFor="let option of stressAggregationModes" [value]="option">{{ option }}</mat-option></mat-select></mat-form-field>
+                  <mat-form-field appearance="outline"><mat-label>multi_asset.weights</mat-label><input matInput type="text" formControlName="mcWeights" placeholder="0.4,0.3,0.3" /></mat-form-field>
+                  <mat-form-field appearance="outline"><mat-label>multi_asset.timestamp_alignment</mat-label><mat-select formControlName="mcTimestampAlignment"><mat-option *ngFor="let option of stressAlignmentModes" [value]="option">{{ option }}</mat-option></mat-select></mat-form-field>
+                </div>
+                <ng-container *ngIf="backtestForm.get('mcIncludeAdvanced')?.value">
+                <div class="param-group" *ngFor="let slot of stressScenarioSlots">
+                  <div class="param-hint">scenario {{ slot }}</div>
+                  <div class="param-grid">
+                    <mat-form-field appearance="outline"><mat-label>name</mat-label><input matInput type="text" [formControlName]="'mcScenario' + slot + 'Name'" /></mat-form-field>
+                    <mat-form-field appearance="outline"><mat-label>type</mat-label><mat-select [formControlName]="'mcScenario' + slot + 'Type'" [matTooltip]="enumTooltip('scenario.types')"><mat-option *ngFor="let option of stressScenarioTypes" [value]="option">{{ option }}</mat-option></mat-select></mat-form-field>
+                    <mat-form-field appearance="outline"><mat-label>shock_pct</mat-label><input matInput type="number" [formControlName]="'mcScenario' + slot + 'ShockPct'" min="0" /></mat-form-field>
+                    <mat-form-field appearance="outline"><mat-label>vol_multiplier</mat-label><input matInput type="number" [formControlName]="'mcScenario' + slot + 'VolMultiplier'" min="0" step="0.1" /></mat-form-field>
+                    <mat-form-field appearance="outline"><mat-label>drawdown_pct</mat-label><input matInput type="number" [formControlName]="'mcScenario' + slot + 'DrawdownPct'" min="0" /></mat-form-field>
+                    <mat-form-field appearance="outline"><mat-label>window</mat-label><input matInput type="number" [formControlName]="'mcScenario' + slot + 'Window'" min="1" /></mat-form-field>
+                    <mat-form-field appearance="outline"><mat-label>index (start|mid|end|int)</mat-label><input matInput type="text" [formControlName]="'mcScenario' + slot + 'Index'" /></mat-form-field>
+                  </div>
+                </div>
+                </ng-container>
               </div>
             </ng-container>
           </section>

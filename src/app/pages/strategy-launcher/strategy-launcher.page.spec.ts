@@ -322,6 +322,59 @@ describe('StrategyLauncherPageComponent', () => {
     expect(payload.filters).toBeDefined();
   });
 
+  it('omits backtest performance.stressTests when mcEnabled is false', () => {
+    fixture.detectChanges();
+    flushInitRequests(
+      {},
+      null,
+      {
+        fields: {
+          supported: ['performance'],
+          accepted_but_not_wired: []
+        }
+      }
+    );
+
+    component.selectRun('backtests');
+    component.backtestForm.patchValue({
+      includePerformance: true,
+      mcEnabled: false
+    } as any);
+
+    const payload = component.buildRunRequest() as any;
+    expect(payload.performance).toBeDefined();
+    expect(payload.performance.stressTests).toBeUndefined();
+  });
+
+  it('includes backtest performance.stressTests when mcEnabled is true', () => {
+    fixture.detectChanges();
+    flushInitRequests(
+      {},
+      null,
+      {
+        fields: {
+          supported: ['performance'],
+          accepted_but_not_wired: []
+        }
+      }
+    );
+
+    component.selectRun('backtests');
+    component.backtestForm.patchValue({
+      includePerformance: true,
+      mcEnabled: true,
+      mcPaths: 250
+    } as any);
+
+    const payload = component.buildRunRequest() as any;
+    expect(payload.performance?.stressTests).toEqual(
+      jasmine.objectContaining({
+        enabled: true,
+        nSims: 250
+      })
+    );
+  });
+
   it('uses market_stats capabilities to mark accepted-but-not-wired fields', () => {
     fixture.detectChanges();
     flushInitRequests(
@@ -1361,6 +1414,41 @@ describe('StrategyLauncherPageComponent', () => {
     expect(payload.universe).toEqual([
       jasmine.objectContaining({ symbol: 'BTCUSD' })
     ]);
+  });
+
+  it('omits dca performance.stressTests when mcEnabled is false', () => {
+    fixture.detectChanges();
+    flushInitRequests();
+
+    component.selectRun('dca');
+    component.dcaForm.patchValue({
+      includePerformance: true,
+      mcEnabled: false
+    } as any);
+
+    const payload = component.buildRunRequest() as any;
+    expect(payload.performance).toBeDefined();
+    expect(payload.performance.stressTests).toBeUndefined();
+  });
+
+  it('includes dca performance.stressTests when mcEnabled is true', () => {
+    fixture.detectChanges();
+    flushInitRequests();
+
+    component.selectRun('dca');
+    component.dcaForm.patchValue({
+      includePerformance: true,
+      mcEnabled: true,
+      mcPaths: 300
+    } as any);
+
+    const payload = component.buildRunRequest() as any;
+    expect(payload.performance?.stressTests).toEqual(
+      jasmine.objectContaining({
+        enabled: true,
+        nSims: 300
+      })
+    );
   });
 
   it('builds dca payload with auto universe from manual symbols when more than one is selected', () => {
