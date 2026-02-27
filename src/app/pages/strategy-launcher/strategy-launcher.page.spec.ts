@@ -1,6 +1,7 @@
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
+import { Router } from '@angular/router';
 import { RouterTestingModule } from '@angular/router/testing';
 
 import { environment } from '../../../environments/environment';
@@ -10,6 +11,7 @@ describe('StrategyLauncherPageComponent', () => {
   let fixture: ComponentFixture<StrategyLauncherPageComponent>;
   let component: StrategyLauncherPageComponent;
   let httpMock: HttpTestingController;
+  let router: Router;
 
   beforeEach(() => {
     TestBed.configureTestingModule({
@@ -19,9 +21,14 @@ describe('StrategyLauncherPageComponent', () => {
     fixture = TestBed.createComponent(StrategyLauncherPageComponent);
     component = fixture.componentInstance;
     httpMock = TestBed.inject(HttpTestingController);
+    router = TestBed.inject(Router);
   });
 
   afterEach(() => {
+    const optimizeDcaReqs = httpMock.match(`${environment.apiUrl}/api/runs/capabilities?spec_type=optimize_dca`);
+    optimizeDcaReqs.forEach(req => req.flush({}));
+    const optimizeBacktestReqs = httpMock.match(`${environment.apiUrl}/api/runs/capabilities?spec_type=optimize_backtest`);
+    optimizeBacktestReqs.forEach(req => req.flush({}));
     httpMock.verify();
   });
 
@@ -123,6 +130,106 @@ describe('StrategyLauncherPageComponent', () => {
 
     expect(component.previewErrors().length).toBe(1);
     expect(component.previewErrors()[0].message).toBe('soumission echouee');
+  });
+
+  it('keeps dca/backtest submit modes without optimization toggled', () => {
+    fixture.detectChanges();
+    flushInitRequests();
+
+    component.selectRun('dca');
+    component.dcaForm.patchValue({ enableOptimization: false } as any);
+    const dcaPayload = component.buildRunRequest() as any;
+    expect(dcaPayload.runType).toBe('dca');
+
+    component.selectRun('backtests');
+    component.backtestForm.patchValue({ enableOptimization: false } as any);
+    const backtestPayload = component.buildRunRequest() as any;
+    expect(backtestPayload.runType).toBe('backtest');
+  });
+
+  it('switches dca/backtest submit modes when optimization is toggled on', () => {
+    fixture.detectChanges();
+    flushInitRequests();
+
+    component.selectRun('dca');
+    component.dcaForm.patchValue({
+      enableOptimization: true,
+      optimizationMetric: 'sharpe',
+      optimizationDirection: 'max',
+      optimizationMaxTrials: 50,
+      optimizationSearchSpace: '{"strategy.params.grid[0].dd":{"type":"float","min":-20,"max":-2}}'
+    } as any);
+    const optimizeDcaPayload = component.buildRunRequest() as any;
+    expect(optimizeDcaPayload.runType).toBe('optimize_dca');
+    expect(optimizeDcaPayload.optimization.baseSpec.runType).toBe('dca');
+
+    component.selectRun('backtests');
+    component.backtestForm.patchValue({
+      enableOptimization: true,
+      optimizationMetric: 'sharpe',
+      optimizationDirection: 'max',
+      optimizationMaxTrials: 50,
+      optimizationSearchSpace: '{"signal.fast":{"type":"int","min":5,"max":30}}'
+    } as any);
+    const optimizeBacktestPayload = component.buildRunRequest() as any;
+    expect(optimizeBacktestPayload.runType).toBe('optimize_backtest');
+    expect(optimizeBacktestPayload.optimization.baseSpec.runType).toBe('backtest');
+  });
+
+  it('blocks optimization submit on unsupported search_space shape', () => {
+    fixture.detectChanges();
+    flushInitRequests();
+
+    component.selectRun('dca');
+    component.dcaForm.patchValue({
+      enableOptimization: true,
+      optimizationMetric: 'sharpe',
+      optimizationDirection: 'max',
+      optimizationMaxTrials: 50,
+      optimizationSearchSpace: '{"signal.fast":[]}'
+    } as any);
+
+    component.runDca();
+    expect(component.dcaForm.errors?.['optimizationSearchSpaceInvalid']).toBeTrue();
+    httpMock.expectNone(`${environment.apiUrl}/api/runs`);
+  });
+
+  it('renders optimization result summary from canonical response and does not redirect', () => {
+    fixture.detectChanges();
+    flushInitRequests();
+    spyOn(router, 'navigate');
+
+    component.selectRun('dca');
+    component.dcaForm.patchValue({
+      enableOptimization: true,
+      optimizationMetric: 'sharpe',
+      optimizationDirection: 'max',
+      optimizationMaxTrials: 50,
+      optimizationSearchSpace: '{"signal.fast":{"min":5,"max":30}}'
+    } as any);
+
+    component.submitRun();
+    const submitReq = httpMock.expectOne(`${environment.apiUrl}/api/runs`);
+    submitReq.flush({
+      request_id: 'req-opt-1',
+      status: 'SUCCEEDED',
+      result: {
+        objective: { metric: 'sharpe', direction: 'max' },
+        best: { score: 1.87, params: { 'signal.fast': 12 } },
+        trials: [
+          { trial_id: 1, status: 'SUCCEEDED', score: 1.87, params: { 'signal.fast': 12 } },
+          { trial_id: 2, status: 'FAILED', error: { code: 'INVALID_PARAM', message: 'bad params' } }
+        ],
+        summary: { total_trials: 2, succeeded_trials: 1, failed_trials: 1 }
+      }
+    });
+
+    const result = component.dcaResult();
+    expect(result?.optimization?.objectiveMetric).toBe('sharpe');
+    expect(result?.optimization?.bestScore).toBe(1.87);
+    expect(result?.optimization?.succeededTrials).toBe(1);
+    expect(result?.optimization?.failedTrials).toBe(1);
+    expect(router.navigate).not.toHaveBeenCalled();
   });
 
   it('shows Not implemented yet markers in backtest unsupported sections', () => {

@@ -121,6 +121,7 @@ type DcaStrategyType = 'dca_equity' | 'dca_etf' | 'crypto_grid';
 type DcaParamTab = 'params' | 'stress';
 type BacktestParamTab = 'params' | 'stress';
 type BacktestSourceMode = 'auto' | 'csv_path' | 'mysql_config';
+type OptimizationDirection = 'max' | 'min';
 
 interface UiValidationError {
   source: 'local' | 'backend';
@@ -143,6 +144,25 @@ interface StrategyResult {
   status?: string;
   tags: string[];
   metrics: StrategyMetric[];
+  optimization?: {
+    objectiveMetric: string;
+    objectiveDirection: 'max' | 'min';
+    bestScore: number | null;
+    bestParams: Record<string, unknown>;
+    totalTrials: number;
+    succeededTrials: number;
+    failedTrials: number;
+    topTrials: Array<{
+      id: string;
+      status: string;
+      score: number | null;
+      params: Record<string, unknown>;
+      errorCode?: string;
+      errorMessage?: string;
+    }>;
+    failedErrorCode?: string;
+    failedErrorMessage?: string;
+  };
 }
 
 interface FilterParam {
@@ -293,6 +313,8 @@ export class StrategyLauncherPageComponent {
   readonly dcaTpSlModes = ['rule_based'];
   readonly deltaInsertedTypes: DeltaInsertedType[] = ['CRYPTO', 'ETF', 'FOREX', 'STOCK'];
   readonly dcaTpSlPresets = ['none', 'tp_2_sl_1', 'tp_3_sl_1.5'];
+  readonly optimizationDirections: OptimizationDirection[] = ['max', 'min'];
+  readonly optimizationMetrics = ['sharpe', 'net_profit', 'max_drawdown', 'win_rate'];
   readonly backtestSourceModeOptions: Array<{ value: BacktestSourceMode; label: string }> = [
     { value: 'auto', label: 'Auto (backend resolution)' },
     { value: 'csv_path', label: 'CSV path' },
@@ -556,6 +578,13 @@ export class StrategyLauncherPageComponent {
     mcAggregation: 'weighted',
     mcWeights: '0.5,0.3,0.2',
     mcTimestampAlignment: 'asof',
+    enableOptimization: false,
+    optimizationMetric: 'sharpe',
+    optimizationDirection: 'max' as OptimizationDirection,
+    optimizationMaxTrials: 50,
+    optimizationTimeoutSeconds: null as number | null,
+    optimizationSeed: null as number | null,
+    optimizationSearchSpace: '{\n  "strategy.params.grid[0].dd": { "type": "float", "min": -20, "max": -2 }\n}',
     includePerformance: false,
     dca_filter_volatility_guard_window: 30,
     dca_filter_volatility_guard_threshold: 22,
@@ -694,6 +723,13 @@ export class StrategyLauncherPageComponent {
     mcAggregation: 'weighted',
     mcWeights: '0.5,0.3,0.2',
     mcTimestampAlignment: 'asof',
+    enableOptimization: false,
+    optimizationMetric: 'sharpe',
+    optimizationDirection: 'max' as OptimizationDirection,
+    optimizationMaxTrials: 50,
+    optimizationTimeoutSeconds: null as number | null,
+    optimizationSeed: null as number | null,
+    optimizationSearchSpace: '{\n  "signal.fast": { "type": "int", "min": 5, "max": 30 },\n  "signal.slow": { "type": "int", "min": 40, "max": 200 }\n}',
     includePerformance: false
   } as const;
 
@@ -967,6 +1003,13 @@ export class StrategyLauncherPageComponent {
       mcAggregation: [this.dcaDefaults.mcAggregation],
       mcWeights: [this.dcaDefaults.mcWeights],
       mcTimestampAlignment: [this.dcaDefaults.mcTimestampAlignment],
+      enableOptimization: [this.dcaDefaults.enableOptimization],
+      optimizationMetric: [this.dcaDefaults.optimizationMetric],
+      optimizationDirection: [this.dcaDefaults.optimizationDirection],
+      optimizationMaxTrials: [this.dcaDefaults.optimizationMaxTrials, [Validators.min(1)]],
+      optimizationTimeoutSeconds: [this.dcaDefaults.optimizationTimeoutSeconds, [Validators.min(1)]],
+      optimizationSeed: [this.dcaDefaults.optimizationSeed, [Validators.min(0)]],
+      optimizationSearchSpace: [this.dcaDefaults.optimizationSearchSpace],
       includePerformance: [this.dcaDefaults.includePerformance],
       dca_filter_volatility_guard_window: [this.dcaDefaults.dca_filter_volatility_guard_window, [Validators.min(1)]],
       dca_filter_volatility_guard_threshold: [this.dcaDefaults.dca_filter_volatility_guard_threshold, [Validators.min(1)]],
@@ -991,7 +1034,8 @@ export class StrategyLauncherPageComponent {
         dateRangeValidator('startDate', 'endDate'),
         dcaTpSlValidator(),
         dcaUniverseSelectionValidator(),
-        dcaDeltaAssetClassValidator()
+        dcaDeltaAssetClassValidator(),
+        optimizationSectionValidator('enableOptimization')
       ]
     }
   );
@@ -1126,11 +1170,24 @@ export class StrategyLauncherPageComponent {
       mcAggregation: [this.backtestDefaults.mcAggregation],
       mcWeights: [this.backtestDefaults.mcWeights],
       mcTimestampAlignment: [this.backtestDefaults.mcTimestampAlignment],
+      enableOptimization: [this.backtestDefaults.enableOptimization],
+      optimizationMetric: [this.backtestDefaults.optimizationMetric],
+      optimizationDirection: [this.backtestDefaults.optimizationDirection],
+      optimizationMaxTrials: [this.backtestDefaults.optimizationMaxTrials, [Validators.min(1)]],
+      optimizationTimeoutSeconds: [this.backtestDefaults.optimizationTimeoutSeconds, [Validators.min(1)]],
+      optimizationSeed: [this.backtestDefaults.optimizationSeed, [Validators.min(0)]],
+      optimizationSearchSpace: [this.backtestDefaults.optimizationSearchSpace],
       includePerformance: [this.backtestDefaults.includePerformance],
       presetName: [''],
       presetId: ['']
     },
-    { validators: [dateRangeValidator('startDate', 'endDate'), control => this.backtestSourceModeValidator(control)] }
+    {
+      validators: [
+        dateRangeValidator('startDate', 'endDate'),
+        control => this.backtestSourceModeValidator(control),
+        optimizationSectionValidator('enableOptimization')
+      ]
+    }
   );
 
   readonly marketStatsForm = this.fb.group({
@@ -1347,6 +1404,8 @@ export class StrategyLauncherPageComponent {
   readonly backtestCapabilitiesInfo = signal<string | null>(null);
   readonly backtestCanonicalSupportedFields = signal<string[]>([]);
   readonly backtestCanonicalAcceptedButNotWiredFields = signal<string[]>([]);
+  readonly optimizeDcaCapabilitiesInfo = signal<string | null>(null);
+  readonly optimizeBacktestCapabilitiesInfo = signal<string | null>(null);
   readonly backtestImplicitSourceSupported = signal(true);
   readonly marketStatsCapabilitiesInfo = signal<string | null>(null);
   readonly marketStatsCanonicalSupportedFields = signal<string[]>([]);
@@ -1375,6 +1434,12 @@ export class StrategyLauncherPageComponent {
   private backtestCapabilitiesAvailable = false;
   private backtestSupportedFields = new Set<string>();
   private backtestAcceptedButNotWiredFields = new Set<string>();
+  private optimizeDcaCapabilitiesAvailable = false;
+  private optimizeDcaSupportedFields = new Set<string>();
+  private optimizeDcaAcceptedButNotWiredFields = new Set<string>();
+  private optimizeBacktestCapabilitiesAvailable = false;
+  private optimizeBacktestSupportedFields = new Set<string>();
+  private optimizeBacktestAcceptedButNotWiredFields = new Set<string>();
   private backtestCsvSourceSupported = true;
   private backtestMysqlSourceSupported = true;
   private marketStatsCapabilitiesAvailable = false;
@@ -1413,6 +1478,8 @@ export class StrategyLauncherPageComponent {
     this.loadCatalog();
     this.loadDcaCapabilities();
     this.loadBacktestCapabilities();
+    this.loadOptimizeDcaCapabilities();
+    this.loadOptimizeBacktestCapabilities();
     this.loadMarketStatsCapabilities();
     this.loadSeasonalityCapabilities();
   }
@@ -2577,6 +2644,32 @@ export class StrategyLauncherPageComponent {
     return !this.hasCapabilityFieldAtOrAbove(this.backtestAcceptedButNotWiredFields, path);
   }
 
+  optimizeDcaFieldTooltip(path: string): string | null {
+    if (!this.optimizeDcaCapabilitiesAvailable) {
+      return null;
+    }
+    if (!this.hasCapabilityField(this.optimizeDcaSupportedFields, path)) {
+      return 'Non supporte runtime (/runs/capabilities).';
+    }
+    if (this.hasCapabilityFieldAtOrAbove(this.optimizeDcaAcceptedButNotWiredFields, path)) {
+      return 'accepted_but_not_wired runtime';
+    }
+    return null;
+  }
+
+  optimizeBacktestFieldTooltip(path: string): string | null {
+    if (!this.optimizeBacktestCapabilitiesAvailable) {
+      return null;
+    }
+    if (!this.hasCapabilityField(this.optimizeBacktestSupportedFields, path)) {
+      return 'Non supporte runtime (/runs/capabilities).';
+    }
+    if (this.hasCapabilityFieldAtOrAbove(this.optimizeBacktestAcceptedButNotWiredFields, path)) {
+      return 'accepted_but_not_wired runtime';
+    }
+    return null;
+  }
+
   isMarketStatsFieldSupported(path: string): boolean {
     if (!this.marketStatsCapabilitiesAvailable) {
       return true;
@@ -2902,9 +2995,9 @@ export class StrategyLauncherPageComponent {
   private buildRequestForTheme(theme: RunKey): RunRequestInput {
     switch (theme) {
       case 'dca':
-        return this.buildDcaRequest();
+        return this.isDcaOptimizationEnabled() ? this.buildOptimizeDcaRequest() : this.buildDcaRequest();
       case 'backtests':
-        return this.buildBacktestRequest();
+        return this.isBacktestOptimizationEnabled() ? this.buildOptimizeBacktestRequest() : this.buildBacktestRequest();
       case 'market-stats':
         return this.buildMarketStatsRequest();
       case 'seasonality':
@@ -3045,6 +3138,60 @@ export class StrategyLauncherPageComponent {
           this.backtestCapabilitiesAvailable
             ? 'Mode capabilities backtest actif.'
             : null
+        );
+      });
+  }
+
+  private loadOptimizeDcaCapabilities(): void {
+    this.runsService
+      .getRunCapabilities('optimize_dca')
+      .pipe(
+        catchError(err => {
+          console.warn('[StrategyLauncher] /runs/capabilities(optimize_dca) unavailable', err);
+          this.optimizeDcaCapabilitiesAvailable = false;
+          this.optimizeDcaSupportedFields = new Set<string>();
+          this.optimizeDcaAcceptedButNotWiredFields = new Set<string>();
+          this.optimizeDcaCapabilitiesInfo.set('Capabilities optimize_dca indisponibles, mode statique active.');
+          return of(null);
+        })
+      )
+      .subscribe(capabilities => {
+        if (!capabilities) {
+          return;
+        }
+        const fields = this.extractCanonicalFields(capabilities as Record<string, unknown>);
+        this.optimizeDcaCapabilitiesAvailable = fields.supported.length > 0 || fields.acceptedButNotWired.length > 0;
+        this.optimizeDcaSupportedFields = new Set(fields.supported);
+        this.optimizeDcaAcceptedButNotWiredFields = new Set(fields.acceptedButNotWired);
+        this.optimizeDcaCapabilitiesInfo.set(
+          this.optimizeDcaCapabilitiesAvailable ? 'Mode capabilities optimize_dca actif.' : null
+        );
+      });
+  }
+
+  private loadOptimizeBacktestCapabilities(): void {
+    this.runsService
+      .getRunCapabilities('optimize_backtest')
+      .pipe(
+        catchError(err => {
+          console.warn('[StrategyLauncher] /runs/capabilities(optimize_backtest) unavailable', err);
+          this.optimizeBacktestCapabilitiesAvailable = false;
+          this.optimizeBacktestSupportedFields = new Set<string>();
+          this.optimizeBacktestAcceptedButNotWiredFields = new Set<string>();
+          this.optimizeBacktestCapabilitiesInfo.set('Capabilities optimize_backtest indisponibles, mode statique active.');
+          return of(null);
+        })
+      )
+      .subscribe(capabilities => {
+        if (!capabilities) {
+          return;
+        }
+        const fields = this.extractCanonicalFields(capabilities as Record<string, unknown>);
+        this.optimizeBacktestCapabilitiesAvailable = fields.supported.length > 0 || fields.acceptedButNotWired.length > 0;
+        this.optimizeBacktestSupportedFields = new Set(fields.supported);
+        this.optimizeBacktestAcceptedButNotWiredFields = new Set(fields.acceptedButNotWired);
+        this.optimizeBacktestCapabilitiesInfo.set(
+          this.optimizeBacktestCapabilitiesAvailable ? 'Mode capabilities optimize_backtest actif.' : null
         );
       });
   }
@@ -3731,9 +3878,9 @@ export class StrategyLauncherPageComponent {
   buildRunRequest(): RunRequestInput {
     switch (this.selectedRun()) {
       case 'dca':
-        return this.buildDcaRequest();
+        return this.isDcaOptimizationEnabled() ? this.buildOptimizeDcaRequest() : this.buildDcaRequest();
       case 'backtests':
-        return this.buildBacktestRequest();
+        return this.isBacktestOptimizationEnabled() ? this.buildOptimizeBacktestRequest() : this.buildBacktestRequest();
       case 'market-stats':
         return this.buildMarketStatsRequest();
       case 'seasonality':
@@ -3801,7 +3948,11 @@ export class StrategyLauncherPageComponent {
       .pipe(finalize(() => this.submitLoading.set(false)))
       .subscribe({
         next: response => {
+          const hasInlineOptimizationResult = this.captureOptimizationResult(payload, response);
           const requestId = response?.requestId ?? response?.runId;
+          if (hasInlineOptimizationResult) {
+            return;
+          }
           if (!requestId) {
             this.previewErrors.set([{ source: 'local', path: 'server', message: 'requestId manquant' }]);
             return;
@@ -4193,6 +4344,68 @@ export class StrategyLauncherPageComponent {
             Boolean(v.mcEnabled ?? this.backtestDefaults.mcEnabled) ? this.buildBacktestStressTests(v) : undefined
           )
         : undefined
+    };
+  }
+
+  private isDcaOptimizationEnabled(): boolean {
+    return Boolean(this.dcaForm.get('enableOptimization')?.value);
+  }
+
+  private isBacktestOptimizationEnabled(): boolean {
+    return Boolean(this.backtestForm.get('enableOptimization')?.value);
+  }
+
+  private buildOptimizeDcaRequest(): RunRequestInput {
+    const baseSpec = this.buildDcaRequest();
+    const value = this.dcaForm.getRawValue();
+    return {
+      runType: 'optimize_dca',
+      optimization: {
+        baseSpec: baseSpec as Extract<RunRequestInput, { runType: 'dca' }>,
+        searchSpace: parseOptimizationSearchSpace(String(value.optimizationSearchSpace ?? '')),
+        objective: {
+          metric: String(value.optimizationMetric ?? this.dcaDefaults.optimizationMetric).trim(),
+          direction: String(value.optimizationDirection ?? this.dcaDefaults.optimizationDirection).trim() as OptimizationDirection
+        },
+        budget: {
+          maxTrials: Number(value.optimizationMaxTrials ?? this.dcaDefaults.optimizationMaxTrials),
+          timeoutSeconds:
+            value.optimizationTimeoutSeconds === null || value.optimizationTimeoutSeconds === undefined
+              ? undefined
+              : Number(value.optimizationTimeoutSeconds),
+          seed:
+            value.optimizationSeed === null || value.optimizationSeed === undefined
+              ? undefined
+              : Number(value.optimizationSeed)
+        }
+      }
+    };
+  }
+
+  private buildOptimizeBacktestRequest(): RunRequestInput {
+    const baseSpec = this.buildBacktestRequest();
+    const value = this.backtestForm.getRawValue();
+    return {
+      runType: 'optimize_backtest',
+      optimization: {
+        baseSpec: baseSpec as Extract<RunRequestInput, { runType: 'backtest' }>,
+        searchSpace: parseOptimizationSearchSpace(String(value.optimizationSearchSpace ?? '')),
+        objective: {
+          metric: String(value.optimizationMetric ?? this.backtestDefaults.optimizationMetric).trim(),
+          direction: String(value.optimizationDirection ?? this.backtestDefaults.optimizationDirection).trim() as OptimizationDirection
+        },
+        budget: {
+          maxTrials: Number(value.optimizationMaxTrials ?? this.backtestDefaults.optimizationMaxTrials),
+          timeoutSeconds:
+            value.optimizationTimeoutSeconds === null || value.optimizationTimeoutSeconds === undefined
+              ? undefined
+              : Number(value.optimizationTimeoutSeconds),
+          seed:
+            value.optimizationSeed === null || value.optimizationSeed === undefined
+              ? undefined
+              : Number(value.optimizationSeed)
+        }
+      }
     };
   }
 
@@ -5263,6 +5476,138 @@ export class StrategyLauncherPageComponent {
     this.runForSelection('stress-tests');
   }
 
+  private hasOptimizationResult(payload: RunRequestInput): boolean {
+    return payload.runType === 'optimize_dca' || payload.runType === 'optimize_backtest';
+  }
+
+  private captureOptimizationResult(payload: RunRequestInput, response: Record<string, unknown>): boolean {
+    if (!this.hasOptimizationResult(payload)) {
+      return false;
+    }
+    const strategyResult = this.mapOptimizationResponseToStrategyResult(
+      payload as Extract<RunRequestInput, { runType: 'optimize_dca' | 'optimize_backtest' }>,
+      response
+    );
+    if (!strategyResult) {
+      return false;
+    }
+    if (payload.runType === 'optimize_dca') {
+      this.dcaResult.set(strategyResult);
+      return true;
+    }
+    this.backtestResult.set(strategyResult);
+    return true;
+  }
+
+  private mapOptimizationResponseToStrategyResult(
+    payload: Extract<RunRequestInput, { runType: 'optimize_dca' | 'optimize_backtest' }>,
+    response: Record<string, unknown>
+  ): StrategyResult | null {
+    const responseResult = isPlainObjectRecord(response['result']) ? response['result'] : null;
+    if (!responseResult) {
+      return null;
+    }
+    const objectiveRecord = isPlainObjectRecord(responseResult['objective']) ? responseResult['objective'] : {};
+    const bestRecord = isPlainObjectRecord(responseResult['best']) ? responseResult['best'] : {};
+    const summaryRecord = isPlainObjectRecord(responseResult['summary']) ? responseResult['summary'] : {};
+    const trials = Array.isArray(responseResult['trials']) ? responseResult['trials'] : [];
+    const normalizedDirection = normalizeOptimizationDirectionAlias(
+      objectiveRecord['direction'] ?? payload.optimization.objective.direction
+    );
+    const objectiveMetric = String(objectiveRecord['metric'] ?? payload.optimization.objective.metric ?? '').trim() || 'n/a';
+    const bestScore = toFiniteNumber(bestRecord['score']);
+    const bestParams = isPlainObjectRecord(bestRecord['params']) ? bestRecord['params'] : {};
+    const normalizedTrials = trials.map((trial, index) => this.mapOptimizationTrial(trial, index));
+    const succeededTrials = normalizedTrials.filter(trial => trial.status === 'SUCCEEDED').length;
+    const failedTrials = normalizedTrials.filter(trial => trial.status === 'FAILED').length;
+    const totalTrials = toNonNegativeInt(summaryRecord['total_trials']) ?? normalizedTrials.length;
+    const summarySucceeded = toNonNegativeInt(summaryRecord['succeeded_trials']);
+    const summaryFailed = toNonNegativeInt(summaryRecord['failed_trials']);
+    const effectiveSucceeded = summarySucceeded ?? succeededTrials;
+    const effectiveFailed = summaryFailed ?? failedTrials;
+    const topTrials = normalizedTrials.slice(0, 5);
+    const status = String(response['status'] ?? '').trim().toUpperCase();
+    const failedError = status === 'FAILED'
+      ? this.extractOptimizationError(responseResult, response)
+      : { code: undefined, message: undefined };
+
+    return {
+      runId: String(response['runId'] ?? response['requestId'] ?? '').trim() || this.buildRunId('opt'),
+      executedAt: new Date(),
+      summary: `Optimization ${objectiveMetric} (${normalizedDirection})`,
+      status: status || 'UNKNOWN',
+      tags: [payload.runType, `${effectiveSucceeded}/${totalTrials} succeeded`],
+      metrics: [
+        { label: 'Best score', value: bestScore === null ? '-' : NUMBER_FORMAT.format(bestScore) },
+        { label: 'Trials', value: String(totalTrials) },
+        { label: 'Succeeded', value: String(effectiveSucceeded), tone: 'positive' },
+        { label: 'Failed', value: String(effectiveFailed), tone: effectiveFailed > 0 ? 'negative' : 'neutral' }
+      ],
+      optimization: {
+        objectiveMetric,
+        objectiveDirection: normalizedDirection,
+        bestScore,
+        bestParams,
+        totalTrials,
+        succeededTrials: effectiveSucceeded,
+        failedTrials: effectiveFailed,
+        topTrials,
+        failedErrorCode: failedError.code,
+        failedErrorMessage: failedError.message
+      }
+    };
+  }
+
+  private mapOptimizationTrial(
+    trial: unknown,
+    index: number
+  ): {
+    id: string;
+    status: string;
+    score: number | null;
+    params: Record<string, unknown>;
+    errorCode?: string;
+    errorMessage?: string;
+  } {
+    const record = isPlainObjectRecord(trial) ? trial : {};
+    const trialError = this.extractOptimizationError(record, {});
+    return {
+      id: String(record['id'] ?? record['trial_id'] ?? index + 1),
+      status: String(record['status'] ?? 'UNKNOWN').trim().toUpperCase(),
+      score: toFiniteNumber(record['score']),
+      params: isPlainObjectRecord(record['params']) ? record['params'] : {},
+      errorCode: trialError.code,
+      errorMessage: trialError.message
+    };
+  }
+
+  private extractOptimizationError(
+    primary: Record<string, unknown>,
+    fallback: Record<string, unknown>
+  ): { code?: string; message?: string } {
+    const primaryError = isPlainObjectRecord(primary['error']) ? primary['error'] : {};
+    const fallbackError = isPlainObjectRecord(fallback['error']) ? fallback['error'] : {};
+    const code = String(
+      primaryError['code'] ??
+      primary['error_code'] ??
+      fallbackError['code'] ??
+      fallback['error_code'] ??
+      ''
+    ).trim();
+    const message = String(
+      primaryError['message'] ??
+      primary['error_message'] ??
+      fallbackError['message'] ??
+      fallback['error_message'] ??
+      fallback['message'] ??
+      ''
+    ).trim();
+    return {
+      code: code || undefined,
+      message: message || undefined
+    };
+  }
+
   private buildRunId(prefix: string): string {
     const stamp = new Date();
     const date = `${stamp.getFullYear()}${pad2(stamp.getMonth() + 1)}${pad2(stamp.getDate())}`;
@@ -5434,6 +5779,178 @@ function stressScenarioIndexValidator() {
       ? null
       : { scenarioIndexInvalid: true };
   };
+}
+
+function optimizationSectionValidator(enableControlName: string): ValidatorFn {
+  return (control: AbstractControl): ValidationErrors | null => {
+    const enabled = Boolean(control.get(enableControlName)?.value);
+    if (!enabled) {
+      return null;
+    }
+    const metric = String(control.get('optimizationMetric')?.value ?? '').trim();
+    const direction = String(control.get('optimizationDirection')?.value ?? '').trim();
+    const maxTrials = Number(control.get('optimizationMaxTrials')?.value);
+    const timeoutRaw = control.get('optimizationTimeoutSeconds')?.value;
+    const seedRaw = control.get('optimizationSeed')?.value;
+    const searchSpaceText = String(control.get('optimizationSearchSpace')?.value ?? '');
+    const timeout = timeoutRaw === null || timeoutRaw === undefined ? null : Number(timeoutRaw);
+    const seed = seedRaw === null || seedRaw === undefined ? null : Number(seedRaw);
+    const errors: Record<string, boolean> = {};
+
+    if (!metric) {
+      errors['optimizationMetricRequired'] = true;
+    }
+    if (!['max', 'min', 'maximize', 'minimize'].includes(direction)) {
+      errors['optimizationDirectionInvalid'] = true;
+    }
+    if (!Number.isInteger(maxTrials) || maxTrials < 1) {
+      errors['optimizationMaxTrialsInvalid'] = true;
+    }
+    if (timeout !== null && (!Number.isFinite(timeout) || timeout <= 0)) {
+      errors['optimizationTimeoutInvalid'] = true;
+    }
+    if (seed !== null && (!Number.isInteger(seed) || seed < 0)) {
+      errors['optimizationSeedInvalid'] = true;
+    }
+    if (!tryParseOptimizationSearchSpace(searchSpaceText).ok) {
+      errors['optimizationSearchSpaceInvalid'] = true;
+    }
+    return Object.keys(errors).length > 0 ? errors : null;
+  };
+}
+
+function tryParseOptimizationSearchSpace(value: string): { ok: true; value: Record<string, unknown> } | { ok: false } {
+  const text = String(value ?? '').trim();
+  if (!text) {
+    return { ok: false };
+  }
+  try {
+    const parsed = JSON.parse(text);
+    const normalized = normalizeOptimizationSearchSpaceForUi(parsed);
+    if (!normalized) {
+      return { ok: false };
+    }
+    return { ok: true, value: normalized };
+  } catch {
+    return { ok: false };
+  }
+}
+
+function parseOptimizationSearchSpace(value: string): Record<string, unknown> {
+  const parsed = tryParseOptimizationSearchSpace(value);
+  return parsed.ok ? parsed.value : {};
+}
+
+function normalizeOptimizationSearchSpaceForUi(value: unknown): Record<string, unknown> | null {
+  if (!isPlainObjectRecord(value)) {
+    return null;
+  }
+  const entries = Object.entries(value);
+  if (entries.length === 0) {
+    return null;
+  }
+  const normalized: Record<string, unknown> = {};
+  for (const [key, entry] of entries) {
+    const normalizedEntry = normalizeOptimizationSearchSpaceNodeForUi(entry);
+    if (normalizedEntry === null) {
+      return null;
+    }
+    normalized[key] = normalizedEntry;
+  }
+  return normalized;
+}
+
+function normalizeOptimizationSearchSpaceNodeForUi(value: unknown): unknown | null {
+  if (Array.isArray(value)) {
+    return value.length > 0 ? value : null;
+  }
+  if (!isPlainObjectRecord(value)) {
+    return null;
+  }
+  const keys = Object.keys(value);
+  if (keys.length === 0) {
+    return null;
+  }
+
+  const hasValues = Object.prototype.hasOwnProperty.call(value, 'values');
+  const hasDomain = Object.prototype.hasOwnProperty.call(value, 'domain');
+  const hasMin = Object.prototype.hasOwnProperty.call(value, 'min');
+  const hasMax = Object.prototype.hasOwnProperty.call(value, 'max');
+  const hasLow = Object.prototype.hasOwnProperty.call(value, 'low');
+  const hasHigh = Object.prototype.hasOwnProperty.call(value, 'high');
+  const looksLikeSpec = hasValues || hasDomain || hasMin || hasMax || hasLow || hasHigh;
+
+  if (looksLikeSpec) {
+    const passthrough: Record<string, unknown> = {};
+    Object.entries(value).forEach(([key, entry]) => {
+      if (key === 'values' || key === 'domain' || key === 'min' || key === 'max' || key === 'low' || key === 'high') {
+        return;
+      }
+      passthrough[key] = entry;
+    });
+
+    if (hasValues || hasDomain) {
+      const raw = hasValues ? value['values'] : value['domain'];
+      if (!Array.isArray(raw) || raw.length === 0) {
+        return null;
+      }
+      return { ...passthrough, values: raw };
+    }
+
+    const minValue = Number(hasLow ? value['low'] : value['min']);
+    const maxValue = Number(hasHigh ? value['high'] : value['max']);
+    if (!Number.isFinite(minValue) || !Number.isFinite(maxValue) || minValue > maxValue) {
+      return null;
+    }
+    const normalized: Record<string, unknown> = {
+      ...passthrough,
+      min: minValue,
+      max: maxValue
+    };
+    if (Object.prototype.hasOwnProperty.call(value, 'step')) {
+      const step = Number(value['step']);
+      if (!Number.isFinite(step) || step <= 0) {
+        return null;
+      }
+      normalized['step'] = step;
+    }
+    return normalized;
+  }
+
+  const normalizedChild: Record<string, unknown> = {};
+  for (const [key, entry] of Object.entries(value)) {
+    const node = normalizeOptimizationSearchSpaceNodeForUi(entry);
+    if (node === null) {
+      return null;
+    }
+    normalizedChild[key] = node;
+  }
+  return normalizedChild;
+}
+
+function normalizeOptimizationDirectionAlias(value: unknown): 'max' | 'min' {
+  const normalized = String(value ?? '').trim().toLowerCase();
+  if (normalized === 'max' || normalized === 'maximize') {
+    return 'max';
+  }
+  if (normalized === 'min' || normalized === 'minimize') {
+    return 'min';
+  }
+  return 'max';
+}
+
+function isPlainObjectRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function toFiniteNumber(value: unknown): number | null {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : null;
+}
+
+function toNonNegativeInt(value: unknown): number | null {
+  const num = Number(value);
+  return Number.isInteger(num) && num >= 0 ? num : null;
 }
 
 function pad2(value: number): string {

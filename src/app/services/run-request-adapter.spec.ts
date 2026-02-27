@@ -226,4 +226,219 @@ describe('run-request-adapter', () => {
     expect(canonical.data.base_run_id).toBe('run-abc');
     expect(canonical.data.symbol).toBeUndefined();
   });
+
+  it('builds canonical optimize_dca payload with optimization.base_spec', () => {
+    const payload = {
+      runType: 'optimize_dca',
+      optimization: {
+        baseSpec: {
+          runType: 'dca',
+          data: {
+            symbol: 'BTCUSD',
+            timeframe: '1h',
+            startDate: '2024-01-01',
+            endDate: '2024-12-31'
+          },
+          strategy: {
+            type: 'dca_equity',
+            params: {
+              kind: 'dca_equity',
+              assetClass: 'CRYPTO',
+              drawdownReference: 'ATH',
+              executionMode: 'bar_close',
+              grid: [{ dd: -5, weight: 1 }],
+              requireCrossing: true
+            }
+          }
+        },
+        searchSpace: {
+          'strategy.params.grid[0].dd': { type: 'float', min: -20, max: -2 }
+        },
+        objective: { metric: 'sharpe', direction: 'max' },
+        budget: { maxTrials: 50 }
+      }
+    } as unknown as RunRequestInput;
+
+    const canonical = buildCanonicalRunPayload(payload, 'optimize_dca', { catalogVersion: '2026-02-02' }) as any;
+    expect(canonical.spec_type).toBe('optimize_dca');
+    expect(canonical.optimization.base_spec.spec_type).toBe('dca');
+    expect(canonical.optimization.base_spec.data.symbol).toBe('BTCUSD');
+    expect(canonical.optimization.objective.direction).toBe('max');
+    expect(canonical.optimization.search_space['strategy.params.grid[0].dd']).toEqual({
+      type: 'float',
+      min: -20,
+      max: -2
+    });
+    expect(canonical.optimization.budget.max_trials).toBe(50);
+  });
+
+  it('builds canonical optimize_backtest payload with optimization.base_spec', () => {
+    const payload = {
+      runType: 'optimize_backtest',
+      optimization: {
+        baseSpec: {
+          runType: 'backtest',
+          data: {
+            symbol: 'EURUSD',
+            timeframe: '1h',
+            startDate: '2024-01-01',
+            endDate: '2024-02-01'
+          },
+          signal: {
+            type: 'ema_cross',
+            fast: 12,
+            slow: 26
+          }
+        },
+        searchSpace: {
+          'signal.fast': { type: 'int', min: 5, max: 30 }
+        },
+        objective: { metric: 'sharpe', direction: 'min' },
+        budget: { maxTrials: 25, timeoutSeconds: 120, seed: 7 }
+      }
+    } as unknown as RunRequestInput;
+
+    const canonical = buildCanonicalRunPayload(payload, 'optimize_backtest') as any;
+    expect(canonical.spec_type).toBe('optimize_backtest');
+    expect(canonical.optimization.base_spec.spec_type).toBe('backtest');
+    expect(canonical.optimization.base_spec.signal.fast).toBe(12);
+    expect(canonical.optimization.objective.direction).toBe('min');
+    expect(canonical.optimization.budget.max_trials).toBe(25);
+    expect(canonical.optimization.budget.timeout_seconds).toBe(120);
+    expect(canonical.optimization.budget.seed).toBe(7);
+  });
+
+  it('normalizes optimization aliases and search_space low/high + domain', () => {
+    const payload = {
+      runType: 'optimize_backtest',
+      optimization: {
+        baseSpec: {
+          runType: 'backtest',
+          data: {
+            symbol: 'EURUSD',
+            timeframe: '1h',
+            startDate: '2024-01-01',
+            endDate: '2024-02-01'
+          },
+          signal: {
+            type: 'ema_cross',
+            fast: 12,
+            slow: 26
+          }
+        },
+        searchSpace: {
+          'signal.fast': { low: 5, high: 30, step: 1 },
+          'signal.type': { domain: ['ema_cross', 'rsi'] }
+        },
+        objective: { metric: 'sharpe', direction: 'maximize' as any },
+        budget: { maxTrials: 25 }
+      }
+    } as unknown as RunRequestInput;
+
+    const canonical = buildCanonicalRunPayload(payload, 'optimize_backtest') as any;
+    expect(canonical.optimization.objective.direction).toBe('max');
+    expect(canonical.optimization.search_space['signal.fast']).toEqual({
+      min: 5,
+      max: 30,
+      step: 1
+    });
+    expect(canonical.optimization.search_space['signal.type']).toEqual({
+      values: ['ema_cross', 'rsi']
+    });
+  });
+
+  it('rejects optimize payload with stringified search_space', () => {
+    const payload = {
+      runType: 'optimize_dca',
+      optimization: {
+        baseSpec: {
+          runType: 'dca',
+          data: {
+            symbol: 'BTCUSD',
+            timeframe: '1h',
+            startDate: '2024-01-01',
+            endDate: '2024-12-31'
+          },
+          strategy: {
+            type: 'dca_equity',
+            params: {
+              kind: 'dca_equity',
+              assetClass: 'CRYPTO',
+              drawdownReference: 'ATH',
+              executionMode: 'bar_close',
+              grid: [{ dd: -5, weight: 1 }],
+              requireCrossing: true
+            }
+          }
+        },
+        searchSpace: '{"signal.fast":{"min":5,"max":30}}' as any,
+        objective: { metric: 'sharpe', direction: 'max' },
+        budget: { maxTrials: 10 }
+      }
+    } as unknown as RunRequestInput;
+
+    expect(() => buildCanonicalRunPayload(payload, 'optimize_dca')).toThrowError(/optimization\.search_space must be an object/);
+  });
+
+  it('rejects optimize payload with empty search_space arrays', () => {
+    const payload = {
+      runType: 'optimize_backtest',
+      optimization: {
+        baseSpec: {
+          runType: 'backtest',
+          data: {
+            symbol: 'EURUSD',
+            timeframe: '1h',
+            startDate: '2024-01-01',
+            endDate: '2024-02-01'
+          },
+          signal: {
+            type: 'ema_cross',
+            fast: 12,
+            slow: 26
+          }
+        },
+        searchSpace: {
+          'signal.fast': []
+        },
+        objective: { metric: 'sharpe', direction: 'min' },
+        budget: { maxTrials: 25 }
+      }
+    } as unknown as RunRequestInput;
+
+    expect(() => buildCanonicalRunPayload(payload, 'optimize_backtest')).toThrowError(/array must not be empty/);
+  });
+
+  it('rejects legacy optimization spec_type', () => {
+    const payload = {
+      runType: 'optimize_dca',
+      optimization: {
+        baseSpec: {
+          runType: 'dca',
+          data: {
+            symbol: 'BTCUSD',
+            timeframe: '1h',
+            startDate: '2024-01-01',
+            endDate: '2024-12-31'
+          },
+          strategy: {
+            type: 'dca_equity',
+            params: {
+              kind: 'dca_equity',
+              assetClass: 'CRYPTO',
+              drawdownReference: 'ATH',
+              executionMode: 'bar_close',
+              grid: [{ dd: -5, weight: 1 }],
+              requireCrossing: true
+            }
+          }
+        },
+        searchSpace: { 'signal.fast': { min: 5, max: 30 } },
+        objective: { metric: 'sharpe', direction: 'max' },
+        budget: { maxTrials: 10 }
+      }
+    } as unknown as RunRequestInput;
+
+    expect(() => buildCanonicalRunPayload(payload, 'optimization' as any)).toThrowError(/spec_type mismatch/);
+  });
 });

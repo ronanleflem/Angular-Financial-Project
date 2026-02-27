@@ -176,6 +176,49 @@
               </button>
             </div>
 
+            <div class="param-section">
+              <div class="param-title">Optimization</div>
+              <div class="checkbox-row">
+                <mat-checkbox formControlName="enableOptimization">Enable optimization</mat-checkbox>
+              </div>
+              <div class="param-hint" *ngIf="optimizeDcaCapabilitiesInfo()">{{ optimizeDcaCapabilitiesInfo() }}</div>
+              <ng-container *ngIf="dcaForm.get('enableOptimization')?.value">
+                <div class="param-grid">
+                  <mat-form-field appearance="outline">
+                    <mat-label>objective.metric</mat-label>
+                    <mat-select formControlName="optimizationMetric" [matTooltip]="optimizeDcaFieldTooltip('optimization.objective.metric')">
+                      <mat-option *ngFor="let metric of optimizationMetrics" [value]="metric">{{ metric }}</mat-option>
+                    </mat-select>
+                  </mat-form-field>
+                  <mat-form-field appearance="outline">
+                    <mat-label>objective.direction</mat-label>
+                    <mat-select formControlName="optimizationDirection" [matTooltip]="optimizeDcaFieldTooltip('optimization.objective.direction')">
+                      <mat-option *ngFor="let direction of optimizationDirections" [value]="direction">{{ direction }}</mat-option>
+                    </mat-select>
+                  </mat-form-field>
+                  <mat-form-field appearance="outline">
+                    <mat-label>budget.max_trials</mat-label>
+                    <input matInput type="number" min="1" step="1" formControlName="optimizationMaxTrials" [matTooltip]="optimizeDcaFieldTooltip('optimization.budget.max_trials')" />
+                  </mat-form-field>
+                  <mat-form-field appearance="outline">
+                    <mat-label>budget.timeout_seconds (optional)</mat-label>
+                    <input matInput type="number" min="1" step="1" formControlName="optimizationTimeoutSeconds" [matTooltip]="optimizeDcaFieldTooltip('optimization.budget.timeout_seconds')" />
+                  </mat-form-field>
+                  <mat-form-field appearance="outline">
+                    <mat-label>budget.seed (optional)</mat-label>
+                    <input matInput type="number" min="0" step="1" formControlName="optimizationSeed" [matTooltip]="optimizeDcaFieldTooltip('optimization.budget.seed')" />
+                  </mat-form-field>
+                </div>
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>optimization.search_space (JSON object)</mat-label>
+                  <textarea matInput rows="8" formControlName="optimizationSearchSpace" [matTooltip]="optimizeDcaFieldTooltip('optimization.search_space')"></textarea>
+                </mat-form-field>
+                <div class="param-hint" *ngIf="dcaForm.errors?.['optimizationSearchSpaceInvalid']">
+                  search_space invalide: objet JSON requis (values/domain/min-max/array non vide).
+                </div>
+              </ng-container>
+            </div>
+
             <ng-container *ngIf="selectedDcaTab() === 'params'">
               <mat-accordion class="accordion" multi>
                 <mat-expansion-panel>
@@ -774,6 +817,25 @@
               </strong>
             </div>
           </div>
+          <section class="preview-panel" *ngIf="result.optimization as optimization">
+            <div class="preview-title">Optimization result</div>
+            <div class="preview-item">
+              objective: {{ optimization.objectiveMetric }} ({{ optimization.objectiveDirection }})
+            </div>
+            <div class="preview-item">
+              best score: {{ optimization.bestScore === null ? '-' : optimization.bestScore }}
+            </div>
+            <div class="preview-item">
+              trials: {{ optimization.totalTrials }} (SUCCEEDED={{ optimization.succeededTrials }}, FAILED={{ optimization.failedTrials }})
+            </div>
+            <div class="preview-item" *ngIf="optimization.failedErrorCode || optimization.failedErrorMessage">
+              backend error: {{ optimization.failedErrorCode || 'unknown_code' }} - {{ optimization.failedErrorMessage || 'unknown_error' }}
+            </div>
+            <pre class="preview-json">{{ optimization.bestParams | json }}</pre>
+            <div class="preview-item" *ngFor="let trial of optimization.topTrials">
+              #{{ trial.id }} | {{ trial.status }} | score={{ trial.score === null ? '-' : trial.score }}
+            </div>
+          </section>
         </section>
       </mat-card-content>
     </mat-card>
@@ -995,7 +1057,50 @@
               </button>
             </div>
 
-                        <ng-container *ngIf="selectedBacktestTab() === 'params'">
+            <div class="param-section">
+              <div class="param-title">Optimization</div>
+              <div class="checkbox-row">
+                <mat-checkbox formControlName="enableOptimization">Enable optimization</mat-checkbox>
+              </div>
+              <div class="param-hint" *ngIf="optimizeBacktestCapabilitiesInfo()">{{ optimizeBacktestCapabilitiesInfo() }}</div>
+              <ng-container *ngIf="backtestForm.get('enableOptimization')?.value">
+                <div class="param-grid">
+                  <mat-form-field appearance="outline">
+                    <mat-label>objective.metric</mat-label>
+                    <mat-select formControlName="optimizationMetric" [matTooltip]="optimizeBacktestFieldTooltip('optimization.objective.metric')">
+                      <mat-option *ngFor="let metric of optimizationMetrics" [value]="metric">{{ metric }}</mat-option>
+                    </mat-select>
+                  </mat-form-field>
+                  <mat-form-field appearance="outline">
+                    <mat-label>objective.direction</mat-label>
+                    <mat-select formControlName="optimizationDirection" [matTooltip]="optimizeBacktestFieldTooltip('optimization.objective.direction')">
+                      <mat-option *ngFor="let direction of optimizationDirections" [value]="direction">{{ direction }}</mat-option>
+                    </mat-select>
+                  </mat-form-field>
+                  <mat-form-field appearance="outline">
+                    <mat-label>budget.max_trials</mat-label>
+                    <input matInput type="number" min="1" step="1" formControlName="optimizationMaxTrials" [matTooltip]="optimizeBacktestFieldTooltip('optimization.budget.max_trials')" />
+                  </mat-form-field>
+                  <mat-form-field appearance="outline">
+                    <mat-label>budget.timeout_seconds (optional)</mat-label>
+                    <input matInput type="number" min="1" step="1" formControlName="optimizationTimeoutSeconds" [matTooltip]="optimizeBacktestFieldTooltip('optimization.budget.timeout_seconds')" />
+                  </mat-form-field>
+                  <mat-form-field appearance="outline">
+                    <mat-label>budget.seed (optional)</mat-label>
+                    <input matInput type="number" min="0" step="1" formControlName="optimizationSeed" [matTooltip]="optimizeBacktestFieldTooltip('optimization.budget.seed')" />
+                  </mat-form-field>
+                </div>
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>optimization.search_space (JSON object)</mat-label>
+                  <textarea matInput rows="8" formControlName="optimizationSearchSpace" [matTooltip]="optimizeBacktestFieldTooltip('optimization.search_space')"></textarea>
+                </mat-form-field>
+                <div class="param-hint" *ngIf="backtestForm.errors?.['optimizationSearchSpaceInvalid']">
+                  search_space invalide: objet JSON requis (values/domain/min-max/array non vide).
+                </div>
+              </ng-container>
+            </div>
+
+            <ng-container *ngIf="selectedBacktestTab() === 'params'">
               <mat-accordion class="accordion" multi>
                 <mat-expansion-panel *ngIf="isBacktestFieldSupported('strategy.params.tp_sl')">
                   <mat-expansion-panel-header>
@@ -1485,6 +1590,25 @@
               </strong>
             </div>
           </div>
+          <section class="preview-panel" *ngIf="result.optimization as optimization">
+            <div class="preview-title">Optimization result</div>
+            <div class="preview-item">
+              objective: {{ optimization.objectiveMetric }} ({{ optimization.objectiveDirection }})
+            </div>
+            <div class="preview-item">
+              best score: {{ optimization.bestScore === null ? '-' : optimization.bestScore }}
+            </div>
+            <div class="preview-item">
+              trials: {{ optimization.totalTrials }} (SUCCEEDED={{ optimization.succeededTrials }}, FAILED={{ optimization.failedTrials }})
+            </div>
+            <div class="preview-item" *ngIf="optimization.failedErrorCode || optimization.failedErrorMessage">
+              backend error: {{ optimization.failedErrorCode || 'unknown_code' }} - {{ optimization.failedErrorMessage || 'unknown_error' }}
+            </div>
+            <pre class="preview-json">{{ optimization.bestParams | json }}</pre>
+            <div class="preview-item" *ngFor="let trial of optimization.topTrials">
+              #{{ trial.id }} | {{ trial.status }} | score={{ trial.score === null ? '-' : trial.score }}
+            </div>
+          </section>
         </section>
       </mat-card-content>
     </mat-card>

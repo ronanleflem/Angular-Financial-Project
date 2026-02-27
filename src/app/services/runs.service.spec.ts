@@ -68,6 +68,89 @@ describe('RunsService', () => {
     expect(response.requestId).toBe('req-123');
   });
 
+  it('submits optimize_dca canonical payload', () => {
+    service.submitRun({
+      runType: 'optimize_dca',
+      optimization: {
+        baseSpec: {
+          runType: 'dca',
+          data: {
+            symbol: 'BTCUSD',
+            timeframe: '1h',
+            startDate: '2024-01-01',
+            endDate: '2024-12-31'
+          },
+          strategy: {
+            type: 'dca_equity',
+            params: {
+              kind: 'dca_equity',
+              assetClass: 'CRYPTO',
+              drawdownReference: 'ATH',
+              executionMode: 'bar_close',
+              grid: [{ dd: -5, weight: 1 }],
+              requireCrossing: true
+            }
+          }
+        },
+        searchSpace: {
+          'strategy.params.grid[0].dd': { type: 'float', min: -20, max: -2 }
+        },
+        objective: { metric: 'sharpe', direction: 'max' },
+        budget: { maxTrials: 50 }
+      }
+    } as any).subscribe();
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/api/runs`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body.spec_type).toBe('optimize_dca');
+    expect(req.request.body.optimization.base_spec.spec_type).toBe('dca');
+    expect(req.request.body.optimization.objective.direction).toBe('max');
+    expect(req.request.body.optimization.budget.max_trials).toBe(50);
+    req.flush({ request_id: 'req-opt-dca', status: 'QUEUED' });
+  });
+
+  it('normalizes optimize_dca direction alias and low/high ranges', () => {
+    service.submitRun({
+      runType: 'optimize_dca',
+      optimization: {
+        baseSpec: {
+          runType: 'dca',
+          data: {
+            symbol: 'BTCUSD',
+            timeframe: '1h',
+            startDate: '2024-01-01',
+            endDate: '2024-12-31'
+          },
+          strategy: {
+            type: 'dca_equity',
+            params: {
+              kind: 'dca_equity',
+              assetClass: 'CRYPTO',
+              drawdownReference: 'ATH',
+              executionMode: 'bar_close',
+              grid: [{ dd: -5, weight: 1 }],
+              requireCrossing: true
+            }
+          }
+        },
+        searchSpace: {
+          'strategy.params.grid[0].dd': { low: -20, high: -2, step: 1 }
+        },
+        objective: { metric: 'sharpe', direction: 'maximize' as any },
+        budget: { maxTrials: 50 }
+      }
+    } as any).subscribe();
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/api/runs`);
+    expect(req.request.body.optimization.objective.direction).toBe('max');
+    expect(req.request.body.optimization.search_space['strategy.params.grid[0].dd']).toEqual({
+      min: -20,
+      max: -2,
+      step: 1
+    });
+    req.flush({ request_id: 'req-opt-dca-alias', status: 'QUEUED' });
+  });
+
   it('requests run status and normalizes fields', () => {
     let response: any;
 

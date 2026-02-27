@@ -1,4 +1,11 @@
-export type RunType = 'dca' | 'backtest' | 'market_stats' | 'seasonality' | 'stress_tests';
+export type RunType =
+  | 'dca'
+  | 'backtest'
+  | 'market_stats'
+  | 'seasonality'
+  | 'stress_tests'
+  | 'optimize_dca'
+  | 'optimize_backtest';
 
 export type Timeframe = '15m' | '1h' | '4h' | '1d' | string;
 export type IsoDateString = string;
@@ -328,6 +335,47 @@ export interface PerformanceBlock {
   stressTests?: MonteCarloStressTests;
 }
 
+export type OptimizationDirection = 'max' | 'min';
+
+export interface OptimizationObjective {
+  metric: string;
+  direction: OptimizationDirection;
+}
+
+export interface OptimizationBudget {
+  maxTrials: number;
+  timeoutSeconds?: number;
+  seed?: number;
+}
+
+export interface OptimizationSpecBase {
+  objective: OptimizationObjective;
+  budget: OptimizationBudget;
+  searchSpace: Record<string, unknown>;
+}
+
+export interface OptimizeDcaBlock extends OptimizationSpecBase {
+  baseSpec: {
+    runType: 'dca';
+    data: DcaDataBlock;
+    universe?: UniverseItem[];
+    strategy: DcaStrategyCore;
+    filters?: BacktestFiltersBlock;
+    performance?: PerformanceBlock;
+  };
+}
+
+export interface OptimizeBacktestBlock extends OptimizationSpecBase {
+  baseSpec: {
+    runType: 'backtest';
+    data: BacktestDataBlock;
+    strategy?: { name?: string; params?: BacktestStrategyParamsBlock };
+    signal: BacktestSignalBlock;
+    filters?: BacktestFiltersBlock;
+    performance?: PerformanceBlock;
+  };
+}
+
 export type RunRequestInput =
   | {
       runType: 'dca';
@@ -364,6 +412,14 @@ export type RunRequestInput =
       runType: 'stress_tests';
       data: StressTestsDataBlock;
       performance: PerformanceBlock & { stressTests: MonteCarloStressTests };
+    }
+  | {
+      runType: 'optimize_dca';
+      optimization: OptimizeDcaBlock;
+    }
+  | {
+      runType: 'optimize_backtest';
+      optimization: OptimizeBacktestBlock;
     };
 
 export interface ValidationError {
@@ -438,6 +494,24 @@ export function validateRunRequest(input: RunRequestInput): ValidationError[] {
           });
         }
       }
+      break;
+    case 'optimize_dca':
+      if (input.optimization.baseSpec.runType !== 'dca') {
+        errors.push({
+          path: 'optimization.baseSpec.runType',
+          message: 'must be dca'
+        });
+      }
+      validateOptimizationBlock(errors, input.optimization);
+      break;
+    case 'optimize_backtest':
+      if (input.optimization.baseSpec.runType !== 'backtest') {
+        errors.push({
+          path: 'optimization.baseSpec.runType',
+          message: 'must be backtest'
+        });
+      }
+      validateOptimizationBlock(errors, input.optimization);
       break;
     default:
       errors.push({ path: 'runType', message: 'unsupported runType' });
@@ -553,4 +627,115 @@ function validateBacktestSignal(errors: ValidationError[], signal: BacktestSigna
       errors.push({ path: 'signal.slow', message: 'slow must be > fast for ema_cross' });
     }
   }
+}
+
+function validateOptimizationBlock(
+  errors: ValidationError[],
+  optimization: OptimizationSpecBase
+): void {
+  validateRequired(errors, 'optimization.objective.metric', optimization.objective.metric);
+  validateRequired(errors, 'optimization.objective.direction', optimization.objective.direction);
+  if (!['max', 'min', 'maximize', 'minimize'].includes(String(optimization.objective.direction ?? '').trim())) {
+    errors.push({
+      path: 'optimization.objective.direction',
+      message: 'must be one of: max, min, maximize, minimize'
+    });
+  }
+  if (
+    !Number.isFinite(optimization.budget.maxTrials) ||
+    !Number.isInteger(optimization.budget.maxTrials) ||
+    optimization.budget.maxTrials < 1
+  ) {
+    errors.push({
+      path: 'optimization.budget.maxTrials',
+      message: 'must be an integer >= 1'
+    });
+  }
+  if (
+    optimization.budget.timeoutSeconds !== undefined &&
+    (!Number.isFinite(optimization.budget.timeoutSeconds) || optimization.budget.timeoutSeconds <= 0)
+  ) {
+    errors.push({
+      path: 'optimization.budget.timeoutSeconds',
+      message: 'must be > 0'
+    });
+  }
+  if (
+    optimization.budget.seed !== undefined &&
+    (!Number.isFinite(optimization.budget.seed) || optimization.budget.seed < 0 || !Number.isInteger(optimization.budget.seed))
+  ) {
+    errors.push({
+      path: 'optimization.budget.seed',
+      message: 'must be an integer >= 0'
+    });
+  }
+  if (!optimization.searchSpace || typeof optimization.searchSpace !== 'object' || Array.isArray(optimization.searchSpace)) {
+    errors.push({
+      path: 'optimization.searchSpace',
+      message: 'must be an object'
+    });
+    return;
+  }
+  if (Object.keys(optimization.searchSpace).length === 0) {
+    errors.push({
+      path: 'optimization.searchSpace',
+      message: 'must not be empty'
+    });
+  }
+  if (!isSupportedOptimizationSearchSpace(optimization.searchSpace)) {
+    errors.push({
+      path: 'optimization.searchSpace',
+      message: 'contains unsupported entries'
+    });
+  }
+}
+
+function isSupportedOptimizationSearchSpace(value: unknown): boolean {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return false;
+  }
+  const record = value as Record<string, unknown>;
+  const entries = Object.entries(record);
+  if (entries.length === 0) {
+    return false;
+  }
+  return entries.every(([, entry]) => isSupportedSearchSpaceNode(entry));
+}
+
+function isSupportedSearchSpaceNode(value: unknown): boolean {
+  if (Array.isArray(value)) {
+    return value.length > 0;
+  }
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+  const record = value as Record<string, unknown>;
+  const keys = Object.keys(record);
+  if (keys.length === 0) {
+    return false;
+  }
+
+  const hasValues = Object.prototype.hasOwnProperty.call(record, 'values');
+  const hasDomain = Object.prototype.hasOwnProperty.call(record, 'domain');
+  const hasMinMax = Object.prototype.hasOwnProperty.call(record, 'min') || Object.prototype.hasOwnProperty.call(record, 'max');
+  const hasLowHigh = Object.prototype.hasOwnProperty.call(record, 'low') || Object.prototype.hasOwnProperty.call(record, 'high');
+
+  if (hasValues || hasDomain || hasMinMax || hasLowHigh) {
+    if (hasValues || hasDomain) {
+      const candidates = hasValues ? record['values'] : record['domain'];
+      return Array.isArray(candidates) && candidates.length > 0;
+    }
+    const minCandidate = hasLowHigh ? record['low'] : record['min'];
+    const maxCandidate = hasLowHigh ? record['high'] : record['max'];
+    if (!Number.isFinite(minCandidate) || !Number.isFinite(maxCandidate)) {
+      return false;
+    }
+    const step = record['step'];
+    if (step !== undefined && (!Number.isFinite(step) || Number(step) <= 0)) {
+      return false;
+    }
+    return Number(minCandidate) <= Number(maxCandidate);
+  }
+
+  return Object.values(record).every(entry => isSupportedSearchSpaceNode(entry));
 }

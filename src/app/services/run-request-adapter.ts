@@ -19,9 +19,15 @@ export function buildCanonicalRunPayload(
   specType: RunType = uiModel.runType,
   options: CanonicalRunRequestOptions = {}
 ): CanonicalRunRequest {
-  const symbolValue = String((uiModel?.data as any)?.symbol ?? '').trim();
-  const symbolsValue = Array.isArray((uiModel as any)?.data?.symbols)
-    ? ((uiModel as any).data.symbols as unknown[])
+  if (uiModel.runType === 'optimize_dca' || uiModel.runType === 'optimize_backtest') {
+    return buildCanonicalOptimizationPayload(uiModel, specType, options);
+  }
+
+  const model = uiModel as any;
+  const runType = String(model?.runType ?? '');
+  const symbolValue = String(model?.data?.symbol ?? '').trim();
+  const symbolsValue = Array.isArray(model?.data?.symbols)
+    ? (model.data.symbols as unknown[])
       .map(item => String(item ?? '').trim())
       .filter(Boolean)
     : [];
@@ -29,7 +35,14 @@ export function buildCanonicalRunPayload(
     (Array.isArray((uiModel as any)?.universe) && ((uiModel as any)?.universe as unknown[]).length > 0) ||
     (Array.isArray((uiModel as any)?.data?.universe) && ((uiModel as any)?.data?.universe as unknown[]).length > 0)
   );
-  if (uiModel.runType !== 'stress_tests' && !symbolValue && symbolsValue.length === 0 && !hasUniverseEntries) {
+  if (
+    runType !== 'stress_tests' &&
+    runType !== 'optimize_dca' &&
+    runType !== 'optimize_backtest' &&
+    !symbolValue &&
+    symbolsValue.length === 0 &&
+    !hasUniverseEntries
+  ) {
     throw new Error('canonical_builder_error:data.symbol is required');
   }
   if (uiModel.runType !== specType) {
@@ -123,6 +136,65 @@ function normalizeCanonicalInput(input: RunRequestInput): Record<string, unknown
       ...strategy,
       params: normalizedParams
     }
+  };
+}
+
+function buildCanonicalOptimizationPayload(
+  uiModel: Extract<RunRequestInput, { runType: 'optimize_dca' | 'optimize_backtest' }>,
+  specType: RunType,
+  options: CanonicalRunRequestOptions
+): CanonicalRunRequest {
+  if (uiModel.runType !== specType) {
+    throw new Error('canonical_builder_error:spec_type mismatch');
+  }
+  const expectedBaseSpecType = uiModel.runType === 'optimize_dca' ? 'dca' : 'backtest';
+  if (uiModel.optimization.baseSpec.runType !== expectedBaseSpecType) {
+    throw new Error('canonical_builder_error:optimization.base_spec.spec_type mismatch');
+  }
+  const catalogVersion = options.catalogVersion?.trim() || DEFAULT_CATALOG_VERSION;
+  const requestId = options.requestId?.trim();
+  const canonicalBaseSpec = buildCanonicalBaseSpec(uiModel.optimization.baseSpec);
+  const direction = normalizeOptimizationDirection(uiModel.optimization.objective.direction);
+  const normalizedSearchSpace = normalizeOptimizationSearchSpace(uiModel.optimization.searchSpace);
+  const canonicalOptimization = {
+    base_spec: canonicalBaseSpec,
+    search_space: toSnakeCaseValue(normalizedSearchSpace),
+    objective: {
+      metric: String(uiModel.optimization.objective.metric ?? '').trim(),
+      direction
+    },
+    budget: {
+      max_trials: Number(uiModel.optimization.budget.maxTrials),
+      timeout_seconds:
+        uiModel.optimization.budget.timeoutSeconds !== undefined
+          ? Number(uiModel.optimization.budget.timeoutSeconds)
+          : undefined,
+      seed:
+        uiModel.optimization.budget.seed !== undefined
+          ? Number(uiModel.optimization.budget.seed)
+          : undefined
+    }
+  };
+
+  const canonical: CanonicalRunRequest = {
+    spec_type: specType,
+    catalog_version: catalogVersion,
+    optimization: canonicalOptimization
+  };
+  if (requestId) {
+    canonical.request_id = requestId;
+  }
+  return canonical;
+}
+
+function buildCanonicalBaseSpec(
+  input: Extract<RunRequestInput, { runType: 'dca' | 'backtest' }>
+): Record<string, unknown> {
+  const normalizedInput = normalizeCanonicalInput(input);
+  const payload = toSnakeCaseValue(normalizedInput) as Record<string, unknown>;
+  return {
+    spec_type: input.runType,
+    ...payload
   };
 }
 
@@ -228,4 +300,115 @@ function toSnakeCaseKey(key: string): string {
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function normalizeOptimizationDirection(value: unknown): 'max' | 'min' {
+  const normalized = String(value ?? '').trim().toLowerCase();
+  if (normalized === 'max' || normalized === 'maximize') {
+    return 'max';
+  }
+  if (normalized === 'min' || normalized === 'minimize') {
+    return 'min';
+  }
+  throw new Error('canonical_builder_error:optimization.objective.direction must be max|min');
+}
+
+function normalizeOptimizationSearchSpace(value: unknown): Record<string, unknown> {
+  if (!isPlainObject(value)) {
+    throw new Error('canonical_builder_error:optimization.search_space must be an object');
+  }
+  const entries = Object.entries(value);
+  if (entries.length === 0) {
+    throw new Error('canonical_builder_error:optimization.search_space must not be empty');
+  }
+  const normalized: Record<string, unknown> = {};
+  entries.forEach(([key, entry]) => {
+    normalized[key] = normalizeOptimizationSearchSpaceNode(entry, `optimization.search_space.${key}`);
+  });
+  return normalized;
+}
+
+function normalizeOptimizationSearchSpaceNode(value: unknown, path: string): unknown {
+  if (Array.isArray(value)) {
+    if (value.length === 0) {
+      throw new Error(`canonical_builder_error:${path} array must not be empty`);
+    }
+    return value.map((entry, index) => (
+      isPlainObject(entry)
+        ? normalizeOptimizationSearchSpaceNode(entry, `${path}[${index}]`)
+        : entry
+    ));
+  }
+  if (!isPlainObject(value)) {
+    throw new Error(`canonical_builder_error:${path} has unsupported shape`);
+  }
+
+  const keys = Object.keys(value);
+  if (keys.length === 0) {
+    throw new Error(`canonical_builder_error:${path} object must not be empty`);
+  }
+
+  const hasValues = Object.prototype.hasOwnProperty.call(value, 'values');
+  const hasDomain = Object.prototype.hasOwnProperty.call(value, 'domain');
+  const hasMin = Object.prototype.hasOwnProperty.call(value, 'min');
+  const hasMax = Object.prototype.hasOwnProperty.call(value, 'max');
+  const hasLow = Object.prototype.hasOwnProperty.call(value, 'low');
+  const hasHigh = Object.prototype.hasOwnProperty.call(value, 'high');
+  const looksLikeParamSpec = hasValues || hasDomain || hasMin || hasMax || hasLow || hasHigh;
+
+  if (looksLikeParamSpec) {
+    const passthrough: Record<string, unknown> = {};
+    Object.entries(value).forEach(([key, entry]) => {
+      if (key === 'values' || key === 'domain' || key === 'min' || key === 'max' || key === 'low' || key === 'high') {
+        return;
+      }
+      passthrough[key] = entry;
+    });
+
+    if (hasValues || hasDomain) {
+      const rawValues = hasValues ? value['values'] : value['domain'];
+      if (!Array.isArray(rawValues) || rawValues.length === 0) {
+        throw new Error(`canonical_builder_error:${path} values/domain must be a non-empty array`);
+      }
+      return {
+        ...passthrough,
+        values: rawValues.map((entry, index) => (
+          isPlainObject(entry)
+            ? normalizeOptimizationSearchSpaceNode(entry, `${path}.values[${index}]`)
+            : entry
+        ))
+      };
+    }
+
+    const minCandidate = hasLow ? value['low'] : value['min'];
+    const maxCandidate = hasHigh ? value['high'] : value['max'];
+    const min = Number(minCandidate);
+    const max = Number(maxCandidate);
+    if (!Number.isFinite(min) || !Number.isFinite(max)) {
+      throw new Error(`canonical_builder_error:${path} min/max must be finite numbers`);
+    }
+    if (min > max) {
+      throw new Error(`canonical_builder_error:${path} min must be <= max`);
+    }
+
+    const normalized: Record<string, unknown> = {
+      ...passthrough,
+      min,
+      max
+    };
+    if (Object.prototype.hasOwnProperty.call(value, 'step')) {
+      const step = Number(value['step']);
+      if (!Number.isFinite(step) || step <= 0) {
+        throw new Error(`canonical_builder_error:${path} step must be > 0`);
+      }
+      normalized['step'] = step;
+    }
+    return normalized;
+  }
+
+  const normalizedChildren: Record<string, unknown> = {};
+  Object.entries(value).forEach(([key, entry]) => {
+    normalizedChildren[key] = normalizeOptimizationSearchSpaceNode(entry, `${path}.${key}`);
+  });
+  return normalizedChildren;
 }
