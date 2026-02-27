@@ -743,16 +743,42 @@ describe('StrategyLauncherPageComponent', () => {
     flushInitRequests();
 
     component.selectRun('stress-tests');
+    const stressCapabilitiesReq = httpMock.expectOne(
+      `${environment.apiUrl}/api/runs/capabilities?spec_type=stress_tests`
+    );
+    stressCapabilitiesReq.flush({
+      fields: {
+        supported: ['data.base_run_id', 'performance.stress_tests.method', 'performance.stress_tests.n_sims'],
+        accepted_but_not_wired: []
+      }
+    } as any);
+    const stressSourcesReq = httpMock.expectOne(
+      `${environment.apiUrl}/api/runs/stress/sources?limit=200`
+    );
+    stressSourcesReq.flush({
+      items: [
+        {
+          run_id: 'run-base-1',
+          spec_type: 'backtest',
+          data: { symbol: 'EURUSD', timeframe: '1h' },
+          created_at: '2025-01-10T00:00:00Z'
+        }
+      ]
+    } as any);
     fixture.detectChanges();
 
     const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
-    expect(text).toMatch(/Inclure options avancees stress tests[\s\S]*Not implemented yet/);
+    expect(text).toContain('Inclure options avancees stress tests');
     expect(component.stressForm.get('includeStressAdvanced')?.value).toBeFalse();
+    expect(String(component.stressForm.get('baseRunId')?.value ?? '')).toBe('run-base-1');
 
     const payload = component.buildRunRequest();
     expect(payload.runType).toBe('stress_tests');
-    expect((payload as any).data.startDate).toBeTruthy();
-    expect((payload as any).data.endDate).toBeTruthy();
+    expect((payload as any).data.baseRunId).toBe('run-base-1');
+    expect((payload as any).data.symbol).toBeUndefined();
+    expect((payload as any).data.timeframe).toBeUndefined();
+    expect((payload as any).data.startDate).toBeUndefined();
+    expect((payload as any).data.endDate).toBeUndefined();
     expect((payload as any).performance.stressTests).toEqual(
       jasmine.objectContaining({
         enabled: true,
@@ -765,7 +791,199 @@ describe('StrategyLauncherPageComponent', () => {
     expect((payload as any).performance.stressTests.source).toBeUndefined();
     expect((payload as any).performance.stressTests.overlapping).toBeUndefined();
     expect((payload as any).performance.stressTests.timeDistribution).toBeUndefined();
-    expect((payload as any).performance.stressTests.scenarios).toBeUndefined();
+    expect((payload as any).performance.stressTests.scenarios).toEqual([]);
+  });
+
+  it('builds stress-tests payload with advanced fields when enabled', () => {
+    fixture.detectChanges();
+    flushInitRequests();
+
+    component.selectRun('stress-tests');
+    const stressCapabilitiesReq = httpMock.expectOne(
+      `${environment.apiUrl}/api/runs/capabilities?spec_type=stress_tests`
+    );
+    stressCapabilitiesReq.flush({
+      fields: {
+        supported: [
+          'data.base_run_id',
+          'performance.stress_tests.source',
+          'performance.stress_tests.n_sims',
+          'performance.stress_tests.seed',
+          'performance.stress_tests.method',
+          'performance.stress_tests.block_size',
+          'performance.stress_tests.overlapping',
+          'performance.stress_tests.time_distribution.mode',
+          'performance.stress_tests.time_distribution.seed',
+          'performance.stress_tests.param_drift.mode',
+          'performance.stress_tests.param_drift.dist',
+          'performance.stress_tests.param_drift.mu',
+          'performance.stress_tests.param_drift.sigma',
+          'performance.stress_tests.param_drift.low',
+          'performance.stress_tests.param_drift.high',
+          'performance.stress_tests.param_drift.min',
+          'performance.stress_tests.param_drift.max',
+          'performance.stress_tests.param_drift.seed',
+          'performance.stress_tests.sizing.dist',
+          'performance.stress_tests.sizing.mu',
+          'performance.stress_tests.sizing.sigma',
+          'performance.stress_tests.sizing.low',
+          'performance.stress_tests.sizing.high',
+          'performance.stress_tests.sizing.min',
+          'performance.stress_tests.sizing.max',
+          'performance.stress_tests.output.mode',
+          'performance.stress_tests.output.max_curves',
+          'performance.stress_tests.output.curve_stride',
+          'performance.stress_tests.scenarios',
+          'performance.stress_tests.multi_asset.aggregation',
+          'performance.stress_tests.multi_asset.weights',
+          'performance.stress_tests.multi_asset.timestamp_alignment'
+        ],
+        accepted_but_not_wired: []
+      }
+    } as any);
+    const stressSourcesReq = httpMock.expectOne(
+      `${environment.apiUrl}/api/runs/stress/sources?limit=200`
+    );
+    stressSourcesReq.flush({
+      items: [{ run_id: 'run-base-adv', spec_type: 'dca', data: { symbol: 'SPY', timeframe: '1d' } }]
+    } as any);
+
+    component.stressForm.patchValue({
+      includeStressAdvanced: true,
+      baseRunId: 'run-base-adv',
+      source: 'returns',
+      overlapping: true,
+      timeDistMode: 'business',
+      timeDistSeed: 17,
+      paramDriftMode: 'stochastic',
+      paramDriftDist: 'normal',
+      paramDriftMu: 0.1,
+      paramDriftSigma: 0.2,
+      paramDriftLow: -0.5,
+      paramDriftHigh: 0.5,
+      paramDriftMin: -0.8,
+      paramDriftMax: 0.8,
+      paramDriftSeed: 21,
+      sizingDist: 'lognormal',
+      sizingMu: 0.2,
+      sizingSigma: 0.6,
+      sizingLow: 0.5,
+      sizingHigh: 1.7,
+      sizingMin: 0.2,
+      sizingMax: 2.2,
+      outputMode: 'full',
+      outputMaxCurves: 30,
+      outputCurveStride: 2,
+      scenario1Type: 'shock',
+      scenario1Name: 'Crash shock',
+      scenario1ShockPct: 10,
+      scenario1VolMultiplier: 1.5,
+      scenario1DrawdownPct: 15,
+      scenario1Window: 20,
+      scenario1Index: '12',
+      aggregation: 'weighted',
+      weights: '0.6,0.4',
+      timestampAlignment: 'asof'
+    } as any);
+
+    const payload = component.buildRunRequest() as any;
+    expect(payload.runType).toBe('stress_tests');
+    expect(payload.data.baseRunId).toBe('run-base-adv');
+    expect(payload.performance.stressTests.source).toBe('returns');
+    expect(payload.performance.stressTests.overlapping).toBeTrue();
+    expect(payload.performance.stressTests.timeDistribution).toEqual({ mode: 'business', seed: 17 });
+    expect(payload.performance.stressTests.paramDrift).toEqual(jasmine.objectContaining({ mode: 'stochastic', dist: 'normal', mu: 0.1 }));
+    expect(payload.performance.stressTests.sizing).toEqual(jasmine.objectContaining({ dist: 'lognormal', mu: 0.2 }));
+    expect(payload.performance.stressTests.output).toEqual({ mode: 'full', maxCurves: 30, curveStride: 2 });
+    expect(payload.performance.stressTests.scenarios.length).toBeGreaterThan(0);
+    expect(payload.performance.stressTests.scenarios[0].name).toBe('Crash shock');
+    expect(payload.performance.stressTests.scenarios[0].index).toBe(12);
+    expect(payload.performance.stressTests.multiAsset).toEqual({
+      aggregation: 'weighted',
+      weights: [0.6, 0.4],
+      timestampAlignment: 'asof'
+    });
+  });
+
+  it('loads stress source runs with filters and displays matching options', () => {
+    fixture.detectChanges();
+    flushInitRequests();
+
+    component.selectRun('stress-tests');
+    const stressCapabilitiesReq = httpMock.expectOne(
+      `${environment.apiUrl}/api/runs/capabilities?spec_type=stress_tests`
+    );
+    stressCapabilitiesReq.flush({ fields: { supported: [], accepted_but_not_wired: [] } } as any);
+    const initialStressSourcesReq = httpMock.expectOne(
+      `${environment.apiUrl}/api/runs/stress/sources?limit=200`
+    );
+    initialStressSourcesReq.flush({ items: [] } as any);
+
+    component.stressForm.patchValue({
+      sourceSpecType: 'backtest',
+      sourceSearch: 'eurusd',
+      sourceStartDate: new Date('2025-01-01T00:00:00Z'),
+      sourceEndDate: new Date('2025-01-31T00:00:00Z')
+    } as any);
+    component.loadStressSources();
+
+    const stressSourcesReq = httpMock.expectOne(
+      `${environment.apiUrl}/api/runs/stress/sources?spec_type=backtest&date_from=2025-01-01&date_to=2025-01-31&q=eurusd&limit=200`
+    );
+    stressSourcesReq.flush({
+      items: [
+        {
+          run_id: 'run-base-2',
+          spec_type: 'backtest',
+          data: { symbol: 'EURUSD', timeframe: '4h' },
+          created_at: '2025-01-15T10:00:00Z'
+        }
+      ]
+    } as any);
+
+    expect(component.stressSourceRunOptions().length).toBe(1);
+    expect(component.stressSourceRunOptions()[0].runId).toBe('run-base-2');
+    expect(String(component.stressForm.get('baseRunId')?.value ?? '')).toBe('run-base-2');
+  });
+
+  it('does not submit stress-tests when baseRunId is missing', () => {
+    fixture.detectChanges();
+    flushInitRequests();
+
+    component.selectRun('stress-tests');
+    const stressCapabilitiesReq = httpMock.expectOne(
+      `${environment.apiUrl}/api/runs/capabilities?spec_type=stress_tests`
+    );
+    stressCapabilitiesReq.flush({ fields: { supported: [], accepted_but_not_wired: [] } } as any);
+    const stressSourcesReq = httpMock.expectOne(
+      `${environment.apiUrl}/api/runs/stress/sources?limit=200`
+    );
+    stressSourcesReq.flush({ items: [] } as any);
+
+    component.stressForm.patchValue({ baseRunId: '' } as any);
+    component.submitRun();
+
+    httpMock.expectNone(`${environment.apiUrl}/api/runs`);
+    expect(component.previewErrors().some(err => err.path === 'data.baseRunId')).toBeTrue();
+  });
+
+  it('accepts nSims below 100 for stress-tests (e.g. 25)', () => {
+    fixture.detectChanges();
+    flushInitRequests();
+
+    component.selectRun('stress-tests');
+    const stressCapabilitiesReq = httpMock.expectOne(
+      `${environment.apiUrl}/api/runs/capabilities?spec_type=stress_tests`
+    );
+    stressCapabilitiesReq.flush({ fields: { supported: [], accepted_but_not_wired: [] } } as any);
+    const stressSourcesReq = httpMock.expectOne(
+      `${environment.apiUrl}/api/runs/stress/sources?limit=200`
+    );
+    stressSourcesReq.flush({ items: [{ run_id: 'run-base-25', spec_type: 'backtest' }] } as any);
+
+    component.stressForm.patchValue({ baseRunId: 'run-base-25', nSims: 25 } as any);
+    expect(component.stressForm.get('nSims')?.valid).toBeTrue();
+    expect(component.stressForm.invalid).toBeFalse();
   });
 
   it('keeps dca payload canonical even if advanced toggle is enabled', () => {

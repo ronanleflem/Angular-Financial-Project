@@ -39,7 +39,7 @@ import {
 } from '../../models/run-request-input.model';
 import { SpecsPreviewService, SpecPreviewResponse } from '../../services/specs-preview.service';
 import { PresetsService, RunPreset } from '../../services/presets.service';
-import { RunsService } from '../../services/runs.service';
+import { RunsService, StressSourceRun } from '../../services/runs.service';
 import { ParameterCatalogService } from '../../services/parameter-catalog.service';
 import { DataImportRangesApiService } from '../../services/data-import-ranges-api.service';
 import { catchError, finalize, of } from 'rxjs';
@@ -113,6 +113,7 @@ const SYMBOL_QUOTE_SUFFIXES = ['USDT', 'USDC', 'USD'] as const;
 const CRYPTO_ALLOWED_CURRENCIES = ['USDT', 'USDC'] as const;
 const NON_CRYPTO_ALLOWED_CURRENCIES = ['USD', 'EUR', 'JPY', 'GBP', 'AUD', 'CAD', 'CHF'] as const;
 const NOT_IMPLEMENTED_YET_MESSAGE = 'Not implemented yet';
+const STRESS_SCENARIO_INDEX_TOKENS = ['start', 'mid', 'end'] as const;
 
 type MetricTone = 'positive' | 'negative' | 'neutral';
 type RunKey = 'dca' | 'backtests' | 'market-stats' | 'seasonality' | 'stress-tests';
@@ -190,6 +191,8 @@ interface BacktestSourceResolution {
   csvSupported: boolean;
   mysqlSupported: boolean;
 }
+
+type StressSourceSpecType = 'all' | 'dca' | 'backtest';
 
 const DEFAULT_FILTER_OPTIONS: FilterOption[] = [
   {
@@ -690,6 +693,11 @@ export class StrategyLauncherPageComponent {
 
   private readonly stressDefaults = {
     strategy: 'Breakout v2',
+    baseRunId: 'run-spy-baseline',
+    sourceSpecType: 'all' as StressSourceSpecType,
+    sourceSearch: '',
+    sourceStartDate: null as Date | null,
+    sourceEndDate: null as Date | null,
     symbol: 'SPY',
     timeframe: '1d',
     startDate: new Date(2018, 0, 1),
@@ -727,23 +735,26 @@ export class StrategyLauncherPageComponent {
     outputMaxCurves: 40,
     outputCurveStride: 5,
     scenario1Type: 'shock',
+    scenario1Name: 'Shock scenario',
     scenario1ShockPct: 12,
     scenario1VolMultiplier: 1.4,
     scenario1DrawdownPct: 18,
     scenario1Window: 30,
-    scenario1Index: 'SPX',
+    scenario1Index: 'start',
     scenario2Type: 'vol_shift',
+    scenario2Name: 'Vol shift scenario',
     scenario2ShockPct: 6,
     scenario2VolMultiplier: 1.8,
     scenario2DrawdownPct: 10,
     scenario2Window: 45,
-    scenario2Index: 'VIX',
+    scenario2Index: 'mid',
     scenario3Type: 'drawdown',
+    scenario3Name: 'Drawdown scenario',
     scenario3ShockPct: 8,
     scenario3VolMultiplier: 1.2,
     scenario3DrawdownPct: 22,
     scenario3Window: 60,
-    scenario3Index: 'NDX',
+    scenario3Index: 'end',
     aggregation: 'weighted',
     weights: '0.5,0.3,0.2',
     timestampAlignment: 'asof',
@@ -1032,17 +1043,22 @@ export class StrategyLauncherPageComponent {
 
   readonly stressForm = this.fb.group({
     strategy: [this.stressDefaults.strategy, Validators.required],
-    symbol: [this.stressDefaults.symbol, [Validators.required, symbolListValidator(this.symbols)]],
-    timeframe: [this.stressDefaults.timeframe, Validators.required],
-    startDate: [this.stressDefaults.startDate, Validators.required],
-    endDate: [this.stressDefaults.endDate, Validators.required],
+    baseRunId: [this.stressDefaults.baseRunId, Validators.required],
+    sourceSpecType: [this.stressDefaults.sourceSpecType],
+    sourceSearch: [this.stressDefaults.sourceSearch],
+    sourceStartDate: [this.stressDefaults.sourceStartDate],
+    sourceEndDate: [this.stressDefaults.sourceEndDate],
+    symbol: [this.stressDefaults.symbol],
+    timeframe: [this.stressDefaults.timeframe],
+    startDate: [this.stressDefaults.startDate],
+    endDate: [this.stressDefaults.endDate],
     scenario: [this.stressDefaults.scenario, Validators.required],
     capital: [this.stressDefaults.capital, [Validators.min(1000)]],
     leverage: [this.stressDefaults.leverage, [Validators.min(1)]],
     maxDdLimit: [this.stressDefaults.maxDdLimit, [Validators.min(5)]],
     mcPaths: [this.stressDefaults.mcPaths, [Validators.min(100)]],
     source: [this.stressDefaults.source, Validators.required],
-    nSims: [this.stressDefaults.nSims, [Validators.min(100)]],
+    nSims: [this.stressDefaults.nSims, [Validators.min(1)]],
     seed: [this.stressDefaults.seed, [Validators.min(0)]],
     method: [this.stressDefaults.method, Validators.required],
     blockSize: [this.stressDefaults.blockSize, [Validators.min(1)]],
@@ -1069,23 +1085,26 @@ export class StrategyLauncherPageComponent {
     outputMaxCurves: [this.stressDefaults.outputMaxCurves, [Validators.min(1)]],
     outputCurveStride: [this.stressDefaults.outputCurveStride, [Validators.min(1)]],
     scenario1Type: [this.stressDefaults.scenario1Type],
+    scenario1Name: [this.stressDefaults.scenario1Name],
     scenario1ShockPct: [this.stressDefaults.scenario1ShockPct, [Validators.min(0)]],
     scenario1VolMultiplier: [this.stressDefaults.scenario1VolMultiplier, [Validators.min(0)]],
     scenario1DrawdownPct: [this.stressDefaults.scenario1DrawdownPct, [Validators.min(0)]],
     scenario1Window: [this.stressDefaults.scenario1Window, [Validators.min(1)]],
-    scenario1Index: [this.stressDefaults.scenario1Index],
+    scenario1Index: [this.stressDefaults.scenario1Index, [stressScenarioIndexValidator()]],
     scenario2Type: [this.stressDefaults.scenario2Type],
+    scenario2Name: [this.stressDefaults.scenario2Name],
     scenario2ShockPct: [this.stressDefaults.scenario2ShockPct, [Validators.min(0)]],
     scenario2VolMultiplier: [this.stressDefaults.scenario2VolMultiplier, [Validators.min(0)]],
     scenario2DrawdownPct: [this.stressDefaults.scenario2DrawdownPct, [Validators.min(0)]],
     scenario2Window: [this.stressDefaults.scenario2Window, [Validators.min(1)]],
-    scenario2Index: [this.stressDefaults.scenario2Index],
+    scenario2Index: [this.stressDefaults.scenario2Index, [stressScenarioIndexValidator()]],
     scenario3Type: [this.stressDefaults.scenario3Type],
+    scenario3Name: [this.stressDefaults.scenario3Name],
     scenario3ShockPct: [this.stressDefaults.scenario3ShockPct, [Validators.min(0)]],
     scenario3VolMultiplier: [this.stressDefaults.scenario3VolMultiplier, [Validators.min(0)]],
     scenario3DrawdownPct: [this.stressDefaults.scenario3DrawdownPct, [Validators.min(0)]],
     scenario3Window: [this.stressDefaults.scenario3Window, [Validators.min(1)]],
-    scenario3Index: [this.stressDefaults.scenario3Index],
+    scenario3Index: [this.stressDefaults.scenario3Index, [stressScenarioIndexValidator()]],
     aggregation: [this.stressDefaults.aggregation],
     weights: [this.stressDefaults.weights],
     timestampAlignment: [this.stressDefaults.timestampAlignment],
@@ -1135,6 +1154,12 @@ export class StrategyLauncherPageComponent {
   readonly seasonalityCapabilitiesInfo = signal<string | null>(null);
   readonly seasonalityCanonicalSupportedFields = signal<string[]>([]);
   readonly seasonalityCanonicalAcceptedButNotWiredFields = signal<string[]>([]);
+  readonly stressCapabilitiesInfo = signal<string | null>(null);
+  readonly stressCanonicalSupportedFields = signal<string[]>([]);
+  readonly stressCanonicalAcceptedButNotWiredFields = signal<string[]>([]);
+  readonly stressSourcesLoading = signal(false);
+  readonly stressSourcesError = signal<string | null>(null);
+  readonly stressSources = signal<StressSourceRun[]>([]);
   readonly presetMessages = signal<Record<RunKey, string | null>>({
     'dca': null,
     'backtests': null,
@@ -1160,6 +1185,11 @@ export class StrategyLauncherPageComponent {
   private seasonalitySupportedFields = new Set<string>();
   private seasonalityAcceptedButNotWiredFields = new Set<string>();
   private seasonalityDataSymbolsSupported = false;
+  private stressCapabilitiesAvailable = false;
+  private stressSupportedFields = new Set<string>();
+  private stressAcceptedButNotWiredFields = new Set<string>();
+  private stressCapabilitiesLoaded = false;
+  private stressSourcesLoaded = false;
 
   constructor() {
     this.setUniverseControlAvailability(false);
@@ -2280,6 +2310,9 @@ export class StrategyLauncherPageComponent {
   }
 
   private runForSelection(key: RunKey): void {
+    if (key === 'stress-tests') {
+      this.ensureStressModeRuntimeData();
+    }
     const payload = this.buildRequestForTheme(key);
     this.previewErrors.set([]);
     this.previewResult.set(null);
@@ -2397,6 +2430,16 @@ export class StrategyLauncherPageComponent {
       return true;
     }
     return candidatePaths.some(path => this.isSeasonalityFieldRuntimeWired(path));
+  }
+
+  isStressFieldRuntimeWired(path: string): boolean {
+    if (!this.stressCapabilitiesAvailable) {
+      return true;
+    }
+    if (!this.hasCapabilityField(this.stressSupportedFields, path)) {
+      return false;
+    }
+    return !this.hasCapabilityFieldAtOrAbove(this.stressAcceptedButNotWiredFields, path);
   }
 
   marketStatsUsesMultiSymbols(): boolean {
@@ -2686,6 +2729,8 @@ export class StrategyLauncherPageComponent {
       normalized['screenWindowEnd'] = normalizeDate(formValue['screenWindowEnd']);
     }
     if (theme === 'stress-tests') {
+      normalized['sourceStartDate'] = normalizeDate(formValue['sourceStartDate']);
+      normalized['sourceEndDate'] = normalizeDate(formValue['sourceEndDate']);
       normalized['startDate'] = normalizeDate(formValue['startDate']);
       normalized['endDate'] = normalizeDate(formValue['endDate']);
     }
@@ -2884,6 +2929,129 @@ export class StrategyLauncherPageComponent {
           this.seasonalityCapabilitiesAvailable ? 'Mode capabilities seasonality actif.' : null
         );
       });
+  }
+
+  private ensureStressModeRuntimeData(): void {
+    if (!this.stressCapabilitiesLoaded) {
+      this.loadStressCapabilities();
+    }
+    if (!this.stressSourcesLoaded && !this.stressSourcesLoading()) {
+      this.loadStressSources();
+    }
+  }
+
+  private loadStressCapabilities(): void {
+    this.runsService
+      .getRunCapabilities('stress_tests')
+      .pipe(
+        catchError(err => {
+          console.warn('[StrategyLauncher] /runs/capabilities(stress_tests) unavailable, fallback static mode', err);
+          this.stressCapabilitiesLoaded = true;
+          this.stressCapabilitiesAvailable = false;
+          this.stressSupportedFields = new Set<string>();
+          this.stressAcceptedButNotWiredFields = new Set<string>();
+          this.stressCapabilitiesInfo.set('Capabilities stress_tests indisponibles, mode statique active.');
+          this.stressCanonicalSupportedFields.set([]);
+          this.stressCanonicalAcceptedButNotWiredFields.set([]);
+          return of(null);
+        })
+      )
+      .subscribe(capabilities => {
+        this.stressCapabilitiesLoaded = true;
+        if (!capabilities) {
+          return;
+        }
+        const fields = this.extractCanonicalFields(capabilities as Record<string, unknown>);
+        this.stressCapabilitiesAvailable = fields.supported.length > 0 || fields.acceptedButNotWired.length > 0;
+        this.stressSupportedFields = new Set(fields.supported);
+        this.stressAcceptedButNotWiredFields = new Set(fields.acceptedButNotWired);
+        this.stressCanonicalSupportedFields.set(fields.supported);
+        this.stressCanonicalAcceptedButNotWiredFields.set(fields.acceptedButNotWired);
+        this.stressCapabilitiesInfo.set(
+          this.stressCapabilitiesAvailable
+            ? 'Mode capabilities stress_tests actif.'
+            : null
+        );
+      });
+  }
+
+  loadStressSources(): void {
+    if (this.stressSourcesLoading()) {
+      return;
+    }
+    const value = this.stressForm.getRawValue();
+    const sourceSpecType = String(value.sourceSpecType ?? this.stressDefaults.sourceSpecType).trim().toLowerCase();
+    const sourceSearch = String(value.sourceSearch ?? '').trim();
+    const sourceStartDate = toIsoDate(value.sourceStartDate as Date | string | null | undefined);
+    const sourceEndDate = toIsoDate(value.sourceEndDate as Date | string | null | undefined);
+
+    this.stressSourcesLoading.set(true);
+    this.stressSourcesError.set(null);
+    this.runsService
+      .getStressSources({
+        specType: sourceSpecType && sourceSpecType !== 'all' ? sourceSpecType : undefined,
+        dateFrom: sourceStartDate || undefined,
+        dateTo: sourceEndDate || undefined,
+        search: sourceSearch || undefined,
+        limit: 200
+      })
+      .pipe(finalize(() => this.stressSourcesLoading.set(false)))
+      .subscribe({
+        next: rows => {
+          const eligible = rows.filter(row => {
+            const specType = String(row.specType ?? '').trim().toLowerCase();
+            return specType === 'dca' || specType === 'backtest';
+          });
+          this.stressSources.set(eligible);
+          this.stressSourcesLoaded = true;
+          if (eligible.length === 0) {
+            this.stressSourcesError.set('Aucun run source eligible.');
+            return;
+          }
+          const baseRunId = String(this.stressForm.get('baseRunId')?.value ?? '').trim();
+          const exists = eligible.some(row => row.runId === baseRunId);
+          if (!exists) {
+            this.stressForm.get('baseRunId')?.setValue(eligible[0].runId as any);
+          }
+        },
+        error: err => {
+          console.error('[StrategyLauncher] Failed to load stress source runs', err);
+          this.stressSources.set([]);
+          this.stressSourcesLoaded = true;
+          this.stressSourcesError.set('Impossible de charger les runs source.');
+        }
+      });
+  }
+
+  stressSourceRunOptions(): StressSourceRun[] {
+    const value = this.stressForm.getRawValue();
+    const query = String(value.sourceSearch ?? '').trim().toLowerCase();
+    if (!query) {
+      return this.stressSources();
+    }
+    return this.stressSources().filter(source => {
+      return this.formatStressSourceLabel(source).toLowerCase().includes(query);
+    });
+  }
+
+  formatStressSourceLabel(source: StressSourceRun): string {
+    const parts = [
+      source.runId,
+      source.specType || 'unknown',
+      source.symbol || '-',
+      source.timeframe || '-',
+      source.createdAt || '-'
+    ];
+    return parts.join(' | ');
+  }
+
+  selectedStressSourceLabel(): string {
+    const selectedRunId = String(this.stressForm.get('baseRunId')?.value ?? '').trim();
+    if (!selectedRunId) {
+      return '';
+    }
+    const selected = this.stressSources().find(source => source.runId === selectedRunId);
+    return selected ? this.formatStressSourceLabel(selected) : selectedRunId;
   }
 
   private extractDcaGridCapabilities(payload: Record<string, unknown>): string[] {
@@ -3971,19 +4139,10 @@ export class StrategyLauncherPageComponent {
     return {
       runType: 'stress_tests',
       data: {
-        symbol: String(v.symbol ?? this.stressDefaults.symbol),
-        timeframe: String(v.timeframe ?? this.stressDefaults.timeframe),
-        startDate: toIsoDate(v.startDate ?? this.stressDefaults.startDate),
-        endDate: toIsoDate(v.endDate ?? this.stressDefaults.endDate)
+        baseRunId: String(v.baseRunId ?? '').trim()
       },
       performance: {
-        ...this.buildPerformanceBlock(
-          v.capital,
-          undefined,
-          undefined,
-          undefined,
-          undefined
-        ),
+        ...this.buildPerformanceBlock(),
         stressTests: this.buildStressTestsBlock(v)
       }
     };
@@ -4457,13 +4616,197 @@ export class StrategyLauncherPageComponent {
   }
 
   private buildStressTestsBlock(value: ReturnType<typeof this.stressForm.getRawValue>): MonteCarloStressTests {
-    return {
+    const includeAdvanced = Boolean(value.includeStressAdvanced ?? this.stressDefaults.includeStressAdvanced);
+    const block: MonteCarloStressTests = {
       enabled: true,
       nSims: Number(value.nSims ?? this.stressDefaults.nSims),
       seed: Number(value.seed ?? this.stressDefaults.seed),
       method: String(value.method ?? this.stressDefaults.method),
-      blockSize: Number(value.blockSize ?? this.stressDefaults.blockSize)
+      blockSize: Number(value.blockSize ?? this.stressDefaults.blockSize),
+      scenarios: []
     };
+
+    if (!includeAdvanced) {
+      return block;
+    }
+
+    if (this.isStressFieldRuntimeWired('performance.stress_tests.source')) {
+      block.source = String(value.source ?? this.stressDefaults.source);
+    }
+    if (this.isStressFieldRuntimeWired('performance.stress_tests.overlapping')) {
+      block.overlapping = Boolean(value.overlapping ?? this.stressDefaults.overlapping);
+    }
+    if (
+      this.isStressFieldRuntimeWired('performance.stress_tests.time_distribution.mode') ||
+      this.isStressFieldRuntimeWired('performance.stress_tests.time_distribution.seed')
+    ) {
+      block.timeDistribution = {
+        mode: this.isStressFieldRuntimeWired('performance.stress_tests.time_distribution.mode')
+          ? String(value.timeDistMode ?? this.stressDefaults.timeDistMode)
+          : undefined,
+        seed: this.isStressFieldRuntimeWired('performance.stress_tests.time_distribution.seed')
+          ? Number(value.timeDistSeed ?? this.stressDefaults.timeDistSeed)
+          : undefined
+      };
+    }
+    if (
+      this.isStressFieldRuntimeWired('performance.stress_tests.param_drift.mode') ||
+      this.isStressFieldRuntimeWired('performance.stress_tests.param_drift.dist') ||
+      this.isStressFieldRuntimeWired('performance.stress_tests.param_drift.mu') ||
+      this.isStressFieldRuntimeWired('performance.stress_tests.param_drift.sigma') ||
+      this.isStressFieldRuntimeWired('performance.stress_tests.param_drift.low') ||
+      this.isStressFieldRuntimeWired('performance.stress_tests.param_drift.high') ||
+      this.isStressFieldRuntimeWired('performance.stress_tests.param_drift.min') ||
+      this.isStressFieldRuntimeWired('performance.stress_tests.param_drift.max') ||
+      this.isStressFieldRuntimeWired('performance.stress_tests.param_drift.seed')
+    ) {
+      block.paramDrift = {
+        mode: this.isStressFieldRuntimeWired('performance.stress_tests.param_drift.mode')
+          ? String(value.paramDriftMode ?? this.stressDefaults.paramDriftMode)
+          : undefined,
+        dist: this.isStressFieldRuntimeWired('performance.stress_tests.param_drift.dist')
+          ? String(value.paramDriftDist ?? this.stressDefaults.paramDriftDist)
+          : undefined,
+        mu: this.isStressFieldRuntimeWired('performance.stress_tests.param_drift.mu')
+          ? Number(value.paramDriftMu ?? this.stressDefaults.paramDriftMu)
+          : undefined,
+        sigma: this.isStressFieldRuntimeWired('performance.stress_tests.param_drift.sigma')
+          ? Number(value.paramDriftSigma ?? this.stressDefaults.paramDriftSigma)
+          : undefined,
+        low: this.isStressFieldRuntimeWired('performance.stress_tests.param_drift.low')
+          ? Number(value.paramDriftLow ?? this.stressDefaults.paramDriftLow)
+          : undefined,
+        high: this.isStressFieldRuntimeWired('performance.stress_tests.param_drift.high')
+          ? Number(value.paramDriftHigh ?? this.stressDefaults.paramDriftHigh)
+          : undefined,
+        min: this.isStressFieldRuntimeWired('performance.stress_tests.param_drift.min')
+          ? Number(value.paramDriftMin ?? this.stressDefaults.paramDriftMin)
+          : undefined,
+        max: this.isStressFieldRuntimeWired('performance.stress_tests.param_drift.max')
+          ? Number(value.paramDriftMax ?? this.stressDefaults.paramDriftMax)
+          : undefined,
+        seed: this.isStressFieldRuntimeWired('performance.stress_tests.param_drift.seed')
+          ? Number(value.paramDriftSeed ?? this.stressDefaults.paramDriftSeed)
+          : undefined
+      };
+    }
+    if (
+      this.isStressFieldRuntimeWired('performance.stress_tests.sizing.dist') ||
+      this.isStressFieldRuntimeWired('performance.stress_tests.sizing.mu') ||
+      this.isStressFieldRuntimeWired('performance.stress_tests.sizing.sigma') ||
+      this.isStressFieldRuntimeWired('performance.stress_tests.sizing.low') ||
+      this.isStressFieldRuntimeWired('performance.stress_tests.sizing.high') ||
+      this.isStressFieldRuntimeWired('performance.stress_tests.sizing.min') ||
+      this.isStressFieldRuntimeWired('performance.stress_tests.sizing.max')
+    ) {
+      block.sizing = {
+        dist: this.isStressFieldRuntimeWired('performance.stress_tests.sizing.dist')
+          ? String(value.sizingDist ?? this.stressDefaults.sizingDist)
+          : undefined,
+        mu: this.isStressFieldRuntimeWired('performance.stress_tests.sizing.mu')
+          ? Number(value.sizingMu ?? this.stressDefaults.sizingMu)
+          : undefined,
+        sigma: this.isStressFieldRuntimeWired('performance.stress_tests.sizing.sigma')
+          ? Number(value.sizingSigma ?? this.stressDefaults.sizingSigma)
+          : undefined,
+        low: this.isStressFieldRuntimeWired('performance.stress_tests.sizing.low')
+          ? Number(value.sizingLow ?? this.stressDefaults.sizingLow)
+          : undefined,
+        high: this.isStressFieldRuntimeWired('performance.stress_tests.sizing.high')
+          ? Number(value.sizingHigh ?? this.stressDefaults.sizingHigh)
+          : undefined,
+        min: this.isStressFieldRuntimeWired('performance.stress_tests.sizing.min')
+          ? Number(value.sizingMin ?? this.stressDefaults.sizingMin)
+          : undefined,
+        max: this.isStressFieldRuntimeWired('performance.stress_tests.sizing.max')
+          ? Number(value.sizingMax ?? this.stressDefaults.sizingMax)
+          : undefined
+      };
+    }
+    if (
+      this.isStressFieldRuntimeWired('performance.stress_tests.output.mode') ||
+      this.isStressFieldRuntimeWired('performance.stress_tests.output.max_curves') ||
+      this.isStressFieldRuntimeWired('performance.stress_tests.output.curve_stride')
+    ) {
+      block.output = {
+        mode: this.isStressFieldRuntimeWired('performance.stress_tests.output.mode')
+          ? String(value.outputMode ?? this.stressDefaults.outputMode)
+          : undefined,
+        maxCurves: this.isStressFieldRuntimeWired('performance.stress_tests.output.max_curves')
+          ? Number(value.outputMaxCurves ?? this.stressDefaults.outputMaxCurves)
+          : undefined,
+        curveStride: this.isStressFieldRuntimeWired('performance.stress_tests.output.curve_stride')
+          ? Number(value.outputCurveStride ?? this.stressDefaults.outputCurveStride)
+          : undefined
+      };
+    }
+
+    if (this.isStressFieldRuntimeWired('performance.stress_tests.scenarios')) {
+      block.scenarios = this.buildStressScenarioSlots(value);
+    }
+
+    if (
+      this.isStressFieldRuntimeWired('performance.stress_tests.multi_asset.aggregation') ||
+      this.isStressFieldRuntimeWired('performance.stress_tests.multi_asset.weights') ||
+      this.isStressFieldRuntimeWired('performance.stress_tests.multi_asset.timestamp_alignment')
+    ) {
+      block.multiAsset = {
+        aggregation: this.isStressFieldRuntimeWired('performance.stress_tests.multi_asset.aggregation')
+          ? String(value.aggregation ?? this.stressDefaults.aggregation)
+          : undefined,
+        weights: this.isStressFieldRuntimeWired('performance.stress_tests.multi_asset.weights')
+          ? this.parseStressWeights(value.weights ?? this.stressDefaults.weights)
+          : undefined,
+        timestampAlignment: this.isStressFieldRuntimeWired('performance.stress_tests.multi_asset.timestamp_alignment')
+          ? String(value.timestampAlignment ?? this.stressDefaults.timestampAlignment)
+          : undefined
+      };
+    }
+
+    return block;
+  }
+
+  private buildStressScenarioSlots(value: ReturnType<typeof this.stressForm.getRawValue>): MonteCarloStressTests['scenarios'] {
+    const scenarios: NonNullable<MonteCarloStressTests['scenarios']> = [];
+    for (const slot of this.stressScenarioSlots) {
+      const type = String((value as Record<string, unknown>)[`scenario${slot}Type`] ?? '').trim();
+      const name = String((value as Record<string, unknown>)[`scenario${slot}Name`] ?? '').trim();
+      if (!type || !name) {
+        continue;
+      }
+      scenarios.push({
+        name,
+        type,
+        shockPct: Number((value as Record<string, unknown>)[`scenario${slot}ShockPct`] ?? 0),
+        volMultiplier: Number((value as Record<string, unknown>)[`scenario${slot}VolMultiplier`] ?? 0),
+        drawdownPct: Number((value as Record<string, unknown>)[`scenario${slot}DrawdownPct`] ?? 0),
+        window: Number((value as Record<string, unknown>)[`scenario${slot}Window`] ?? 0),
+        index: this.normalizeScenarioIndex((value as Record<string, unknown>)[`scenario${slot}Index`])
+      });
+    }
+    return scenarios;
+  }
+
+  private normalizeScenarioIndex(raw: unknown): string | number | undefined {
+    const value = String(raw ?? '').trim().toLowerCase();
+    if (!value) {
+      return undefined;
+    }
+    if (/^-?\d+$/.test(value)) {
+      return Number(value);
+    }
+    if ((STRESS_SCENARIO_INDEX_TOKENS as readonly string[]).includes(value)) {
+      return value;
+    }
+    return undefined;
+  }
+
+  private parseStressWeights(raw: unknown): number[] {
+    const parts = String(raw ?? '')
+      .split(',')
+      .map(item => Number(item.trim()))
+      .filter(value => Number.isFinite(value));
+    return parts.length > 0 ? parts : [];
   }
 
   private getControlValue(controlName: string): unknown {
@@ -4796,6 +5139,21 @@ function dcaDeltaAssetClassValidator() {
     }
     const conflict = Boolean(control.get('deltaAssetClassConflict')?.value);
     return conflict ? { deltaAssetClassConflict: true } : null;
+  };
+}
+
+function stressScenarioIndexValidator() {
+  return (control: AbstractControl): ValidationErrors | null => {
+    const raw = String(control.value ?? '').trim().toLowerCase();
+    if (!raw) {
+      return null;
+    }
+    if (/^-?\d+$/.test(raw)) {
+      return null;
+    }
+    return (STRESS_SCENARIO_INDEX_TOKENS as readonly string[]).includes(raw)
+      ? null
+      : { scenarioIndexInvalid: true };
   };
 }
 

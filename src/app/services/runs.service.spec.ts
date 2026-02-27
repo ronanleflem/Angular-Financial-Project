@@ -202,17 +202,53 @@ describe('RunsService', () => {
     expect(response.strategy.grid_presets).toEqual(['grid_balanced']);
   });
 
+  it('loads stress source runs with filters and normalizes fields', () => {
+    let response: any;
+    service.getStressSources({
+      specType: 'backtest',
+      dateFrom: '2025-01-01',
+      dateTo: '2025-01-31',
+      search: 'eurusd',
+      limit: 25
+    }).subscribe(value => {
+      response = value;
+    });
+
+    const req = httpMock.expectOne(
+      `${environment.apiUrl}/api/runs/stress/sources?spec_type=backtest&date_from=2025-01-01&date_to=2025-01-31&q=eurusd&limit=25`
+    );
+    expect(req.request.method).toBe('GET');
+    req.flush({
+      items: [
+        {
+          run_id: 'run-base-1',
+          spec_type: 'backtest',
+          data: { symbol: 'EURUSD', timeframe: '1h' },
+          created_at: '2025-01-15T10:00:00Z',
+          status: 'SUCCEEDED'
+        }
+      ]
+    });
+
+    expect(response).toEqual([
+      {
+        runId: 'run-base-1',
+        specType: 'backtest',
+        symbol: 'EURUSD',
+        timeframe: '1h',
+        createdAt: '2025-01-15T10:00:00Z',
+        status: 'SUCCEEDED'
+      }
+    ]);
+  });
+
   it('submits stress_tests canonical payload with only supported fields', () => {
     service.submitRun({
       runType: 'stress_tests',
       data: {
-        symbol: 'SPY',
-        timeframe: '1d',
-        startDate: '2018-01-01',
-        endDate: '2024-12-31'
+        baseRunId: 'run-123'
       },
       performance: {
-        initialCapital: 50000,
         stressTests: {
           enabled: true,
           method: 'block_bootstrap',
@@ -226,12 +262,8 @@ describe('RunsService', () => {
     const req = httpMock.expectOne(`${environment.apiUrl}/api/runs`);
     expect(req.request.method).toBe('POST');
     expect(req.request.body.data).toEqual({
-      symbol: 'SPY',
-      timeframe: '1d',
-      start_date: '2018-01-01',
-      end_date: '2024-12-31'
+      base_run_id: 'run-123'
     });
-    expect(req.request.body.performance.initial_capital).toBe(50000);
     expect(req.request.body.performance.stress_tests).toEqual({
       enabled: true,
       method: 'block_bootstrap',

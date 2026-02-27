@@ -2357,57 +2357,76 @@
       </mat-card-header>
       <mat-card-content>
         <form class="strategy-form" [formGroup]="stressForm" (ngSubmit)="runStressTests()">
-          <mat-form-field appearance="outline">
-            <mat-label>Strategie</mat-label>
-            <mat-select formControlName="strategy">
-              <mat-option *ngFor="let option of stressStrategies" [value]="option">{{ option }}</mat-option>
-            </mat-select>
-          </mat-form-field>
+          <section class="section-block">
+            <div class="section-title">Source run</div>
+            <div class="row-3">
+              <mat-form-field appearance="outline">
+                <mat-label>spec_type</mat-label>
+                <mat-select formControlName="sourceSpecType">
+                  <mat-option value="all">Tous</mat-option>
+                  <mat-option value="dca">dca</mat-option>
+                  <mat-option value="backtest">backtest</mat-option>
+                </mat-select>
+              </mat-form-field>
 
-          <mat-form-field appearance="outline">
-            <mat-label>Symbole</mat-label>
-            <input matInput type="text" [matAutocomplete]="symbolAutoStress" formControlName="symbol" />
-            <mat-autocomplete #symbolAutoStress="matAutocomplete" autoActiveFirstOption>
-              <mat-option *ngFor="let symbol of symbols" [value]="symbol">{{ displaySymbol(symbol) }}</mat-option>
-            </mat-autocomplete>
-          </mat-form-field>
+              <mat-form-field appearance="outline" class="range-field">
+                <mat-label>Periode source</mat-label>
+                <mat-date-range-input [rangePicker]="stressSourceRangePicker">
+                  <input matStartDate placeholder="Debut" formControlName="sourceStartDate" />
+                  <input matEndDate placeholder="Fin" formControlName="sourceEndDate" />
+                </mat-date-range-input>
+                <mat-datepicker-toggle matIconSuffix [for]="stressSourceRangePicker"></mat-datepicker-toggle>
+                <mat-date-range-picker #stressSourceRangePicker></mat-date-range-picker>
+              </mat-form-field>
 
-          <mat-form-field appearance="outline">
-            <mat-label>Timeframe</mat-label>
-            <mat-select formControlName="timeframe">
-              <mat-option *ngFor="let tf of timeframes" [value]="tf">{{ tf }}</mat-option>
-            </mat-select>
-          </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>Recherche</mat-label>
+                <input matInput type="text" formControlName="sourceSearch" />
+              </mat-form-field>
+            </div>
 
-          <mat-form-field appearance="outline" class="range-field">
-            <mat-label>Periode</mat-label>
-            <mat-date-range-input [rangePicker]="stressRangePicker">
-              <input matStartDate placeholder="Debut" formControlName="startDate" />
-              <input matEndDate placeholder="Fin" formControlName="endDate" />
-            </mat-date-range-input>
-            <mat-datepicker-toggle matIconSuffix [for]="stressRangePicker"></mat-datepicker-toggle>
-            <mat-date-range-picker #stressRangePicker></mat-date-range-picker>
-          </mat-form-field>
+            <div class="param-group">
+              <button mat-stroked-button type="button" (click)="loadStressSources()" [disabled]="stressSourcesLoading()">
+                Charger sources
+              </button>
+            </div>
 
-          <ng-container *ngIf="stressForm.get('includeStressAdvanced')?.value; else stressScenarioLocked">
+            <div class="param-hint" *ngIf="stressSourcesLoading()">Chargement des runs source...</div>
+            <div class="param-hint" *ngIf="stressSourcesError()">{{ stressSourcesError() }}</div>
+            <div class="param-hint" *ngIf="!stressSourcesLoading() && !stressSourcesError() && stressSourceRunOptions().length === 0">
+              Aucun run source.
+            </div>
+
             <mat-form-field appearance="outline">
-              <mat-label>Scenario</mat-label>
-              <mat-select formControlName="scenario">
-                <mat-option *ngFor="let scenario of stressScenarios" [value]="scenario">{{ scenario }}</mat-option>
+              <mat-label>Run source (base_run_id)</mat-label>
+              <mat-select formControlName="baseRunId">
+                <mat-option *ngFor="let source of stressSourceRunOptions()" [value]="source.runId">
+                  {{ formatStressSourceLabel(source) }}
+                </mat-option>
               </mat-select>
             </mat-form-field>
-          </ng-container>
-          <ng-template #stressScenarioLocked>
-            <div class="checkbox-row">
-              <span class="not-implemented">Scenario: Not implemented yet</span>
+            <div class="param-hint" *ngIf="selectedStressSourceLabel()">
+              Selection: {{ selectedStressSourceLabel() }}
             </div>
-          </ng-template>
+          </section>
 
           <section class="section-block">
             <div class="section-title">Parametres</div>
             <div class="checkbox-row">
               <mat-checkbox formControlName="includeStressAdvanced">Inclure options avancees stress tests</mat-checkbox>
-              <span class="not-implemented" *ngIf="!stressForm.get('includeStressAdvanced')?.value">Not implemented yet</span>
+            </div>
+            <div class="param-hint" *ngIf="stressCapabilitiesInfo()">{{ stressCapabilitiesInfo() }}</div>
+            <div class="param-group" *ngIf="stressCanonicalSupportedFields().length">
+              <div class="param-hint">Canonical supporte</div>
+              <ul class="error-body">
+                <li *ngFor="let field of stressCanonicalSupportedFields()">{{ field }}</li>
+              </ul>
+            </div>
+            <div class="param-group" *ngIf="stressCanonicalAcceptedButNotWiredFields().length">
+              <div class="param-hint">Canonical non cable runtime</div>
+              <ul class="error-body">
+                <li *ngFor="let field of stressCanonicalAcceptedButNotWiredFields()">{{ field }}</li>
+              </ul>
             </div>
             <mat-accordion class="accordion" multi>
               <ng-container *ngIf="stressForm.get('includeStressAdvanced')?.value">
@@ -2422,6 +2441,9 @@
                       <mat-option *ngFor="let option of stressSourceOptions" [value]="option">{{ option }}</mat-option>
                     </mat-select>
                   </mat-form-field>
+                  <div class="checkbox-row">
+                    <span class="not-implemented">accepted, currently not wired</span>
+                  </div>
                 </div>
               </mat-expansion-panel>
               </ng-container>
@@ -2433,7 +2455,7 @@
                 <div class="param-grid">
                   <mat-form-field appearance="outline">
                     <mat-label>n_sims</mat-label>
-                    <input matInput type="number" formControlName="nSims" min="100" />
+                    <input matInput type="number" formControlName="nSims" min="1" />
                   </mat-form-field>
 
                   <mat-form-field appearance="outline">
@@ -2591,6 +2613,10 @@
                   <div class="param-hint">scenario {{ slot }}</div>
                   <div class="param-grid">
                     <mat-form-field appearance="outline">
+                      <mat-label>name</mat-label>
+                      <input matInput type="text" [formControlName]="'scenario' + slot + 'Name'" />
+                    </mat-form-field>
+                    <mat-form-field appearance="outline">
                       <mat-label>type</mat-label>
                       <mat-select
                         [formControlName]="'scenario' + slot + 'Type'"
@@ -2621,8 +2647,9 @@
                     </mat-form-field>
 
                     <mat-form-field appearance="outline">
-                      <mat-label>index</mat-label>
+                      <mat-label>index (start|mid|end|int)</mat-label>
                       <input matInput type="text" [formControlName]="'scenario' + slot + 'Index'" />
+                      <mat-hint>Accepted: start, mid, end or integer</mat-hint>
                     </mat-form-field>
                   </div>
                 </div>

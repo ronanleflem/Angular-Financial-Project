@@ -262,7 +262,9 @@ export interface SeasonalityBlock {
   execution?: SeasonalityExecutionBlock;
 }
 
-export interface StressTestsDataBlock extends DataBlockBase, PeriodBlock {}
+export interface StressTestsDataBlock {
+  baseRunId: string;
+}
 
 export interface MonteCarloStressTests {
   enabled: boolean;
@@ -302,12 +304,13 @@ export interface MonteCarloStressTests {
     curveStride?: number;
   };
   scenarios?: Array<{
+    name: string;
     type: string;
     shockPct?: number;
     volMultiplier?: number;
     drawdownPct?: number;
     window?: number;
-    index?: string;
+    index?: string | number;
   }>;
   multiAsset?: {
     aggregation?: string;
@@ -417,16 +420,22 @@ export function validateRunRequest(input: RunRequestInput): ValidationError[] {
       }
       break;
     case 'stress_tests':
-      validateRequired(errors, 'data.symbol', input.data.symbol);
-      validateRequired(errors, 'data.timeframe', input.data.timeframe);
-      validateRequired(errors, 'data.startDate', input.data.startDate);
-      validateRequired(errors, 'data.endDate', input.data.endDate);
-      validateDateOrder(errors, 'data.startDate', 'data.endDate', input.data.startDate, input.data.endDate);
+      validateRequired(errors, 'data.baseRunId', input.data.baseRunId);
       if (!input.performance?.stressTests) {
         errors.push({ path: 'performance.stressTests', message: 'stressTests is required' });
       } else {
         if (input.performance.stressTests.nSims <= 0) {
           errors.push({ path: 'performance.stressTests.nSims', message: 'nSims must be > 0' });
+        }
+        if (Array.isArray(input.performance.stressTests.scenarios)) {
+          input.performance.stressTests.scenarios.forEach((scenario, index) => {
+            if (!String(scenario?.name ?? '').trim()) {
+              errors.push({
+                path: `performance.stressTests.scenarios[${index}].name`,
+                message: 'name is required'
+              });
+            }
+          });
         }
       }
       break;

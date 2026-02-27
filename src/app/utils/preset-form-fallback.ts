@@ -318,8 +318,9 @@ function mapStressTestsPayload(payload: RunRequestInput): Record<string, unknown
   const stress = payload.performance.stressTests;
   const result: Record<string, unknown> = {
     strategy: (payload as any).strategy?.name,
-    symbol: payload.data.symbol,
-    timeframe: payload.data.timeframe,
+    baseRunId: payload.data.baseRunId,
+    symbol: (payload.data as any).symbol,
+    timeframe: (payload.data as any).timeframe,
     startDate: (payload.data as any).startDate,
     endDate: (payload.data as any).endDate,
     capital: payload.performance.initialCapital,
@@ -368,6 +369,7 @@ function mapStressTestsPayload(payload: RunRequestInput): Record<string, unknown
   if (Array.isArray(stress.scenarios)) {
     stress.scenarios.slice(0, 3).forEach((scenario, index) => {
       const slot = index + 1;
+      result[`scenario${slot}Name`] = (scenario as any).name;
       result[`scenario${slot}Type`] = scenario.type;
       result[`scenario${slot}ShockPct`] = scenario.shockPct;
       result[`scenario${slot}VolMultiplier`] = scenario.volMultiplier;

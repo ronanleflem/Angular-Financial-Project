@@ -19,7 +19,7 @@ export function buildCanonicalRunPayload(
   specType: RunType = uiModel.runType,
   options: CanonicalRunRequestOptions = {}
 ): CanonicalRunRequest {
-  const symbolValue = String(uiModel?.data?.symbol ?? '').trim();
+  const symbolValue = String((uiModel?.data as any)?.symbol ?? '').trim();
   const symbolsValue = Array.isArray((uiModel as any)?.data?.symbols)
     ? ((uiModel as any).data.symbols as unknown[])
       .map(item => String(item ?? '').trim())
@@ -29,7 +29,7 @@ export function buildCanonicalRunPayload(
     (Array.isArray((uiModel as any)?.universe) && ((uiModel as any)?.universe as unknown[]).length > 0) ||
     (Array.isArray((uiModel as any)?.data?.universe) && ((uiModel as any)?.data?.universe as unknown[]).length > 0)
   );
-  if (!symbolValue && symbolsValue.length === 0 && !hasUniverseEntries) {
+  if (uiModel.runType !== 'stress_tests' && !symbolValue && symbolsValue.length === 0 && !hasUniverseEntries) {
     throw new Error('canonical_builder_error:data.symbol is required');
   }
   if (uiModel.runType !== specType) {

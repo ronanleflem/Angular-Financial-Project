@@ -207,4 +207,23 @@ describe('run-request-adapter', () => {
     expect(canonical.data.symbol).toBeUndefined();
     expect(canonical.data.symbols).toEqual(['BTC', 'ETH']);
   });
+
+  it('accepts stress_tests payload without data.symbol and maps base_run_id', () => {
+    const payload = {
+      runType: 'stress_tests',
+      data: {
+        baseRunId: 'run-abc'
+      },
+      performance: {
+        stressTests: {
+          enabled: true,
+          nSims: 2000
+        }
+      }
+    } as unknown as RunRequestInput;
+
+    const canonical = buildCanonicalRunPayload(payload, 'stress_tests') as any;
+    expect(canonical.data.base_run_id).toBe('run-abc');
+    expect(canonical.data.symbol).toBeUndefined();
+  });
 });

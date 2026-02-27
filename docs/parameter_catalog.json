@@ -438,7 +438,46 @@
           "type": "boolean"
         },
         {
-          "name": "monte_carlo",
+          "name": "source",
+          "type": "string"
+        },
+        {
+          "name": "method",
+          "type": "string"
+        },
+        {
+          "name": "n_sims",
+          "type": "integer"
+        },
+        {
+          "name": "seed",
+          "type": "integer"
+        },
+        {
+          "name": "block_size",
+          "type": "integer"
+        },
+        {
+          "name": "overlapping",
+          "type": "boolean"
+        },
+        {
+          "name": "time_distribution",
+          "type": "object",
+          "additional_fields": true
+        },
+        {
+          "name": "param_drift",
+          "type": "object",
+          "additional_fields": true
+        },
+        {
+          "name": "sizing",
+          "type": "object",
+          "additional_fields": true
+        },
+        {
+          "name": "output",
           "type": "object",
           "additional_fields": true
         },
@@ -450,7 +489,32 @@
           }
         },
         {
+          "name": "multi_asset",
+          "type": "object",
+          "additional_fields": true
+        },
+        {
+          "name": "aggregation",
+          "type": "object",
+          "additional_fields": true
+        },
+        {
+          "name": "weights",
+          "type": "object",
+          "additional_fields": true
+        },
+        {
+          "name": "timestamp_alignment",
+          "type": "object",
+          "additional_fields": true
+        },
+        {
           "name": "scenario_params",
+          "type": "object",
+          "additional_fields": true
+        },
+        {
+          "name": "monte_carlo",
           "type": "object",
           "additional_fields": true
         }
@@ -1254,6 +1318,119 @@
         {
           "path": "output.out_dir",
           "type": "string"
+        },
+        {
+          "path": "persistence.enabled",
+          "type": "boolean"
+        },
+        {
+          "path": "persistence.spec_id",
+          "type": "string"
+        },
+        {
+          "path": "persistence.dataset_id",
+          "type": "string"
+        }
+      ]
+    },
+    "stress_tests": {
+      "required": [
+        "data",
+        "performance"
+      ],
+      "fields": [
+        {
+          "path": "data.base_run_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "path": "performance.stress_tests",
+          "type": "object",
+          "schema_ref": "StressTestsSpec",
+          "required": true
+        },
+        {
+          "path": "performance.stress_tests.enabled",
+          "type": "boolean"
+        },
+        {
+          "path": "performance.stress_tests.source",
+          "type": "string"
+        },
+        {
+          "path": "performance.stress_tests.method",
+          "type": "string"
+        },
+        {
+          "path": "performance.stress_tests.n_sims",
+          "type": "integer"
+        },
+        {
+          "path": "performance.stress_tests.seed",
+          "type": "integer"
+        },
+        {
+          "path": "performance.stress_tests.block_size",
+          "type": "integer"
+        },
+        {
+          "path": "performance.stress_tests.overlapping",
+          "type": "boolean"
+        },
+        {
+          "path": "performance.stress_tests.time_distribution",
+          "type": "object",
+          "additional_fields": true
+        },
+        {
+          "path": "performance.stress_tests.param_drift",
+          "type": "object",
+          "additional_fields": true
+        },
+        {
+          "path": "performance.stress_tests.sizing",
+          "type": "object",
+          "additional_fields": true
+        },
+        {
+          "path": "performance.stress_tests.output",
+          "type": "object",
+          "additional_fields": true
+        },
+        {
+          "path": "performance.stress_tests.scenarios",
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        {
+          "path": "performance.stress_tests.multi_asset",
+          "type": "object",
+          "additional_fields": true
+        },
+        {
+          "path": "performance.stress_tests.aggregation",
+          "type": "object",
+          "additional_fields": true
+        },
+        {
+          "path": "performance.stress_tests.weights",
+          "type": "object",
+          "additional_fields": true
+        },
+        {
+          "path": "performance.stress_tests.timestamp_alignment",
+          "type": "object",
+          "additional_fields": true
+        },
+        {
+          "path": "output.out_dir",
+          "type": [
+            "string",
+            "null"
+          ]
         },
         {
           "path": "persistence.enabled",

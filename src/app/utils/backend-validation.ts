@@ -172,6 +172,8 @@ function mapDataField(segments: string[], runTheme: RunTheme): string | null {
       return key;
     case 'symbols':
       return runTheme === 'market-stats' || runTheme === 'seasonality' ? 'symbols' : null;
+    case 'base_run_id':
+      return runTheme === 'stress-tests' ? 'baseRunId' : null;
     case 'frequency':
       return runTheme === 'dca' ? 'frequency' : null;
     case 'amount':
@@ -554,6 +556,8 @@ function mapScenarioField(segments: string[]): string | null {
     return null;
   }
   switch (key) {
+    case 'name':
+      return `scenario${slot}Name`;
     case 'type':
       return `scenario${slot}Type`;
     case 'shock_pct':
