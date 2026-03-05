@@ -18,8 +18,7 @@ describe('ScreenStrategiesComponent', () => {
     await TestBed.configureTestingModule({
       imports: [ScreenStrategiesComponent, RouterTestingModule],
       providers: [{ provide: TradingDataService, useValue: tradingDataServiceSpy }]
-    })
-    .compileComponents();
+    }).compileComponents();
 
     fixture = TestBed.createComponent(ScreenStrategiesComponent);
     component = fixture.componentInstance;
@@ -85,7 +84,58 @@ describe('ScreenStrategiesComponent', () => {
     expect(symbolCells.every(symbol => symbol === 'NAS100')).toBeTrue();
   });
 
-  it('shows an error message when the service fails', () => {
+  it('shows backend 422 validation message when the service returns contract errors', () => {
+    tradingDataServiceSpy.getAllCalculatedStrategies.and.returnValue(
+      throwError(() => ({
+        status: 422,
+        error: {
+          errors: [{ field: 'data.symbol', code: 'required', message: 'Symbole requis' }]
+        }
+      }))
+    );
+
+    component.selectedSymbol = 'EUR/USD';
+    component.loadStrategies();
+    fixture.detectChanges();
+
+    const errorMessage = fixture.nativeElement.querySelector('.error-message');
+    expect(errorMessage?.textContent).toContain('Symbole requis');
+  });
+
+  it('shows Not implemented yet on runtime not_implemented_feature errors', () => {
+    tradingDataServiceSpy.getAllCalculatedStrategies.and.returnValue(
+      throwError(() => ({
+        status: 400,
+        error: {
+          error: {
+            code: 'not_implemented_feature'
+          }
+        }
+      }))
+    );
+
+    component.selectedSymbol = 'EUR/USD';
+    component.loadStrategies();
+    fixture.detectChanges();
+
+    const errorMessage = fixture.nativeElement.querySelector('.error-message');
+    expect(errorMessage?.textContent).toContain('Not implemented yet');
+  });
+
+  it('shows backend unavailable message on server errors', () => {
+    tradingDataServiceSpy.getAllCalculatedStrategies.and.returnValue(
+      throwError(() => ({ status: 503 }))
+    );
+
+    component.selectedSymbol = 'EUR/USD';
+    component.loadStrategies();
+    fixture.detectChanges();
+
+    const errorMessage = fixture.nativeElement.querySelector('.error-message');
+    expect(errorMessage?.textContent).toContain('Backend indisponible. Reessayez plus tard.');
+  });
+
+  it('shows generic error message on unknown errors', () => {
     tradingDataServiceSpy.getAllCalculatedStrategies.and.returnValue(
       throwError(() => new Error('Service error'))
     );
@@ -95,6 +145,6 @@ describe('ScreenStrategiesComponent', () => {
     fixture.detectChanges();
 
     const errorMessage = fixture.nativeElement.querySelector('.error-message');
-    expect(errorMessage?.textContent).toContain('Erreur lors du chargement des stratégies.');
+    expect(errorMessage?.textContent).toContain('Erreur lors du chargement des strategies.');
   });
 });

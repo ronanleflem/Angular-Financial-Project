@@ -1,9 +1,9 @@
 import { Component, OnInit } from '@angular/core';
-import {FormsModule} from '@angular/forms';
-import {DatePipe, DecimalPipe, NgForOf, NgIf, PercentPipe} from '@angular/common';
-import {Router} from '@angular/router';
-import {TradingDataService} from '../../services/trading-data.service';
-import {Chart} from 'chart.js';
+import { FormsModule } from '@angular/forms';
+import { DatePipe, DecimalPipe, NgForOf, NgIf, PercentPipe } from '@angular/common';
+import { Router } from '@angular/router';
+import { TradingDataService } from '../../services/trading-data.service';
+import { parseBackendValidationErrors, parseRunRuntimeError } from '../../utils/backend-validation';
 
 @Component({
   selector: 'app-screen-strategies',
@@ -19,8 +19,12 @@ import {Chart} from 'chart.js';
   styleUrls: ['./screen-strategies.component.css']
 })
 export class ScreenStrategiesComponent implements OnInit {
+  private static readonly GENERIC_LOAD_ERROR = 'Erreur lors du chargement des strategies.';
+  private static readonly BACKEND_CONTRACT_ERROR = 'Contrat backend invalide (422).';
+  private static readonly BACKEND_UNAVAILABLE_ERROR = 'Backend indisponible. Reessayez plus tard.';
+  private static readonly NOT_IMPLEMENTED_YET = 'Not implemented yet';
 
-  symbols: string[] = []; // À remplir via une API si besoin
+  symbols: string[] = [];
   selectedSymbol: string = '';
   strategies: {
     runId?: string,
@@ -48,12 +52,9 @@ export class ScreenStrategiesComponent implements OnInit {
   isLoading: boolean = false;
   errorMessage: string | null = null;
 
-  constructor(private router: Router, private tradingService: TradingDataService
-    // private strategyService: StrategyService (à injecter pour le backend)
-  ) { }
+  constructor(private router: Router, private tradingService: TradingDataService) {}
 
   goToDetails(strategy: any) {
-    console.log('GO vers', strategy);
     const safeComparedSymbol = strategy?.comparedSymbol ?? 'none';
     this.router.navigate(
       ['/strategy-detail', strategy.name, strategy.runId, strategy.symbol, safeComparedSymbol],
@@ -66,8 +67,7 @@ export class ScreenStrategiesComponent implements OnInit {
   }
 
   loadSymbols() {
-    // Ex: this.symbolService.getSymbols().subscribe()
-    this.symbols = ['EUR/USD', 'NAS100', 'BTC/USD']; // temporaire
+    this.symbols = ['EUR/USD', 'NAS100', 'BTC/USD'];
   }
 
   loadStrategies() {
@@ -104,12 +104,7 @@ export class ScreenStrategiesComponent implements OnInit {
     this.tradingService.getAllCalculatedStrategies().subscribe({
       next: (backendData: any[]) => {
         const formattedBackends = Array.isArray(backendData) ? backendData : [backendData];
-        console.log(formattedBackends);
         const mapped = formattedBackends.map(s => {
-          console.log(s.startStrategy);
-          console.log(new Date(s.startStrategy));
-          console.log((s.StartStrategie ? new Date(s.StartStrategie) : undefined));
-
           const start = s.startStrategy
             ? new Date(s.startStrategy)
             : (s.StartStrategie ? new Date(s.StartStrategie) : undefined);
@@ -128,7 +123,7 @@ export class ScreenStrategiesComponent implements OnInit {
           return {
             runId: s.runId,
             name: s.name,
-            winRate: winRate,
+            winRate,
             winningTrades: s.winCount,
             losingTrades: s.lossCount,
             totalReturn: s.totalReturn,
@@ -144,23 +139,42 @@ export class ScreenStrategiesComponent implements OnInit {
             endDate: end,
             averageRR: s.rrMoyen,
             totalNetReturn: s.totalNetReturn,
-            netWinCount:  s.netWinCount,
-            netLossCount:  s.netLossCount,
-            averageNetTrade:  s.averageNetTrade
+            netWinCount: s.netWinCount,
+            netLossCount: s.netLossCount,
+            averageNetTrade: s.averageNetTrade
           };
         });
 
         this.strategies = [...mockData, ...mapped];
         this.isLoading = false;
         this.errorMessage = null;
-        console.log(this.strategies);
       },
       error: (err) => {
-        console.error('Erreur stratégie', err);
         this.strategies = [...mockData];
         this.isLoading = false;
-        this.errorMessage = 'Erreur lors du chargement des stratégies.';
+        this.errorMessage = this.mapLoadErrorMessage(err);
       }
     });
+  }
+
+  private mapLoadErrorMessage(error: unknown): string {
+    const validationErrors = parseBackendValidationErrors(error);
+    if (validationErrors.length > 0) {
+      const firstMessage = validationErrors[0].message?.trim();
+      return firstMessage || ScreenStrategiesComponent.BACKEND_CONTRACT_ERROR;
+    }
+
+    const runtimeError = parseRunRuntimeError((error as { error?: unknown } | null)?.error ?? error);
+    const runtimeCode = String(runtimeError?.code ?? '').trim().toLowerCase();
+    if (runtimeCode === 'not_implemented_feature') {
+      return runtimeError?.message?.trim() || ScreenStrategiesComponent.NOT_IMPLEMENTED_YET;
+    }
+
+    const status = (error as { status?: number } | null)?.status;
+    if (status === 0 || (typeof status === 'number' && status >= 500)) {
+      return ScreenStrategiesComponent.BACKEND_UNAVAILABLE_ERROR;
+    }
+
+    return ScreenStrategiesComponent.GENERIC_LOAD_ERROR;
   }
 }
