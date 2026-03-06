@@ -54,6 +54,7 @@ import {
 import { FiltersService } from '../../services/filters.service';
 import { MarketAnalysisRunsService } from '../../services/market-analysis-runs.service';
 import { MarketStatsService } from '../../services/market-stats.service';
+import { mapMarketAnalysisHttpError } from '../../utils/market-analysis-errors';
 
 Chart.register(CategoryScale, LinearScale, BarController, BarElement, Tooltip, Legend, PointElement, ScatterController);
 
@@ -64,7 +65,7 @@ type FilterAggregate = {
   isMock: boolean;
 };
 
-type DataSectionState = 'ready' | 'empty' | 'fallback' | 'error';
+type DataSectionState = 'ready' | 'empty' | 'error';
 
 @Component({
   selector: 'app-market-analysis-page',
@@ -329,8 +330,9 @@ export class MarketAnalysisPage {
       detail: this.marketAnalysisRunsService.getRunDetail(runId),
       result: this.marketAnalysisRunsService.getRunResult(runId).pipe(
         catchError(error => {
-          if (error?.status === 409) {
-            this.selectedRunResultInfo.set('Resultat pas encore disponible pour ce run.');
+          const mappedError = mapMarketAnalysisHttpError(error, 'run-result');
+          if (mappedError.kind === 'result_pending') {
+            this.selectedRunResultInfo.set(mappedError.message);
             return of(null);
           }
           return throwError(() => error);
@@ -348,9 +350,10 @@ export class MarketAnalysisPage {
           this.selectedRunLoading.set(false);
         },
         error: error => {
+          const mappedError = mapMarketAnalysisHttpError(error, 'run-detail');
           console.error('Market analysis selected run loading failed', error);
           this.selectedRunLoading.set(false);
-          this.selectedRunError.set('Impossible de charger le detail du run selectionne.');
+          this.selectedRunError.set(mappedError.message);
           this.selectedRunDetail.set(null);
           this.selectedRunResult.set(null);
         }
@@ -440,25 +443,12 @@ export class MarketAnalysisPage {
 
           this.loading.set(false);
           this.lastRefreshAt.set(new Date());
-
-          if (result.candles.isMock) {
-            this.notifyMock('Bougies (candles)');
-          }
-          if (result.seasonality.isMock) {
-            this.notifyMock('Saisonnalité');
-          }
-          if (result.stats.isMock) {
-            this.notifyMock('Patterns & Probabilités');
-          }
-          if (this.filters().isMock) {
-            this.notifyMock('Filtres');
-          }
         },
         error: error => {
           console.error('Market analysis loading failed', error);
           this.loading.set(false);
           this.loadError.set('Donnees indisponibles temporairement. Reessayez.');
-          this.snackBar.open('Analyse indisponible pour le moment. Mocks chargés.', 'Fermer', {
+          this.snackBar.open('Analyse indisponible pour le moment.', 'Fermer', {
             duration: 4000
           });
         }
@@ -499,9 +489,10 @@ export class MarketAnalysisPage {
           }
         },
         error: error => {
+          const mappedError = mapMarketAnalysisHttpError(error, 'runs');
           console.error('Market analysis runs loading failed', error);
           this.runsLoading.set(false);
-          this.runsError.set('Impossible de charger le catalogue des runs.');
+          this.runsError.set(mappedError.message);
           this.runsPage.set({
             items: [],
             page: Math.max(0, pageIndex),
@@ -563,8 +554,6 @@ export class MarketAnalysisPage {
         return 'state-ready';
       case 'empty':
         return 'state-empty';
-      case 'fallback':
-        return 'state-fallback';
       default:
         return 'state-error';
     }
@@ -576,8 +565,6 @@ export class MarketAnalysisPage {
         return 'Ready';
       case 'empty':
         return 'Empty';
-      case 'fallback':
-        return 'Mock fallback';
       default:
         return 'Error';
     }
@@ -594,9 +581,6 @@ export class MarketAnalysisPage {
   private resolveState(itemCount: number, isMock: boolean): DataSectionState {
     if (this.loadError()) {
       return 'error';
-    }
-    if (isMock) {
-      return 'fallback';
     }
     if (itemCount === 0) {
       return 'empty';
@@ -709,4 +693,7 @@ function timeframeToMs(timeframe: string): number | undefined {
       return undefined;
   }
 }
+
+
+
 

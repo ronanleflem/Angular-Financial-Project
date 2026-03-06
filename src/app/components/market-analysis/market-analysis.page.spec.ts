@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 
 import {
   ApiResult,
@@ -90,6 +90,7 @@ describe('MarketAnalysisPage', () => {
     totalPages: 1,
     sort: 'created_at,desc'
   };
+
   const mockRunDetail: MarketAnalysisRunDetail = {
     runId: 'run-1',
     requestId: 'req-1',
@@ -110,6 +111,7 @@ describe('MarketAnalysisPage', () => {
     progressJson: { progress: 100 },
     resultJsonAvailable: true
   };
+
   const mockRunResult: MarketAnalysisRunResult = {
     runId: 'run-1',
     specType: 'market_stats',
@@ -288,9 +290,7 @@ describe('MarketAnalysisPage', () => {
     expect(component.filters().isMock).toBeTrue();
   });
 
-  it('should notify when candles, seasonality, and stats are mock', () => {
-    const notifySpy = spyOn<any>(MarketAnalysisPage.prototype, 'notifyMock').and.callThrough();
-
+  it('should stop surfacing mock notifications in the page flow', () => {
     marketStatsSpy.getCandles.and.returnValue(of(buildApiResult(mockCandles, true)));
     marketStatsSpy.getSeasonality.and.returnValue(of(buildApiResult(mockSeasonality, true)));
     marketStatsSpy.getStatsSummary.and.returnValue(of(buildApiResult(mockStats, true)));
@@ -304,9 +304,10 @@ describe('MarketAnalysisPage', () => {
 
     createComponent();
 
-    expect(notifySpy).toHaveBeenCalledWith('Bougies (candles)');
-    expect(notifySpy).toHaveBeenCalledWith('Saisonnalité');
-    expect(notifySpy).toHaveBeenCalledWith('Patterns & Probabilités');
+    const mockOpenCalls = snackBarSpy.open.calls.allArgs().filter(args => String(args[0]).toLowerCase().includes('mock'));
+    expect(mockOpenCalls.length).toBe(0);
+    expect(component.sectionStateLabel('ready')).toBe('Ready');
+    expect(component.sectionStateLabel('empty')).toBe('Empty');
   });
 
   it('should load the runs catalog and expose pagination state', () => {
@@ -356,12 +357,36 @@ describe('MarketAnalysisPage', () => {
 
   it('should expose a result info message when the selected run result is not ready', () => {
     stubDefaultResponses();
-    marketAnalysisRunsSpy.getRunResult.and.returnValue(of(null as unknown as MarketAnalysisRunResult));
+    marketAnalysisRunsSpy.getRunResult.and.returnValue(throwError(() => ({ status: 409 })));
 
     createComponent();
-    component.selectedRunResultInfo.set('Resultat pas encore disponible pour ce run.');
 
     expect(component.selectedRunDetail()).toEqual(mockRunDetail);
     expect(component.selectedRunResultInfo()).toBe('Resultat pas encore disponible pour ce run.');
+  });
+
+  it('maps 422 runs errors to a validation message', () => {
+    stubDefaultResponses();
+    marketAnalysisRunsSpy.getRuns.and.returnValue(
+      throwError(() => ({
+        status: 422,
+        error: {
+          errors: [{ field: 'symbol', message: 'Symbol is required' }]
+        }
+      }))
+    );
+
+    createComponent();
+
+    expect(component.runsError()).toBe('Filtres invalides pour le catalogue des runs. symbol: Symbol is required');
+  });
+
+  it('maps 404 detail errors to a run not found message', () => {
+    stubDefaultResponses();
+    marketAnalysisRunsSpy.getRunDetail.and.returnValue(throwError(() => ({ status: 404 })));
+
+    createComponent();
+
+    expect(component.selectedRunError()).toBe('Run introuvable.');
   });
 });

@@ -294,7 +294,6 @@
     ]">
       <mat-card-header>
         <mat-card-title>{{ item.label }}</mat-card-title>
-        <mat-chip *ngIf="candlesMock()" class="mock-chip" appearance="outlined">mock</mat-chip>
       </mat-card-header>
       <mat-card-content>
         <span class="kpi-value">{{ item.value | number:'1.0-2' }}{{ item.suffix ?? '' }}</span>
@@ -307,7 +306,6 @@
       <mat-tab label="Saisonnalité">
         <div class="tab-header">
           <h3>Saisonnalité mensuelle & hebdomadaire</h3>
-          <mat-chip *ngIf="seasonalityMock()" class="mock-chip" appearance="outlined">mock</mat-chip>
         </div>
         <ng-container *ngIf="sectionStates().seasonality !== 'empty'; else seasonalityEmpty">
           <div class="seasonality-charts">
@@ -353,7 +351,6 @@
       <mat-tab label="Patterns & Probabilités">
         <div class="tab-header">
           <h3>Statistiques d'événements</h3>
-          <mat-chip *ngIf="statsMock()" class="mock-chip" appearance="outlined">mock</mat-chip>
         </div>
         <div class="stats-table-wrapper" *ngIf="statsSummary().length; else statsEmpty">
           <table class="stats-table">
@@ -396,7 +393,6 @@
       <mat-tab label="Filtres">
         <div class="tab-header">
           <h3>Filtres actifs</h3>
-          <mat-chip *ngIf="filters().isMock" class="mock-chip" appearance="outlined">mock</mat-chip>
         </div>
         <div class="filters-grid" *ngIf="filters().cards.length; else filtersEmpty">
           <mat-card class="filter-card" *ngFor="let card of filters().cards; trackBy: trackFilter">
