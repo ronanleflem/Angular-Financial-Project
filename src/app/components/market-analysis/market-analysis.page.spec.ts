@@ -216,8 +216,8 @@ describe('MarketAnalysisPage', () => {
     expect(marketAnalysisRunsSpy.getRuns).toHaveBeenCalledWith({
       specType: 'market_stats',
       status: '',
-      symbol: 'EURUSD',
-      timeframe: '1h',
+      symbol: '',
+      timeframe: '',
       page: 0,
       size: 10,
       sort: 'created_at,desc'
@@ -226,7 +226,7 @@ describe('MarketAnalysisPage', () => {
     expect(marketAnalysisRunsSpy.getRunResult).toHaveBeenCalledWith('run-1');
   });
 
-  it('should allow free-form symbols for backend-driven runs', () => {
+  it('should allow free-form symbols for backend-driven analysis without constraining the runs catalog', () => {
     stubDefaultResponses();
 
     createComponent();
@@ -252,10 +252,38 @@ describe('MarketAnalysisPage', () => {
     expect(marketAnalysisRunsSpy.getRuns).toHaveBeenCalledWith({
       specType: 'market_stats',
       status: '',
-      symbol: 'BTC',
-      timeframe: '1h',
+      symbol: '',
+      timeframe: '',
       page: 0,
       size: 10,
+      sort: 'created_at,desc'
+    });
+  });
+
+  it('should apply explicit runs catalog filters only when runSymbol and runTimeframe are set', () => {
+    stubDefaultResponses();
+
+    createComponent();
+
+    marketAnalysisRunsSpy.getRuns.calls.reset();
+
+    component.analysisForm.patchValue({
+      runSpecType: 'market_stats',
+      runStatus: 'SUCCEEDED',
+      runSymbol: 'BTC',
+      runTimeframe: '1D',
+      runsPageSize: 25
+    });
+
+    component.refreshRuns();
+
+    expect(marketAnalysisRunsSpy.getRuns).toHaveBeenCalledWith({
+      specType: 'market_stats',
+      status: 'SUCCEEDED',
+      symbol: 'BTC',
+      timeframe: '1D',
+      page: 0,
+      size: 25,
       sort: 'created_at,desc'
     });
   });
@@ -380,8 +408,8 @@ describe('MarketAnalysisPage', () => {
     expect(marketAnalysisRunsSpy.getRuns.calls.mostRecent().args[0]).toEqual({
       specType: 'market_stats',
       status: '',
-      symbol: 'EURUSD',
-      timeframe: '1h',
+      symbol: '',
+      timeframe: '',
       page: 1,
       size: 10,
       sort: 'created_at,desc'

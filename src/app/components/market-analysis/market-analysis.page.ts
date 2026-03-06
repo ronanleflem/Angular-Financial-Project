@@ -105,6 +105,8 @@ export class MarketAnalysisPage {
     range: [400, [Validators.min(50), Validators.max(1000)]],
     timeframesCsv: ['15m,1h,4h'],
     runSpecType: ['market_stats'],
+    runSymbol: [''],
+    runTimeframe: [''],
     runStatus: [''],
     runsPageSize: [10, [Validators.min(5), Validators.max(100)]]
   });
@@ -456,7 +458,7 @@ export class MarketAnalysisPage {
   }
 
   loadRunsPage(pageIndex: number): void {
-    const { symbol, timeframe, runSpecType, runStatus, runsPageSize } = this.analysisForm.getRawValue();
+    const { runSymbol, runTimeframe, runSpecType, runStatus, runsPageSize } = this.analysisForm.getRawValue();
 
     this.runsLoading.set(true);
     this.runsError.set(null);
@@ -465,8 +467,8 @@ export class MarketAnalysisPage {
       .getRuns({
         specType: isRunSpecType(runSpecType) ? runSpecType : '',
         status: runStatus ?? '',
-        symbol: symbol ?? '',
-        timeframe: timeframe ?? '',
+        symbol: runSymbol ?? '',
+        timeframe: runTimeframe ?? '',
         page: Math.max(0, pageIndex),
         size: runsPageSize ?? 10,
         sort: 'created_at,desc'
