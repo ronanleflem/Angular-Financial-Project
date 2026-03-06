@@ -154,4 +154,108 @@ describe('MarketAnalysisRunsService', () => {
       sort: null
     });
   });
+
+  it('loads and normalizes run detail', () => {
+    let response: any;
+
+    service.getRunDetail('run-1').subscribe(value => {
+      response = value;
+    });
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/api/market-analysis/runs/run-1`);
+    expect(req.request.method).toBe('GET');
+    req.flush({
+      run_id: 'run-1',
+      request_id: 'req-1',
+      spec_type: 'market_stats',
+      status: 'SUCCEEDED',
+      created_at: '2026-03-05T10:00:00Z',
+      started_at: '2026-03-05T10:01:00Z',
+      finished_at: '2026-03-05T10:02:00Z',
+      updated_at: '2026-03-05T10:02:00Z',
+      error_message: null,
+      attempts: 1,
+      max_attempts: 3,
+      cancel_requested: false,
+      persistence_enabled: true,
+      spec_id: 'spec-1',
+      dataset_id: 'dataset-1',
+      payload_json: { symbol: 'EURUSD' },
+      progress_json: { progress: 100 },
+      result_json_available: true
+    });
+
+    expect(response).toEqual({
+      runId: 'run-1',
+      requestId: 'req-1',
+      specType: 'market_stats',
+      status: 'SUCCEEDED',
+      createdAt: '2026-03-05T10:00:00Z',
+      startedAt: '2026-03-05T10:01:00Z',
+      finishedAt: '2026-03-05T10:02:00Z',
+      updatedAt: '2026-03-05T10:02:00Z',
+      errorMessage: null,
+      attempts: 1,
+      maxAttempts: 3,
+      cancelRequested: false,
+      persistenceEnabled: true,
+      specId: 'spec-1',
+      datasetId: 'dataset-1',
+      payloadJson: { symbol: 'EURUSD' },
+      progressJson: { progress: 100 },
+      resultJsonAvailable: true
+    });
+  });
+
+  it('loads and normalizes run result', () => {
+    let response: any;
+
+    service.getRunResult('run-1').subscribe(value => {
+      response = value;
+    });
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/api/market-analysis/runs/run-1/result`);
+    expect(req.request.method).toBe('GET');
+    req.flush({
+      run_id: 'run-1',
+      spec_type: 'seasonality',
+      source: 'persisted_tables',
+      meta: {
+        spec_id: 'spec-2',
+        dataset_id: 'dataset-2',
+        out_dir: '/tmp/out',
+        window: '3y',
+        start: '2023-01-01',
+        end: '2025-12-31',
+        status: 'SUCCEEDED'
+      },
+      data: {
+        market_stats_rows: [{ event: 'breakout', n: 10 }],
+        seasonality_profiles: [{ profile: 'dow', score: 0.7 }],
+        seasonality_run_summary: { trades: 42 },
+        raw_result_json: { source: 'json' }
+      }
+    });
+
+    expect(response).toEqual({
+      runId: 'run-1',
+      specType: 'seasonality',
+      source: 'persisted_tables',
+      meta: {
+        specId: 'spec-2',
+        datasetId: 'dataset-2',
+        outDir: '/tmp/out',
+        window: '3y',
+        start: '2023-01-01',
+        end: '2025-12-31',
+        status: 'SUCCEEDED'
+      },
+      data: {
+        marketStatsRows: [{ event: 'breakout', n: 10 }],
+        seasonalityProfiles: [{ profile: 'dow', score: 0.7 }],
+        seasonalityRunSummary: { trades: 42 },
+        rawResultJson: { source: 'json' }
+      }
+    });
+  });
 });

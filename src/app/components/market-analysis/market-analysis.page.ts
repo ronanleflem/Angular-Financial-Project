@@ -34,7 +34,7 @@ import {
   Tooltip
 } from 'chart.js';
 import { NgChartsModule } from 'ng2-charts';
-import { forkJoin } from 'rxjs';
+import { catchError, forkJoin, of, throwError } from 'rxjs';
 
 import {
   Candle,
@@ -42,8 +42,12 @@ import {
   FilterSeriesPoint,
   HeatmapCell,
   KpiSummary,
+  MarketAnalysisRowRecord,
+  MarketAnalysisRunDetail,
   MarketAnalysisRunItem,
+  MarketAnalysisRunResult,
   MarketAnalysisRunsPage,
+  MarketAnalysisSeasonalityRunSummary,
   SeasonalityProfile,
   StatsSummaryRow
 } from '../../models/market-analysis.models';
@@ -118,6 +122,12 @@ export class MarketAnalysisPage {
     sort: 'created_at,desc'
   });
   readonly runsUpdatedAt = signal<Date | null>(null);
+  readonly selectedRunId = signal<string | null>(null);
+  readonly selectedRunLoading = signal(false);
+  readonly selectedRunError = signal<string | null>(null);
+  readonly selectedRunResultInfo = signal<string | null>(null);
+  readonly selectedRunDetail = signal<MarketAnalysisRunDetail | null>(null);
+  readonly selectedRunResult = signal<MarketAnalysisRunResult | null>(null);
 
   readonly candles = signal<Candle[]>([]);
   readonly candlesMock = signal(false);
@@ -169,6 +179,14 @@ export class MarketAnalysisPage {
     }
     return page.page + 1 < page.totalPages;
   });
+  readonly selectedRunMetaEntries = computed(() => toKeyValueEntries(this.selectedRunDetail()?.payloadJson));
+  readonly selectedRunProgressEntries = computed(() => toKeyValueEntries(this.selectedRunDetail()?.progressJson));
+  readonly selectedRunMarketStatsColumns = computed(() => collectRowKeys(this.selectedRunResult()?.data.marketStatsRows ?? []));
+  readonly selectedRunSeasonalityColumns = computed(() => collectRowKeys(this.selectedRunResult()?.data.seasonalityProfiles ?? []));
+  readonly selectedSeasonalitySummaryEntries = computed(() =>
+    toKeyValueEntries(this.selectedRunResult()?.data.seasonalityRunSummary ?? null)
+  );
+  readonly selectedRawResultEntries = computed(() => toKeyValueEntries(this.selectedRunResult()?.data.rawResultJson ?? null));
 
   readonly monthChartConfig = computed<ChartConfiguration<'bar'>>(() => {
     const profile = this.seasonality();
@@ -295,6 +313,48 @@ export class MarketAnalysisPage {
 
   refreshRuns(): void {
     this.loadRunsPage(0);
+  }
+
+  selectRun(runId: string): void {
+    if (!runId) {
+      return;
+    }
+
+    this.selectedRunId.set(runId);
+    this.selectedRunLoading.set(true);
+    this.selectedRunError.set(null);
+    this.selectedRunResultInfo.set(null);
+
+    forkJoin({
+      detail: this.marketAnalysisRunsService.getRunDetail(runId),
+      result: this.marketAnalysisRunsService.getRunResult(runId).pipe(
+        catchError(error => {
+          if (error?.status === 409) {
+            this.selectedRunResultInfo.set('Resultat pas encore disponible pour ce run.');
+            return of(null);
+          }
+          return throwError(() => error);
+        })
+      )
+    })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: response => {
+          this.selectedRunDetail.set(response.detail);
+          this.selectedRunResult.set(response.result);
+          if (!response.result && !this.selectedRunResultInfo()) {
+            this.selectedRunResultInfo.set('Aucun resultat disponible.');
+          }
+          this.selectedRunLoading.set(false);
+        },
+        error: error => {
+          console.error('Market analysis selected run loading failed', error);
+          this.selectedRunLoading.set(false);
+          this.selectedRunError.set('Impossible de charger le detail du run selectionne.');
+          this.selectedRunDetail.set(null);
+          this.selectedRunResult.set(null);
+        }
+      });
   }
 
   loadPreviousRunsPage(): void {
@@ -427,6 +487,16 @@ export class MarketAnalysisPage {
           this.runsPage.set(page);
           this.runsUpdatedAt.set(new Date());
           this.runsLoading.set(false);
+
+          const currentSelectedRunId = this.selectedRunId();
+          const nextSelectedRunId =
+            currentSelectedRunId && page.items.some(run => run.runId === currentSelectedRunId)
+              ? currentSelectedRunId
+              : page.items[0]?.runId ?? null;
+
+          if (nextSelectedRunId && nextSelectedRunId !== currentSelectedRunId) {
+            this.selectRun(nextSelectedRunId);
+          }
         },
         error: error => {
           console.error('Market analysis runs loading failed', error);
@@ -472,6 +542,18 @@ export class MarketAnalysisPage {
 
   formatRunSpecType(specType: string): string {
     return specType === 'market_stats' ? 'Market stats' : specType === 'seasonality' ? 'Seasonality' : specType;
+  }
+
+  isSelectedRun(runId: string): boolean {
+    return this.selectedRunId() === runId;
+  }
+
+  getRowValue(row: MarketAnalysisRowRecord, key: string): string {
+    return formatDisplayValue(row[key]);
+  }
+
+  trackEntry(_index: number, entry: KeyValueEntry): string {
+    return entry.key;
   }
 
 
@@ -530,6 +612,45 @@ export class MarketAnalysisPage {
 
 function isRunSpecType(value: string | null): value is 'market_stats' | 'seasonality' {
   return value === 'market_stats' || value === 'seasonality';
+}
+
+type KeyValueEntry = {
+  key: string;
+  value: string;
+};
+
+function toKeyValueEntries(payload: Record<string, unknown> | MarketAnalysisSeasonalityRunSummary | null | undefined): KeyValueEntry[] {
+  if (!payload) {
+    return [];
+  }
+
+  return Object.entries(payload).map(([key, value]) => ({
+    key,
+    value: formatDisplayValue(value)
+  }));
+}
+
+function collectRowKeys(rows: MarketAnalysisRowRecord[]): string[] {
+  const keys = new Set<string>();
+  for (const row of rows) {
+    for (const key of Object.keys(row)) {
+      keys.add(key);
+    }
+  }
+  return Array.from(keys);
+}
+
+function formatDisplayValue(value: unknown): string {
+  if (value === null || value === undefined) {
+    return '-';
+  }
+  if (typeof value === 'string') {
+    return value;
+  }
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return String(value);
+  }
+  return JSON.stringify(value);
 }
 
 function heatmapColor(value: number): string {

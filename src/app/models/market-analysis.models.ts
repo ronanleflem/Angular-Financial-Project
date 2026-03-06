@@ -107,3 +107,57 @@ export interface MarketAnalysisRunsQuery {
   size?: number;
   sort?: string;
 }
+
+export interface MarketAnalysisRunDetail {
+  runId: string;
+  requestId: string;
+  specType: MarketAnalysisSpecType;
+  status: string;
+  createdAt: string | null;
+  startedAt: string | null;
+  finishedAt: string | null;
+  updatedAt: string | null;
+  errorMessage: string | null;
+  attempts: number;
+  maxAttempts: number;
+  cancelRequested: boolean;
+  persistenceEnabled: boolean;
+  specId: string | null;
+  datasetId: string | null;
+  payloadJson: Record<string, unknown> | null;
+  progressJson: Record<string, unknown> | null;
+  resultJsonAvailable: boolean;
+}
+
+export interface MarketAnalysisRunResultMeta {
+  specId: string | null;
+  datasetId: string | null;
+  outDir: string | null;
+  window: string | null;
+  start: string | null;
+  end: string | null;
+  status: string | null;
+}
+
+export interface MarketAnalysisSeasonalityRunSummary {
+  [key: string]: unknown;
+}
+
+export interface MarketAnalysisRowRecord {
+  [key: string]: unknown;
+}
+
+export interface MarketAnalysisRunResultData {
+  marketStatsRows: MarketAnalysisRowRecord[];
+  seasonalityProfiles: MarketAnalysisRowRecord[];
+  seasonalityRunSummary: MarketAnalysisSeasonalityRunSummary | null;
+  rawResultJson: Record<string, unknown> | null;
+}
+
+export interface MarketAnalysisRunResult {
+  runId: string;
+  specType: MarketAnalysisSpecType;
+  source: 'result_json' | 'persisted_tables' | string;
+  meta: MarketAnalysisRunResultMeta;
+  data: MarketAnalysisRunResultData;
+}

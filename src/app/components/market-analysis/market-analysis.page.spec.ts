@@ -7,6 +7,8 @@ import {
   Candle,
   FilterCard,
   KpiSummary,
+  MarketAnalysisRunDetail,
+  MarketAnalysisRunResult,
   MarketAnalysisRunsPage,
   SeasonalityProfile,
   StatsSummaryRow
@@ -88,6 +90,46 @@ describe('MarketAnalysisPage', () => {
     totalPages: 1,
     sort: 'created_at,desc'
   };
+  const mockRunDetail: MarketAnalysisRunDetail = {
+    runId: 'run-1',
+    requestId: 'req-1',
+    specType: 'market_stats',
+    status: 'SUCCEEDED',
+    createdAt: '2026-03-05T10:00:00Z',
+    startedAt: '2026-03-05T10:01:00Z',
+    finishedAt: '2026-03-05T10:02:00Z',
+    updatedAt: '2026-03-05T10:02:00Z',
+    errorMessage: null,
+    attempts: 1,
+    maxAttempts: 3,
+    cancelRequested: false,
+    persistenceEnabled: true,
+    specId: 'spec-1',
+    datasetId: 'dataset-1',
+    payloadJson: { symbol: 'EURUSD' },
+    progressJson: { progress: 100 },
+    resultJsonAvailable: true
+  };
+  const mockRunResult: MarketAnalysisRunResult = {
+    runId: 'run-1',
+    specType: 'market_stats',
+    source: 'persisted_tables',
+    meta: {
+      specId: 'spec-1',
+      datasetId: 'dataset-1',
+      outDir: '/tmp/out',
+      window: '3y',
+      start: '2023-01-01',
+      end: '2025-12-31',
+      status: 'SUCCEEDED'
+    },
+    data: {
+      marketStatsRows: [{ event: 'breakout', n: 10 }],
+      seasonalityProfiles: [{ profile: 'dow', score: 0.7 }],
+      seasonalityRunSummary: { trades: 42 },
+      rawResultJson: { source: 'json' }
+    }
+  };
 
   const createCard = (id: string): FilterCard => ({
     id,
@@ -109,7 +151,9 @@ describe('MarketAnalysisPage', () => {
       'computeKpisFromCandles'
     ]);
     marketAnalysisRunsSpy = jasmine.createSpyObj<MarketAnalysisRunsService>('MarketAnalysisRunsService', [
-      'getRuns'
+      'getRuns',
+      'getRunDetail',
+      'getRunResult'
     ]);
     filtersSpy = jasmine.createSpyObj<FiltersService>('FiltersService', [
       'getMultiTFStats',
@@ -137,6 +181,8 @@ describe('MarketAnalysisPage', () => {
     marketStatsSpy.getStatsSummary.and.returnValue(of(buildApiResult(mockStats)));
     marketStatsSpy.computeKpisFromCandles.and.returnValue(mockKpis);
     marketAnalysisRunsSpy.getRuns.and.returnValue(of(mockRunsPage));
+    marketAnalysisRunsSpy.getRunDetail.and.returnValue(of(mockRunDetail));
+    marketAnalysisRunsSpy.getRunResult.and.returnValue(of(mockRunResult));
     filtersSpy.getMultiTFStats.and.returnValue(of(buildApiResult([createCard('multi')])));
     filtersSpy.getBenford.and.returnValue(of(buildApiResult(createCard('benford'))));
     filtersSpy.getGenericFilter.and.returnValue(of(buildApiResult([createCard('liquidity')])));
@@ -174,6 +220,8 @@ describe('MarketAnalysisPage', () => {
       size: 10,
       sort: 'created_at,desc'
     });
+    expect(marketAnalysisRunsSpy.getRunDetail).toHaveBeenCalledWith('run-1');
+    expect(marketAnalysisRunsSpy.getRunResult).toHaveBeenCalledWith('run-1');
   });
 
   it('should keep loading false and show snackbar on invalid form', () => {
@@ -218,6 +266,8 @@ describe('MarketAnalysisPage', () => {
     marketStatsSpy.getStatsSummary.and.returnValue(of(buildApiResult(mockStats)));
     marketStatsSpy.computeKpisFromCandles.and.returnValue(mockKpis);
     marketAnalysisRunsSpy.getRuns.and.returnValue(of(mockRunsPage));
+    marketAnalysisRunsSpy.getRunDetail.and.returnValue(of(mockRunDetail));
+    marketAnalysisRunsSpy.getRunResult.and.returnValue(of(mockRunResult));
 
     const multiCards = [createCard('multi-1'), createCard('multi-2')];
     const benfordCard = createCard('benford');
@@ -246,6 +296,8 @@ describe('MarketAnalysisPage', () => {
     marketStatsSpy.getStatsSummary.and.returnValue(of(buildApiResult(mockStats, true)));
     marketStatsSpy.computeKpisFromCandles.and.returnValue(mockKpis);
     marketAnalysisRunsSpy.getRuns.and.returnValue(of(mockRunsPage));
+    marketAnalysisRunsSpy.getRunDetail.and.returnValue(of(mockRunDetail));
+    marketAnalysisRunsSpy.getRunResult.and.returnValue(of(mockRunResult));
     filtersSpy.getMultiTFStats.and.returnValue(of(buildApiResult([createCard('multi')])));
     filtersSpy.getBenford.and.returnValue(of(buildApiResult(createCard('benford'))));
     filtersSpy.getGenericFilter.and.returnValue(of(buildApiResult([createCard('liquidity')])));
@@ -266,6 +318,8 @@ describe('MarketAnalysisPage', () => {
     expect(component.runRangeLabel()).toBe('1-1 / 1');
     expect(component.canGoToPreviousRunsPage()).toBeFalse();
     expect(component.canGoToNextRunsPage()).toBeFalse();
+    expect(component.selectedRunDetail()).toEqual(mockRunDetail);
+    expect(component.selectedRunResult()).toEqual(mockRunResult);
   });
 
   it('should request the next runs page with the current filters', () => {
@@ -298,5 +352,16 @@ describe('MarketAnalysisPage', () => {
       sort: 'created_at,desc'
     });
     expect(component.runsPage().page).toBe(1);
+  });
+
+  it('should expose a result info message when the selected run result is not ready', () => {
+    stubDefaultResponses();
+    marketAnalysisRunsSpy.getRunResult.and.returnValue(of(null as unknown as MarketAnalysisRunResult));
+
+    createComponent();
+    component.selectedRunResultInfo.set('Resultat pas encore disponible pour ce run.');
+
+    expect(component.selectedRunDetail()).toEqual(mockRunDetail);
+    expect(component.selectedRunResultInfo()).toBe('Resultat pas encore disponible pour ce run.');
   });
 });

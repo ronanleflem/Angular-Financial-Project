@@ -5,9 +5,13 @@ import { map } from 'rxjs/operators';
 
 import { environment } from '../../environments/environment';
 import {
+  MarketAnalysisRowRecord,
+  MarketAnalysisRunDetail,
   MarketAnalysisRunItem,
+  MarketAnalysisRunResult,
   MarketAnalysisRunsPage,
   MarketAnalysisRunsQuery,
+  MarketAnalysisSeasonalityRunSummary,
   MarketAnalysisSpecType
 } from '../models/market-analysis.models';
 
@@ -52,6 +56,18 @@ export class MarketAnalysisRunsService {
       .get<RawMarketAnalysisRunsPage>(this.baseUrl, { params })
       .pipe(map(payload => normalizeRunsPage(payload)));
   }
+
+  getRunDetail(runId: string): Observable<MarketAnalysisRunDetail> {
+    return this.http
+      .get<RawMarketAnalysisRunDetail>(`${this.baseUrl}/${runId}`)
+      .pipe(map(payload => normalizeRunDetail(payload)));
+  }
+
+  getRunResult(runId: string): Observable<MarketAnalysisRunResult> {
+    return this.http
+      .get<RawMarketAnalysisRunResult>(`${this.baseUrl}/${runId}/result`)
+      .pipe(map(payload => normalizeRunResult(payload)));
+  }
 }
 
 type RawMarketAnalysisRunItem = {
@@ -79,6 +95,33 @@ type RawMarketAnalysisRunsPage = {
   total_elements?: number | null;
   total_pages?: number | null;
   sort?: string | null;
+};
+
+type RawMarketAnalysisRunDetail = RawMarketAnalysisRunItem & {
+  payload_json?: Record<string, unknown> | null;
+  progress_json?: Record<string, unknown> | null;
+  result_json_available?: boolean | null;
+};
+
+type RawMarketAnalysisRunResult = {
+  run_id: string;
+  spec_type: MarketAnalysisSpecType;
+  source?: string | null;
+  meta?: {
+    spec_id?: string | null;
+    dataset_id?: string | null;
+    out_dir?: string | null;
+    window?: string | null;
+    start?: string | null;
+    end?: string | null;
+    status?: string | null;
+  } | null;
+  data?: {
+    market_stats_rows?: MarketAnalysisRowRecord[] | null;
+    seasonality_profiles?: MarketAnalysisRowRecord[] | null;
+    seasonality_run_summary?: MarketAnalysisSeasonalityRunSummary | null;
+    raw_result_json?: Record<string, unknown> | null;
+  } | null;
 };
 
 function normalizeRunsPage(payload: RawMarketAnalysisRunsPage): MarketAnalysisRunsPage {
@@ -109,5 +152,37 @@ function normalizeRunItem(item: RawMarketAnalysisRunItem): MarketAnalysisRunItem
     persistenceEnabled: item.persistence_enabled ?? false,
     specId: item.spec_id ?? null,
     datasetId: item.dataset_id ?? null
+  };
+}
+
+function normalizeRunDetail(item: RawMarketAnalysisRunDetail): MarketAnalysisRunDetail {
+  return {
+    ...normalizeRunItem(item),
+    payloadJson: item.payload_json ?? null,
+    progressJson: item.progress_json ?? null,
+    resultJsonAvailable: item.result_json_available ?? false
+  };
+}
+
+function normalizeRunResult(payload: RawMarketAnalysisRunResult): MarketAnalysisRunResult {
+  return {
+    runId: payload.run_id,
+    specType: payload.spec_type,
+    source: payload.source ?? 'result_json',
+    meta: {
+      specId: payload.meta?.spec_id ?? null,
+      datasetId: payload.meta?.dataset_id ?? null,
+      outDir: payload.meta?.out_dir ?? null,
+      window: payload.meta?.window ?? null,
+      start: payload.meta?.start ?? null,
+      end: payload.meta?.end ?? null,
+      status: payload.meta?.status ?? null
+    },
+    data: {
+      marketStatsRows: Array.isArray(payload.data?.market_stats_rows) ? payload.data.market_stats_rows : [],
+      seasonalityProfiles: Array.isArray(payload.data?.seasonality_profiles) ? payload.data.seasonality_profiles : [],
+      seasonalityRunSummary: payload.data?.seasonality_run_summary ?? null,
+      rawResultJson: payload.data?.raw_result_json ?? null
+    }
   };
 }

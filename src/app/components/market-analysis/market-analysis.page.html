@@ -120,10 +120,11 @@
             <th>Cree le</th>
             <th>Persist</th>
             <th>Attempts</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let run of runsPage().items; trackBy: trackRun">
+          <tr *ngFor="let run of runsPage().items; trackBy: trackRun" [class.run-row-selected]="isSelectedRun(run.runId)">
             <td>
               <div class="run-id">{{ run.runId }}</div>
               <div class="run-request">{{ run.requestId }}</div>
@@ -139,6 +140,11 @@
             <td>{{ (run.createdAt ? (run.createdAt | date:'short') : '-') }}</td>
             <td>{{ run.persistenceEnabled ? 'Oui' : 'Non' }}</td>
             <td>{{ run.attempts }}/{{ run.maxAttempts }}</td>
+            <td>
+              <button mat-stroked-button type="button" (click)="selectRun(run.runId)" [disabled]="selectedRunLoading() && isSelectedRun(run.runId)">
+                {{ isSelectedRun(run.runId) ? 'Ouvert' : 'Ouvrir' }}
+              </button>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -156,6 +162,125 @@
       <button mat-stroked-button type="button" (click)="loadNextRunsPage()" [disabled]="!canGoToNextRunsPage() || runsLoading()">
         Page suivante
       </button>
+    </div>
+  </mat-card>
+
+  <mat-card class="content-card" *ngIf="selectedRunId()">
+    <div class="tab-header">
+      <h3>Run selectionne</h3>
+      <span class="run-state" [ngClass]="runStatusClass(selectedRunDetail()?.status ?? selectedRunResult()?.meta?.status ?? 'unknown')">
+        {{ selectedRunDetail()?.status ?? selectedRunResult()?.meta?.status ?? 'UNKNOWN' }}
+      </span>
+    </div>
+
+    <mat-progress-bar *ngIf="selectedRunLoading()" mode="indeterminate"></mat-progress-bar>
+    <p class="runs-error" *ngIf="selectedRunError()">{{ selectedRunError() }}</p>
+    <p class="empty-state" *ngIf="selectedRunResultInfo()">{{ selectedRunResultInfo() }}</p>
+
+    <div class="backend-grid" *ngIf="selectedRunDetail() as detail">
+      <div class="backend-card">
+        <h4>Lifecycle</h4>
+        <div class="detail-pairs">
+          <div><strong>Run ID</strong><span>{{ detail.runId }}</span></div>
+          <div><strong>Request ID</strong><span>{{ detail.requestId }}</span></div>
+          <div><strong>Type</strong><span>{{ formatRunSpecType(detail.specType) }}</span></div>
+          <div><strong>Created</strong><span>{{ detail.createdAt ? (detail.createdAt | date:'short') : '-' }}</span></div>
+          <div><strong>Started</strong><span>{{ detail.startedAt ? (detail.startedAt | date:'short') : '-' }}</span></div>
+          <div><strong>Finished</strong><span>{{ detail.finishedAt ? (detail.finishedAt | date:'short') : '-' }}</span></div>
+          <div><strong>Persisted</strong><span>{{ detail.persistenceEnabled ? 'Oui' : 'Non' }}</span></div>
+          <div><strong>Result JSON</strong><span>{{ detail.resultJsonAvailable ? 'Disponible' : 'Absent' }}</span></div>
+        </div>
+      </div>
+
+      <div class="backend-card" *ngIf="selectedRunMetaEntries().length">
+        <h4>Payload</h4>
+        <div class="detail-pairs">
+          <div *ngFor="let entry of selectedRunMetaEntries(); trackBy: trackEntry">
+            <strong>{{ entry.key }}</strong>
+            <span>{{ entry.value }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="backend-card" *ngIf="selectedRunProgressEntries().length">
+        <h4>Progress</h4>
+        <div class="detail-pairs">
+          <div *ngFor="let entry of selectedRunProgressEntries(); trackBy: trackEntry">
+            <strong>{{ entry.key }}</strong>
+            <span>{{ entry.value }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </mat-card>
+
+  <mat-card class="content-card" *ngIf="selectedRunResult() as runResult">
+    <div class="tab-header">
+      <h3>Resultat run</h3>
+      <span class="backend-state state-ready">{{ runResult.source }}</span>
+    </div>
+
+    <div class="backend-grid">
+      <div class="backend-card"><strong>Spec ID</strong><div>{{ runResult.meta.specId ?? '-' }}</div></div>
+      <div class="backend-card"><strong>Dataset ID</strong><div>{{ runResult.meta.datasetId ?? '-' }}</div></div>
+      <div class="backend-card"><strong>Window</strong><div>{{ runResult.meta.window ?? '-' }}</div></div>
+      <div class="backend-card"><strong>Range</strong><div>{{ runResult.meta.start ?? '-' }} -> {{ runResult.meta.end ?? '-' }}</div></div>
+    </div>
+
+    <div class="result-section" *ngIf="runResult.data.marketStatsRows.length">
+      <h4>Market stats rows</h4>
+      <div class="stats-table-wrapper">
+        <table class="stats-table">
+          <thead>
+            <tr>
+              <th *ngFor="let column of selectedRunMarketStatsColumns()">{{ column }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let row of runResult.data.marketStatsRows">
+              <td *ngFor="let column of selectedRunMarketStatsColumns()">{{ getRowValue(row, column) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="result-section" *ngIf="runResult.data.seasonalityProfiles.length">
+      <h4>Seasonality profiles</h4>
+      <div class="stats-table-wrapper">
+        <table class="stats-table">
+          <thead>
+            <tr>
+              <th *ngFor="let column of selectedRunSeasonalityColumns()">{{ column }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let row of runResult.data.seasonalityProfiles">
+              <td *ngFor="let column of selectedRunSeasonalityColumns()">{{ getRowValue(row, column) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="result-section" *ngIf="selectedSeasonalitySummaryEntries().length">
+      <h4>Seasonality run summary</h4>
+      <div class="detail-pairs">
+        <div *ngFor="let entry of selectedSeasonalitySummaryEntries(); trackBy: trackEntry">
+          <strong>{{ entry.key }}</strong>
+          <span>{{ entry.value }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="result-section" *ngIf="selectedRawResultEntries().length">
+      <h4>Raw result JSON</h4>
+      <div class="detail-pairs">
+        <div *ngFor="let entry of selectedRawResultEntries(); trackBy: trackEntry">
+          <strong>{{ entry.key }}</strong>
+          <span>{{ entry.value }}</span>
+        </div>
+      </div>
     </div>
   </mat-card>
 
