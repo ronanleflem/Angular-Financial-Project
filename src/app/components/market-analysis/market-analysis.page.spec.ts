@@ -385,6 +385,84 @@ describe('MarketAnalysisPage', () => {
     expect(component.selectedRunResult()).toEqual(mockRunResult);
   });
 
+  it('should render enriched market_stats rows with prioritized columns and formatted values', () => {
+    stubDefaultResponses();
+    marketAnalysisRunsSpy.getRunResult.and.returnValue(
+      of({
+        ...mockRunResult,
+        data: {
+          ...mockRunResult.data,
+          marketStatsRows: [
+            {
+              event: 'breakout',
+              target: 'continuation_n',
+              n: 42,
+              lift_freq: 1.2345,
+              lift_bayes: 1.1111,
+              p_value: 0.01234,
+              q_value: 0.04567,
+              significant: true,
+              p_mean: 0.54321,
+              p_map: 0.51234,
+              hdi_low: 0.41,
+              hdi_high: 0.62,
+              insufficient: false
+            }
+          ]
+        }
+      })
+    );
+
+    createComponent();
+
+    const root = fixture.nativeElement as HTMLElement;
+    const marketStatsTable = root.querySelector('.result-section .stats-table') as HTMLTableElement;
+    const headers = Array.from(
+      marketStatsTable.querySelectorAll('thead th')
+    ).map(cell => (cell as HTMLTableCellElement).textContent?.trim());
+    const firstRow = Array.from(
+      marketStatsTable.querySelectorAll('tbody tr:first-child td')
+    ).map(cell => (cell as HTMLTableCellElement).textContent?.trim());
+
+    expect(headers).toContain('Lift Freq');
+    expect(headers).toContain('Lift Bayes');
+    expect(headers).toContain('p_value');
+    expect(headers).toContain('q_value');
+    expect(headers).toContain('Significant');
+    expect(headers).toContain('P Mean');
+    expect(headers).toContain('P Map');
+    expect(headers).toContain('Hdi Low');
+    expect(headers).toContain('Hdi High');
+    expect(headers.indexOf('Event')).toBeLessThan(headers.indexOf('Lift Freq'));
+    expect(firstRow).toContain('1.2345');
+    expect(firstRow).toContain('0.0123');
+    expect(firstRow).toContain('Yes');
+    expect(firstRow).toContain('No');
+  });
+
+  it('should keep backward-compatible market_stats rendering when only legacy columns are present', () => {
+    stubDefaultResponses();
+    marketAnalysisRunsSpy.getRunResult.and.returnValue(
+      of({
+        ...mockRunResult,
+        data: {
+          ...mockRunResult.data,
+          marketStatsRows: [{ event: 'breakout', n: 10 }]
+        }
+      })
+    );
+
+    createComponent();
+
+    expect(component.selectedRunMarketStatsColumns()).toEqual(['event', 'n']);
+    const root = fixture.nativeElement as HTMLElement;
+    const marketStatsTable = root.querySelector('.result-section .stats-table') as HTMLTableElement;
+    const firstRow = Array.from(
+      marketStatsTable.querySelectorAll('tbody tr:first-child td')
+    ).map(cell => (cell as HTMLTableCellElement).textContent?.trim());
+    expect(firstRow).toEqual(['breakout', '10']);
+  });
+
   it('should request the next runs page with the current filters', () => {
     stubDefaultResponses();
     marketAnalysisRunsSpy.getRuns.and.returnValues(

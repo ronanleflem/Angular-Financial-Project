@@ -131,12 +131,11 @@
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
-  min-width: 0;
 }
 
 .mock-chip {
   text-transform: uppercase;
-  font-size: 0.7rem;
+  font-size: .7rem;
   letter-spacing: 0.04em;
   border-radius: 999px;
   padding: 0 0.6rem;
@@ -170,12 +169,6 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: #475569;
-}
-
-.section-placeholder {
-  margin: 0.35rem 0 0;
-  color: #94a3b8;
-  font-size: 0.85rem;
 }
 
 .param-section {
@@ -305,10 +298,6 @@
   border-color: rgba(37, 99, 235, 0.9);
   color: #1d4ed8;
   box-shadow: 0 10px 22px rgba(37, 99, 235, 0.16);
-}
-
-.accordion {
-  display: block;
 }
 
 .accordion .mat-expansion-panel {
@@ -476,11 +465,6 @@
   font-size: 0.9rem;
 }
 
-.result-summary {
-  color: #334155;
-  font-weight: 600;
-}
-
 .tag-row {
   display: flex;
   flex-wrap: wrap;
@@ -554,7 +538,6 @@
 .delta-ranges-list {
   max-height: 220px;
   overflow-y: auto;
-  overscroll-behavior: contain;
   padding-right: 0.35rem;
 }
 

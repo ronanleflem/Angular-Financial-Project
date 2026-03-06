@@ -235,12 +235,12 @@
         <table class="stats-table">
           <thead>
             <tr>
-              <th *ngFor="let column of selectedRunMarketStatsColumns()">{{ column }}</th>
+              <th *ngFor="let column of selectedRunMarketStatsColumns()">{{ marketStatsColumnLabel(column) }}</th>
             </tr>
           </thead>
           <tbody>
             <tr *ngFor="let row of runResult.data.marketStatsRows">
-              <td *ngFor="let column of selectedRunMarketStatsColumns()">{{ getRowValue(row, column) }}</td>
+              <td *ngFor="let column of selectedRunMarketStatsColumns()">{{ getMarketStatsRowValue(row, column) }}</td>
             </tr>
           </tbody>
         </table>

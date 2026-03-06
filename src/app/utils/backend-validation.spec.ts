@@ -71,6 +71,7 @@ describe('backend-validation', () => {
     expect(mapBackendFieldToControlName('data.asset_class', 'market-stats', {})).toBe('assetClass');
     expect(mapBackendFieldToControlName('data.currency', 'market-stats', {})).toBe('currency');
     expect(mapBackendFieldToControlName('data.symbols', 'market-stats', {})).toBe('symbols');
+    expect(mapBackendFieldToControlName('data.stats_pack', 'market-stats', {})).toBe('statsPack');
   });
 
   it('maps market stats top-level persistence and output fields', () => {

@@ -67,6 +67,33 @@ type FilterAggregate = {
 
 type DataSectionState = 'ready' | 'empty' | 'error';
 
+const PREFERRED_MARKET_STATS_COLUMNS = [
+  'event',
+  'condition',
+  'target',
+  'n',
+  'p_hat',
+  'p_mean',
+  'p_map',
+  'ci_low',
+  'ci_high',
+  'hdi_low',
+  'hdi_high',
+  'hdi_50_low',
+  'hdi_50_high',
+  'hdi_90_low',
+  'hdi_90_high',
+  'hdi_95_low',
+  'hdi_95_high',
+  'lift',
+  'lift_freq',
+  'lift_bayes',
+  'p_value',
+  'q_value',
+  'significant',
+  'insufficient'
+] as const;
+
 @Component({
   selector: 'app-market-analysis-page',
   standalone: true,
@@ -184,7 +211,9 @@ export class MarketAnalysisPage {
   });
   readonly selectedRunMetaEntries = computed(() => toKeyValueEntries(this.selectedRunDetail()?.payloadJson));
   readonly selectedRunProgressEntries = computed(() => toKeyValueEntries(this.selectedRunDetail()?.progressJson));
-  readonly selectedRunMarketStatsColumns = computed(() => collectRowKeys(this.selectedRunResult()?.data.marketStatsRows ?? []));
+  readonly selectedRunMarketStatsColumns = computed(() =>
+    orderMarketStatsColumns(this.selectedRunResult()?.data.marketStatsRows ?? [])
+  );
   readonly selectedRunSeasonalityColumns = computed(() => collectRowKeys(this.selectedRunResult()?.data.seasonalityProfiles ?? []));
   readonly selectedSeasonalitySummaryEntries = computed(() =>
     toKeyValueEntries(this.selectedRunResult()?.data.seasonalityRunSummary ?? null)
@@ -545,6 +574,23 @@ export class MarketAnalysisPage {
     return formatDisplayValue(row[key]);
   }
 
+  marketStatsColumnLabel(column: string): string {
+    switch (column) {
+      case 'p_hat':
+        return 'p_hat';
+      case 'p_value':
+        return 'p_value';
+      case 'q_value':
+        return 'q_value';
+      default:
+        return humanizeColumnName(column);
+    }
+  }
+
+  getMarketStatsRowValue(row: MarketAnalysisRowRecord, key: string): string {
+    return formatMarketStatsDisplayValue(row[key], key);
+  }
+
   trackEntry(_index: number, entry: KeyValueEntry): string {
     return entry.key;
   }
@@ -626,6 +672,19 @@ function collectRowKeys(rows: MarketAnalysisRowRecord[]): string[] {
   return Array.from(keys);
 }
 
+function orderMarketStatsColumns(rows: MarketAnalysisRowRecord[]): string[] {
+  const keys = collectRowKeys(rows);
+  if (keys.length === 0) {
+    return [];
+  }
+  const preferred = new Set<string>(PREFERRED_MARKET_STATS_COLUMNS);
+  const ordered = PREFERRED_MARKET_STATS_COLUMNS.filter(key => keys.includes(key));
+  const remaining = keys
+    .filter(key => !preferred.has(key))
+    .sort((left, right) => left.localeCompare(right));
+  return [...ordered, ...remaining];
+}
+
 function formatDisplayValue(value: unknown): string {
   if (value === null || value === undefined) {
     return '-';
@@ -637,6 +696,33 @@ function formatDisplayValue(value: unknown): string {
     return String(value);
   }
   return JSON.stringify(value);
+}
+
+function formatMarketStatsDisplayValue(value: unknown, key: string): string {
+  if (value === null || value === undefined) {
+    return '-';
+  }
+  if (typeof value === 'boolean') {
+    return value ? 'Yes' : 'No';
+  }
+  if (typeof value === 'number') {
+    if (key === 'n') {
+      return String(value);
+    }
+    if (Number.isInteger(value) && Math.abs(value) >= 100) {
+      return String(value);
+    }
+    return value.toFixed(4).replace(/\.?0+$/, '');
+  }
+  return formatDisplayValue(value);
+}
+
+function humanizeColumnName(value: string): string {
+  return value
+    .split('_')
+    .filter(Boolean)
+    .map(chunk => chunk.charAt(0).toUpperCase() + chunk.slice(1))
+    .join(' ');
 }
 
 function heatmapColor(value: number): string {

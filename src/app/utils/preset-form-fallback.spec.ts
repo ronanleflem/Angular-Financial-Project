@@ -96,6 +96,30 @@ describe('preset-form-fallback', () => {
     expect(result['symbol']).toBe('ETHUSD');
   });
 
+  it('keeps market-stats preset fallback tolerant when stats details are partially missing', () => {
+    const payload = {
+      runType: 'market_stats',
+      data: {
+        symbols: ['BTC', 'ETH'],
+        assetClass: 'CRYPTO',
+        currency: 'USDT',
+        timeframe: '4h',
+        startDate: '2024-01-01',
+        endDate: '2024-12-31',
+        lookback: 500,
+        statsPack: 'Liquidity'
+      },
+      stats: {} as any
+    } as RunRequestInput;
+
+    const result = mergePresetFormValue('market-stats', {}, payload);
+    expect(result['symbols']).toEqual(['BTC', 'ETH']);
+    expect(result['assetClass']).toBe('CRYPTO');
+    expect(result['currency']).toBe('USDT');
+    expect(result['statsPack']).toBe('Liquidity');
+    expect(result['eventId']).toBe('');
+  });
+
   it('returns empty object on mismatched run type', () => {
     const payload: RunRequestInput = {
       runType: 'backtest',

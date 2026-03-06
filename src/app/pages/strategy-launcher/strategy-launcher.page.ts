@@ -201,6 +201,12 @@ interface SeasonalityOption {
   params: FilterParam[];
 }
 
+interface StatsPackOption {
+  id: string;
+  label: string;
+  description: string;
+}
+
 interface DeltaPresetPeriod {
   startDate: string;
   endDate: string;
@@ -453,7 +459,28 @@ export class StrategyLauncherPageComponent {
   readonly seasonalityCombineModes = ['mean', 'weighted', 'vote'];
 
   readonly backtestStrategies = ['Breakout', 'Mean Reversion', 'Momentum', 'MA Crossover'];
-  readonly statsPacks = ['Volatility', 'Liquidity', 'Regime', 'Microstructure'];
+  readonly statsPackOptions: StatsPackOption[] = [
+    {
+      id: 'Volatility',
+      label: 'Volatility',
+      description: 'Enrichit le triplet avec les lifts et probabilites relies aux regimes de volatilite.'
+    },
+    {
+      id: 'Liquidity',
+      label: 'Liquidity',
+      description: 'Ajoute des metriques d execution et de microstructure orientees liquidite et spread.'
+    },
+    {
+      id: 'Regime',
+      label: 'Regime',
+      description: 'Expose les metriques conditionnelles liees aux regimes de marche et aux changements de contexte.'
+    },
+    {
+      id: 'Microstructure',
+      label: 'Microstructure',
+      description: 'Met en avant les signaux intrabar, desequilibres et effets de structure de marche.'
+    }
+  ];
   readonly seasonalityWindows = ['Monthly', 'Weekly', 'Day of Week', 'Intraday'];
   readonly seasonalitySessionUtcBuckets = [
     { label: 'Asia', range: '00:00-06:59' },
@@ -2064,6 +2091,38 @@ export class StrategyLauncherPageComponent {
   marketStatsCurrencyOptions(): string[] {
     const assetClass = String(this.marketStatsForm.get('assetClass')?.value ?? this.statsDefaults.assetClass);
     return allowedCurrenciesForAssetClass(assetClass);
+  }
+
+  marketStatsPackDescription(): string | null {
+    const selectedPack = String(this.marketStatsForm.get('statsPack')?.value ?? '').trim();
+    if (!selectedPack) {
+      return null;
+    }
+    return this.statsPackOptions.find(option => option.id === selectedPack)?.description ?? null;
+  }
+
+  marketStatsStatsPackVisible(): boolean {
+    return (
+      this.isMarketStatsFieldSupported('data.stats_pack') ||
+      this.isMarketStatsFieldSupported('data.statsPack')
+    );
+  }
+
+  marketStatsStatsPackRuntimeWired(): boolean {
+    return (
+      this.isMarketStatsFieldRuntimeWired('data.stats_pack') ||
+      this.isMarketStatsFieldRuntimeWired('data.statsPack')
+    );
+  }
+
+  marketStatsStatsPackHelper(): string {
+    if (!this.marketStatsStatsPackVisible()) {
+      return 'Le runtime courant ne declare pas de support pour data.stats_pack.';
+    }
+    if (!this.marketStatsStatsPackRuntimeWired()) {
+      return 'stats_pack est accepte par le contrat mais non cable runtime. Le champ est masque pour eviter toute ambiguite.';
+    }
+    return 'Le stats_pack enrichit le triplet event / condition / target ci-dessous. Il ne remplace pas encore la selection manuelle.';
   }
 
   seasonalityCurrencyOptions(): string[] {
@@ -4465,7 +4524,9 @@ export class StrategyLauncherPageComponent {
         startDate: effectiveStartDate,
         endDate: effectiveEndDate,
         lookback: Number(v.lookback ?? this.statsDefaults.lookback),
-        statsPack: String(v.statsPack ?? this.statsDefaults.statsPack),
+        statsPack: this.marketStatsStatsPackVisible() && this.marketStatsStatsPackRuntimeWired()
+          ? String(v.statsPack ?? this.statsDefaults.statsPack)
+          : undefined,
         session: String(v.session ?? this.statsDefaults.session),
         includeWeekends: Boolean(v.includeWeekends ?? this.statsDefaults.includeWeekends)
       },

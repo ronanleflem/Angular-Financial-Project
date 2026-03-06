@@ -236,34 +236,52 @@ function mapMarketStatsPayload(payload: RunRequestInput): Record<string, unknown
   if (payload.runType !== 'market_stats') {
     return {};
   }
+  const stats = payload.stats as Partial<{
+    event: { id?: string; params?: Record<string, number | string | boolean> };
+    condition: { id?: string; params?: Record<string, number | string | boolean> };
+    target: { id?: string; params?: Record<string, number | string | boolean> };
+    validation: { trainMonths?: number; testMonths?: number; folds?: number; embargoDays?: number };
+  }> | undefined;
   const legacyStats = payload.stats as {
     persistence?: { enabled?: boolean; specId?: string; datasetId?: string };
     artifacts?: { outDir?: string };
   };
   const persistence = payload.persistence ?? legacyStats.persistence;
   const output = payload.output ?? legacyStats.artifacts;
+  const eventId = String(stats?.event?.id ?? '').trim();
+  const conditionId = String(stats?.condition?.id ?? '').trim();
+  const targetId = String(stats?.target?.id ?? '').trim();
   const result: Record<string, unknown> = {
     symbol: payload.data.symbol,
+    symbols: payload.data.symbols,
+    assetClass: payload.data.assetClass,
+    currency: payload.data.currency,
     timeframe: payload.data.timeframe,
     lookback: payload.data.lookback,
     statsPack: payload.data.statsPack,
     session: payload.data.session,
     includeWeekends: payload.data.includeWeekends,
-    eventId: payload.stats.event.id,
-    conditionId: payload.stats.condition.id,
-    targetId: payload.stats.target.id,
-    validationTrainMonths: payload.stats.validation.trainMonths,
-    validationTestMonths: payload.stats.validation.testMonths,
-    validationFolds: payload.stats.validation.folds,
-    validationEmbargoDays: payload.stats.validation.embargoDays,
+    eventId,
+    conditionId,
+    targetId,
+    validationTrainMonths: stats?.validation?.trainMonths,
+    validationTestMonths: stats?.validation?.testMonths,
+    validationFolds: stats?.validation?.folds,
+    validationEmbargoDays: stats?.validation?.embargoDays,
     persistenceEnabled: persistence?.enabled,
     persistenceSpecId: persistence?.specId,
     persistenceDatasetId: persistence?.datasetId,
     artifactsOutDir: output?.outDir
   };
-  assignParams(result, `event_${payload.stats.event.id}_`, payload.stats.event.params);
-  assignParams(result, `condition_${payload.stats.condition.id}_`, payload.stats.condition.params);
-  assignParams(result, `target_${payload.stats.target.id}_`, payload.stats.target.params);
+  if (eventId) {
+    assignParams(result, `event_${eventId}_`, stats?.event?.params);
+  }
+  if (conditionId) {
+    assignParams(result, `condition_${conditionId}_`, stats?.condition?.params);
+  }
+  if (targetId) {
+    assignParams(result, `target_${targetId}_`, stats?.target?.params);
+  }
   return result;
 }
 

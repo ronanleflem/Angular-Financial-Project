@@ -504,6 +504,32 @@ describe('StrategyLauncherPageComponent', () => {
     expect(component.isMarketStatsFieldRuntimeWired('data.currency')).toBeFalse();
   });
 
+  it('omits stats_pack from market-stats payload when capabilities do not expose it', () => {
+    fixture.detectChanges();
+    flushInitRequests(
+      {},
+      null,
+      {},
+      null,
+      {
+        fields: {
+          supported: ['data.symbol', 'data.timeframe', 'stats.event.id', 'stats.condition.id', 'stats.target.id'],
+          accepted_but_not_wired: []
+        }
+      }
+    );
+
+    component.selectRun('market-stats');
+    component.marketStatsForm.patchValue({
+      symbol: 'BTC',
+      statsPack: 'Liquidity'
+    } as any);
+
+    const payload = component.buildRunRequest() as any;
+    expect(component.marketStatsStatsPackVisible()).toBeFalse();
+    expect(payload.data.statsPack).toBeUndefined();
+  });
+
   it('enforces required dynamic market-stats params with min(1) for integer required fields', () => {
     fixture.detectChanges();
     const catalogReq = httpMock.expectOne('/parameter_catalog.json');

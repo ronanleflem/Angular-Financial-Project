@@ -182,7 +182,7 @@ export interface BacktestStrategyParamsBlock {
 export interface MarketStatsDataBlock extends DataBlockBase, PeriodBlock {
   assetClass?: 'CRYPTO' | 'ETF' | 'EQUITY' | 'FOREX' | string;
   lookback: number;
-  statsPack: string;
+  statsPack?: string;
   session?: string;
   includeWeekends?: boolean;
 }
