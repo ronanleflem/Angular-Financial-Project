@@ -10,16 +10,8 @@
     <form [formGroup]="analysisForm" class="analysis-form" (ngSubmit)="refreshData()">
       <mat-form-field appearance="outline">
         <mat-label>Symbole</mat-label>
-        <mat-select formControlName="symbol">
-          <mat-option value="EURUSD">EURUSD (Forex)</mat-option>
-          <mat-option value="GBPUSD">GBPUSD (Forex)</mat-option>
-          <mat-option value="BTCUSD">BTCUSD (Crypto)</mat-option>
-          <mat-option value="ETHUSD">ETHUSD (Crypto)</mat-option>
-          <mat-option value="AAPL">AAPL (Actions)</mat-option>
-          <mat-option value="MSFT">MSFT (Actions)</mat-option>
-          <mat-option value="SPY">SPY (ETF)</mat-option>
-          <mat-option value="EEM">EEM (ETF)</mat-option>
-        </mat-select>
+        <input matInput formControlName="symbol" placeholder="Ex: BTC, ETH, BTCUSD, EURUSD" />
+        <mat-hint>Champ libre pour supporter les symboles remontes par les runs backend.</mat-hint>
       </mat-form-field>
 
       <mat-form-field appearance="outline">

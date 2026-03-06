@@ -226,6 +226,40 @@ describe('MarketAnalysisPage', () => {
     expect(marketAnalysisRunsSpy.getRunResult).toHaveBeenCalledWith('run-1');
   });
 
+  it('should allow free-form symbols for backend-driven runs', () => {
+    stubDefaultResponses();
+
+    createComponent();
+
+    marketStatsSpy.getCandles.calls.reset();
+    marketStatsSpy.getSeasonality.calls.reset();
+    marketStatsSpy.getStatsSummary.calls.reset();
+    filtersSpy.getMultiTFStats.calls.reset();
+    filtersSpy.getBenford.calls.reset();
+    filtersSpy.getGenericFilter.calls.reset();
+    marketAnalysisRunsSpy.getRuns.calls.reset();
+
+    component.analysisForm.patchValue({ symbol: 'BTC', timeframe: '1h' });
+
+    component.refreshData();
+
+    expect(marketStatsSpy.getCandles).toHaveBeenCalledWith('BTC', '1h', jasmine.any(String));
+    expect(marketStatsSpy.getSeasonality).toHaveBeenCalledWith('BTC', '1h');
+    expect(marketStatsSpy.getStatsSummary).toHaveBeenCalledWith({
+      symbol: 'BTC',
+      timeframe: '1h'
+    });
+    expect(marketAnalysisRunsSpy.getRuns).toHaveBeenCalledWith({
+      specType: 'market_stats',
+      status: '',
+      symbol: 'BTC',
+      timeframe: '1h',
+      page: 0,
+      size: 10,
+      sort: 'created_at,desc'
+    });
+  });
+
   it('should keep loading false and show snackbar on invalid form', () => {
     stubDefaultResponses();
 
