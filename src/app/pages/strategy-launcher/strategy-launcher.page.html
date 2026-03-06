@@ -1987,7 +1987,7 @@
 
           <mat-form-field appearance="outline" *ngIf="marketStatsStatsPackVisible()">
             <mat-label>Stats pack</mat-label>
-            <mat-select formControlName="statsPack" [disabled]="!marketStatsStatsPackRuntimeWired()">
+            <mat-select formControlName="statsPack">
               <mat-option *ngFor="let pack of statsPackOptions" [value]="pack.id">{{ pack.label }}</mat-option>
             </mat-select>
             <mat-hint *ngIf="marketStatsPackDescription()">{{ marketStatsPackDescription() }}</mat-hint>

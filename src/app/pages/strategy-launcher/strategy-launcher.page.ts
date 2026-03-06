@@ -1492,6 +1492,7 @@ export class StrategyLauncherPageComponent {
     this.bindDcaCurrencyControls();
     this.bindBacktestCurrencyControls();
     this.bindMarketStatsCurrencyControls();
+    this.bindMarketStatsStatsPackControl();
     this.bindSeasonalityCurrencyControls();
     this.bindMarketStatsDeltaPresetControls();
     this.bindSeasonalityDeltaPresetControls();
@@ -1527,6 +1528,15 @@ export class StrategyLauncherPageComponent {
     targetId.valueChanges.subscribe(() => {
       this.ensureMarketStatsParamControls('target', this.marketTargetOptions);
     });
+  }
+
+  private bindMarketStatsStatsPackControl(): void {
+    const statsPackControl = this.marketStatsForm.get('statsPack');
+    if (!statsPackControl) {
+      return;
+    }
+
+    this.applyMarketStatsStatsPackControlState();
   }
 
   private bindStressAdvancedControls(): void {
@@ -2120,7 +2130,7 @@ export class StrategyLauncherPageComponent {
       return 'Le runtime courant ne declare pas de support pour data.stats_pack.';
     }
     if (!this.marketStatsStatsPackRuntimeWired()) {
-      return 'stats_pack est accepte par le contrat mais non cable runtime. Le champ est masque pour eviter toute ambiguite.';
+      return 'stats_pack est accepte par le contrat mais non cable runtime. Le champ reste visible mais desactive pour eviter toute ambiguite.';
     }
     return 'Le stats_pack enrichit le triplet event / condition / target ci-dessous. Il ne remplace pas encore la selection manuelle.';
   }
@@ -3265,6 +3275,7 @@ export class StrategyLauncherPageComponent {
           this.marketStatsSupportedFields = new Set<string>();
           this.marketStatsAcceptedButNotWiredFields = new Set<string>();
           this.marketStatsDataSymbolsSupported = false;
+          this.applyMarketStatsStatsPackControlState();
           this.marketStatsCapabilitiesInfo.set('Capabilities market_stats indisponibles, mode statique active.');
           this.marketStatsCanonicalSupportedFields.set([]);
           this.marketStatsCanonicalAcceptedButNotWiredFields.set([]);
@@ -3280,6 +3291,7 @@ export class StrategyLauncherPageComponent {
         this.marketStatsSupportedFields = new Set(fields.supported);
         this.marketStatsAcceptedButNotWiredFields = new Set(fields.acceptedButNotWired);
         this.marketStatsDataSymbolsSupported = fields.supported.includes('data.symbols');
+        this.applyMarketStatsStatsPackControlState();
         if (this.marketStatsDataSymbolsSupported) {
           const currentSymbol = String(this.marketStatsForm.get('symbol')?.value ?? '').trim();
           const currentSymbols = this.normalizedSymbolList(this.marketStatsForm.get('symbols')?.value);
@@ -3294,6 +3306,20 @@ export class StrategyLauncherPageComponent {
           this.marketStatsCapabilitiesAvailable ? 'Mode capabilities market_stats actif.' : null
         );
       });
+  }
+
+  private applyMarketStatsStatsPackControlState(): void {
+    const statsPackControl = this.marketStatsForm.get('statsPack');
+    if (!statsPackControl) {
+      return;
+    }
+
+    if (this.marketStatsStatsPackVisible() && this.marketStatsStatsPackRuntimeWired()) {
+      statsPackControl.enable({ emitEvent: false });
+      return;
+    }
+
+    statsPackControl.disable({ emitEvent: false });
   }
 
   private loadSeasonalityCapabilities(): void {

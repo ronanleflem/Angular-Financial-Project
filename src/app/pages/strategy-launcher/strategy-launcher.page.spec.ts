@@ -504,6 +504,27 @@ describe('StrategyLauncherPageComponent', () => {
     expect(component.isMarketStatsFieldRuntimeWired('data.currency')).toBeFalse();
   });
 
+  it('keeps stats_pack visible but disables the control when runtime marks it accepted-but-not-wired', () => {
+    fixture.detectChanges();
+    flushInitRequests(
+      {},
+      null,
+      {},
+      null,
+      {
+        fields: {
+          supported: ['data.symbol', 'data.timeframe', 'data.stats_pack', 'stats.event.id', 'stats.condition.id', 'stats.target.id'],
+          accepted_but_not_wired: ['data.stats_pack']
+        }
+      }
+    );
+
+    expect(component.marketStatsStatsPackVisible()).toBeTrue();
+    expect(component.marketStatsStatsPackRuntimeWired()).toBeFalse();
+    expect(component.marketStatsForm.get('statsPack')?.disabled).toBeTrue();
+    expect(component.marketStatsStatsPackHelper()).toContain('visible mais desactive');
+  });
+
   it('omits stats_pack from market-stats payload when capabilities do not expose it', () => {
     fixture.detectChanges();
     flushInitRequests(
