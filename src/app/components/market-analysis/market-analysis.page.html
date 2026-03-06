@@ -286,7 +286,7 @@
     </div>
   </mat-card>
 
-  <section class="kpis" *ngIf="kpis() as summary">
+  <section class="kpis" *ngIf="selectedRunDrivenKpisVisible() && kpis() as summary">
     <mat-card class="kpi-card" *ngFor="let item of [
       { label: 'ATR %', value: summary.atrPercent, suffix: '%' },
       { label: 'Range moyen', value: summary.averageRange },
@@ -305,137 +305,115 @@
 
   <mat-card class="content-card">
     <mat-tab-group>
-      <mat-tab label="Saisonnalité">
+      <mat-tab label="Saisonnalite (run)" [disabled]="!selectedRunHasSeasonalityView()">
         <div class="tab-header">
-          <h3>Saisonnalité mensuelle & hebdomadaire</h3>
+          <h3>Saisonnalite du run selectionne</h3>
         </div>
-        <ng-container *ngIf="sectionStates().seasonality !== 'empty'; else seasonalityEmpty">
-          <div class="seasonality-charts">
-            @let monthConfig = monthChartConfig();
-            @let dowConfig = dowChartConfig();
-            <div class="chart">
-              <canvas
-                baseChart
-                [data]="monthConfig.data"
-                [options]="monthConfig.options"
-                [type]="monthConfig.type"
-              ></canvas>
-            </div>
-            <div class="chart">
-              <canvas
-                baseChart
-                [data]="dowConfig.data"
-                [options]="dowConfig.options"
-                [type]="dowConfig.type"
-              ></canvas>
-            </div>
+        <ng-container *ngIf="selectedRunHasSeasonalityView(); else seasonalityRunUnavailable">
+          <div class="stats-table-wrapper" *ngIf="selectedRunSeasonalityRows().length; else seasonalityEmpty">
+            <table class="stats-table">
+              <thead>
+                <tr>
+                  <th *ngFor="let column of selectedRunSeasonalityColumns()">{{ column }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let row of selectedRunSeasonalityRows()">
+                  <td *ngFor="let column of selectedRunSeasonalityColumns()">{{ getRowValue(row, column) }}</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
-          <mat-divider></mat-divider>
-          <div class="heatmap-container">
-            <div class="tab-header">
-              <h3>Heatmap horaire</h3>
-            </div>
-            @let heatmapConfig = heatmapChartConfig();
-            <div class="heatmap-chart">
-              <canvas
-                baseChart
-                [data]="heatmapConfig.data"
-                [options]="heatmapConfig.options"
-                [type]="heatmapConfig.type"
-              ></canvas>
+          <div class="detail-pairs" *ngIf="selectedSeasonalitySummaryEntries().length">
+            <div *ngFor="let entry of selectedSeasonalitySummaryEntries(); trackBy: trackEntry">
+              <strong>{{ entry.key }}</strong>
+              <span>{{ entry.value }}</span>
             </div>
           </div>
         </ng-container>
         <ng-template #seasonalityEmpty>
-          <p class="empty-state">Aucun profil seasonality disponible pour cette selection.</p>
+          <p class="empty-state">Aucun profil seasonality disponible dans le resultat de ce run.</p>
+        </ng-template>
+        <ng-template #seasonalityRunUnavailable>
+          <p class="empty-state">Ce run n'expose pas de vue seasonality.</p>
         </ng-template>
       </mat-tab>
-      <mat-tab label="Patterns & Probabilités">
+
+      <mat-tab label="Patterns & Probabilites (run)" [disabled]="!selectedRunHasMarketStatsView()">
         <div class="tab-header">
-          <h3>Statistiques d'événements</h3>
+          <h3>Patterns & probabilites du run selectionne</h3>
         </div>
-        <div class="stats-table-wrapper" *ngIf="statsSummary().length; else statsEmpty">
-          <table class="stats-table">
-            <thead>
-              <tr>
-                <th>Événement</th>
-                <th>Cible</th>
-                <th>N</th>
-                <th>p̂</th>
-                <th>IC bas</th>
-                <th>IC haut</th>
-                <th>Lift</th>
-                <th>q-value</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr *ngFor="let row of statsSummary(); trackBy: trackStat">
-                <td>{{ row.event }}</td>
-                <td>{{ row.target }}</td>
-                <td>{{ row.n | number }}</td>
-                <td>{{ row.pHat | number:'1.2-2' }}</td>
-                <td>{{ row.ciLow | number:'1.2-2' }}</td>
-                <td>{{ row.ciHigh | number:'1.2-2' }}</td>
-                <td>{{ (row.lift ?? 0) | number:'1.2-2' }}</td>
-                <td>
-                  @if (row.qValue !== undefined) {
-                    {{ row.qValue | number:'1.2-2' }}
-                  } @else {
-                    -
-                  }
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <ng-container *ngIf="selectedRunHasMarketStatsView(); else patternsRunUnavailable">
+          <div class="stats-table-wrapper" *ngIf="selectedRunPatternsRows().length; else statsEmpty">
+            <table class="stats-table">
+              <thead>
+                <tr>
+                  <th *ngFor="let column of selectedRunMarketStatsColumns()">{{ marketStatsColumnLabel(column) }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let row of selectedRunPatternsRows()">
+                  <td *ngFor="let column of selectedRunMarketStatsColumns()">{{ getMarketStatsRowValue(row, column) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </ng-container>
         <ng-template #statsEmpty>
-          <p class="empty-state">Aucune statistique disponible pour ce filtre.</p>
+          <p class="empty-state">Aucune statistique market_stats disponible dans le resultat de ce run.</p>
         </ng-template>
-      </mat-tab>
-      <mat-tab label="Filtres">
-        <div class="tab-header">
-          <h3>Filtres actifs</h3>
-        </div>
-        <div class="filters-grid" *ngIf="filters().cards.length; else filtersEmpty">
-          <mat-card class="filter-card" *ngFor="let card of filters().cards; trackBy: trackFilter">
-            <mat-card-header>
-              <mat-card-title>{{ card.title }}</mat-card-title>
-              <mat-chip class="source-chip" [ngClass]="card.source.toLowerCase()">
-                {{ card.source === 'JAVA' ? '🟪 JAVA' : '🔵 PY' }}
-              </mat-chip>
-            </mat-card-header>
-            <mat-card-content>
-              <p class="filter-category">{{ card.category }}</p>
-              <p class="filter-description" *ngIf="card.description">{{ card.description }}</p>
-              <div class="filter-metrics">
-                <div class="metric" *ngIf="card.score as score">
-                  <span>Score</span>
-                  <mat-progress-bar mode="determinate" [value]="score * 100"></mat-progress-bar>
-                  <strong>{{ score | number:'1.2-2' }}</strong>
-                </div>
-                <div class="metric" *ngIf="card.ratio as ratio">
-                  <span>Ratio</span>
-                  <mat-progress-bar mode="determinate" [value]="ratio * 100"></mat-progress-bar>
-                  <strong>{{ ratio | percent:'1.0-1' }}</strong>
-                </div>
-                <div class="metric" *ngFor="let metric of card.metrics | keyvalue">
-                  <span>{{ metric.key }}</span>
-                  <strong>{{ metric.value }}</strong>
-                </div>
-              </div>
-              <div class="sparkline" *ngIf="card.series?.length">
-                @let path = filterSparklines().get(card.id);
-                <svg viewBox="0 0 100 100" preserveAspectRatio="none">
-                  <path [attr.d]="path" />
-                </svg>
-              </div>
-            </mat-card-content>
-          </mat-card>
-        </div>
-        <ng-template #filtersEmpty>
-          <p class="empty-state">Aucun filtre disponible.</p>
+        <ng-template #patternsRunUnavailable>
+          <p class="empty-state">Ce run n'expose pas de vue market_stats.</p>
         </ng-template>
       </mat-tab>
     </mat-tab-group>
+  </mat-card>
+
+  <mat-card class="content-card">
+    <div class="tab-header">
+      <h3>{{ filtersPanelTitle() }}</h3>
+    </div>
+    <p class="empty-state" *ngIf="selectedRunResult()">
+      Ces filtres proviennent de l'analyse de marche courante et non du resultat canonique du run selectionne.
+    </p>
+    <div class="filters-grid" *ngIf="filters().cards.length; else filtersEmpty">
+      <mat-card class="filter-card" *ngFor="let card of filters().cards; trackBy: trackFilter">
+        <mat-card-header>
+          <mat-card-title>{{ card.title }}</mat-card-title>
+          <mat-chip class="source-chip" [ngClass]="card.source.toLowerCase()">
+            {{ card.source === 'JAVA' ? 'JAVA' : 'PY' }}
+          </mat-chip>
+        </mat-card-header>
+        <mat-card-content>
+          <p class="filter-category">{{ card.category }}</p>
+          <p class="filter-description" *ngIf="card.description">{{ card.description }}</p>
+          <div class="filter-metrics">
+            <div class="metric" *ngIf="card.score as score">
+              <span>Score</span>
+              <mat-progress-bar mode="determinate" [value]="score * 100"></mat-progress-bar>
+              <strong>{{ score | number:'1.2-2' }}</strong>
+            </div>
+            <div class="metric" *ngIf="card.ratio as ratio">
+              <span>Ratio</span>
+              <mat-progress-bar mode="determinate" [value]="ratio * 100"></mat-progress-bar>
+              <strong>{{ ratio | percent:'1.0-1' }}</strong>
+            </div>
+            <div class="metric" *ngFor="let metric of card.metrics | keyvalue">
+              <span>{{ metric.key }}</span>
+              <strong>{{ metric.value }}</strong>
+            </div>
+          </div>
+          <div class="sparkline" *ngIf="card.series?.length">
+            @let path = filterSparklines().get(card.id);
+            <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+              <path [attr.d]="path" />
+            </svg>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+    <ng-template #filtersEmpty>
+      <p class="empty-state">Aucun filtre disponible.</p>
+    </ng-template>
   </mat-card>
 </section>

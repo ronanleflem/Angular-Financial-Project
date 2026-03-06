@@ -385,6 +385,57 @@ describe('MarketAnalysisPage', () => {
     expect(component.selectedRunResult()).toEqual(mockRunResult);
   });
 
+  it('should drive the lower page from a selected market_stats run and hide legacy KPIs', () => {
+    stubDefaultResponses();
+
+    createComponent();
+
+    expect(component.selectedRunHasMarketStatsView()).toBeTrue();
+    expect(component.selectedRunHasSeasonalityView()).toBeFalse();
+    expect(component.selectedRunDrivenKpisVisible()).toBeFalse();
+    expect(component.filtersPanelTitle()).toBe('Filtres hors run selectionne');
+
+    const root = fixture.nativeElement as HTMLElement;
+    expect(root.textContent).toContain('Ces filtres proviennent de l\'analyse de marche courante');
+    expect(root.querySelectorAll('.kpi-card').length).toBe(0);
+  });
+
+  it('should project seasonality tabs from the selected seasonality run result', () => {
+    stubDefaultResponses();
+    marketAnalysisRunsSpy.getRunDetail.and.returnValue(
+      of({
+        ...mockRunDetail,
+        specType: 'seasonality'
+      })
+    );
+    marketAnalysisRunsSpy.getRunResult.and.returnValue(
+      of({
+        ...mockRunResult,
+        specType: 'seasonality',
+        data: {
+          marketStatsRows: [],
+          seasonalityProfiles: [
+            { bucket: 'Jan', avg_return: 1.5 },
+            { bucket: 'Feb', avg_return: -0.5 }
+          ],
+          seasonalityRunSummary: { best_month: 'Jan', observations: 24 },
+          rawResultJson: null
+        }
+      })
+    );
+
+    createComponent();
+
+    expect(component.selectedRunHasSeasonalityView()).toBeTrue();
+    expect(component.selectedRunHasMarketStatsView()).toBeFalse();
+    expect(component.selectedRunSeasonalityColumns()).toEqual(['bucket', 'avg_return']);
+
+    const root = fixture.nativeElement as HTMLElement;
+    expect(root.textContent).toContain('Saisonnalite du run selectionne');
+    expect(root.textContent).toContain('Jan');
+    expect(root.textContent).toContain('best_month');
+  });
+
   it('should render enriched market_stats rows with prioritized columns and formatted values', () => {
     stubDefaultResponses();
     marketAnalysisRunsSpy.getRunResult.and.returnValue(

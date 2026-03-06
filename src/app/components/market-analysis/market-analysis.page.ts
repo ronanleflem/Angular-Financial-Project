@@ -47,6 +47,7 @@ import {
   MarketAnalysisRunItem,
   MarketAnalysisRunResult,
   MarketAnalysisRunsPage,
+  MarketAnalysisSpecType,
   MarketAnalysisSeasonalityRunSummary,
   SeasonalityProfile,
   StatsSummaryRow
@@ -158,6 +159,14 @@ export class MarketAnalysisPage {
   readonly selectedRunResultInfo = signal<string | null>(null);
   readonly selectedRunDetail = signal<MarketAnalysisRunDetail | null>(null);
   readonly selectedRunResult = signal<MarketAnalysisRunResult | null>(null);
+  readonly selectedRunSpecType = computed<MarketAnalysisSpecType | null>(
+    () => this.selectedRunResult()?.specType ?? this.selectedRunDetail()?.specType ?? null
+  );
+  readonly selectedRunHasMarketStatsView = computed(() => this.selectedRunSpecType() === 'market_stats');
+  readonly selectedRunHasSeasonalityView = computed(() => this.selectedRunSpecType() === 'seasonality');
+  readonly selectedRunDrivenKpisVisible = computed(() => !this.selectedRunResult());
+  readonly selectedRunPatternsRows = computed(() => this.selectedRunResult()?.data.marketStatsRows ?? []);
+  readonly selectedRunSeasonalityRows = computed(() => this.selectedRunResult()?.data.seasonalityProfiles ?? []);
 
   readonly candles = signal<Candle[]>([]);
   readonly candlesMock = signal(false);
@@ -211,14 +220,15 @@ export class MarketAnalysisPage {
   });
   readonly selectedRunMetaEntries = computed(() => toKeyValueEntries(this.selectedRunDetail()?.payloadJson));
   readonly selectedRunProgressEntries = computed(() => toKeyValueEntries(this.selectedRunDetail()?.progressJson));
-  readonly selectedRunMarketStatsColumns = computed(() =>
-    orderMarketStatsColumns(this.selectedRunResult()?.data.marketStatsRows ?? [])
-  );
-  readonly selectedRunSeasonalityColumns = computed(() => collectRowKeys(this.selectedRunResult()?.data.seasonalityProfiles ?? []));
+  readonly selectedRunMarketStatsColumns = computed(() => orderMarketStatsColumns(this.selectedRunPatternsRows()));
+  readonly selectedRunSeasonalityColumns = computed(() => collectRowKeys(this.selectedRunSeasonalityRows()));
   readonly selectedSeasonalitySummaryEntries = computed(() =>
     toKeyValueEntries(this.selectedRunResult()?.data.seasonalityRunSummary ?? null)
   );
   readonly selectedRawResultEntries = computed(() => toKeyValueEntries(this.selectedRunResult()?.data.rawResultJson ?? null));
+  readonly filtersPanelTitle = computed(() =>
+    this.selectedRunResult() ? 'Filtres hors run selectionne' : 'Filtres actifs'
+  );
 
   readonly monthChartConfig = computed<ChartConfiguration<'bar'>>(() => {
     const profile = this.seasonality();
