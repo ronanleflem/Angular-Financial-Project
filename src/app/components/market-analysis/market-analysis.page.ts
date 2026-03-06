@@ -42,10 +42,13 @@ import {
   FilterSeriesPoint,
   HeatmapCell,
   KpiSummary,
+  MarketAnalysisRunItem,
+  MarketAnalysisRunsPage,
   SeasonalityProfile,
   StatsSummaryRow
 } from '../../models/market-analysis.models';
 import { FiltersService } from '../../services/filters.service';
+import { MarketAnalysisRunsService } from '../../services/market-analysis-runs.service';
 import { MarketStatsService } from '../../services/market-stats.service';
 
 Chart.register(CategoryScale, LinearScale, BarController, BarElement, Tooltip, Legend, PointElement, ScatterController);
@@ -56,6 +59,8 @@ type FilterAggregate = {
   cards: FilterCard[];
   isMock: boolean;
 };
+
+type DataSectionState = 'ready' | 'empty' | 'fallback' | 'error';
 
 @Component({
   selector: 'app-market-analysis-page',
@@ -82,6 +87,7 @@ type FilterAggregate = {
 })
 export class MarketAnalysisPage {
   private readonly marketStatsService = inject(MarketStatsService);
+  private readonly marketAnalysisRunsService = inject(MarketAnalysisRunsService);
   private readonly filtersService = inject(FiltersService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly fb = inject(FormBuilder);
@@ -92,10 +98,26 @@ export class MarketAnalysisPage {
     venue: ['FX'],
     timeframe: ['1h', [Validators.required]],
     range: [400, [Validators.min(50), Validators.max(1000)]],
-    timeframesCsv: ['15m,1h,4h']
+    timeframesCsv: ['15m,1h,4h'],
+    runSpecType: ['market_stats'],
+    runStatus: [''],
+    runsPageSize: [10, [Validators.min(5), Validators.max(100)]]
   });
 
   readonly loading = signal(false);
+  readonly loadError = signal<string | null>(null);
+  readonly lastRefreshAt = signal<Date | null>(null);
+  readonly runsLoading = signal(false);
+  readonly runsError = signal<string | null>(null);
+  readonly runsPage = signal<MarketAnalysisRunsPage>({
+    items: [],
+    page: 0,
+    size: 10,
+    totalElements: 0,
+    totalPages: 0,
+    sort: 'created_at,desc'
+  });
+  readonly runsUpdatedAt = signal<Date | null>(null);
 
   readonly candles = signal<Candle[]>([]);
   readonly candlesMock = signal(false);
@@ -108,6 +130,18 @@ export class MarketAnalysisPage {
   readonly statsMock = signal(false);
 
   readonly filters = signal<FilterAggregate>({ cards: [], isMock: false });
+  readonly sectionStates = computed(() => ({
+    candles: this.resolveState(this.candles().length, this.candlesMock()),
+    seasonality: this.resolveState(this.seasonalityPointsCount(), this.seasonalityMock()),
+    stats: this.resolveState(this.statsSummary().length, this.statsMock()),
+    filters: this.resolveState(this.filters().cards.length, this.filters().isMock)
+  }));
+  readonly backendBadges = [
+    { id: 'candles', label: 'Candles', source: 'SPRING' },
+    { id: 'seasonality', label: 'Seasonality', source: 'PYTHON' },
+    { id: 'stats', label: 'Stats summary', source: 'PYTHON' },
+    { id: 'filters', label: 'Filters', source: 'SPRING' }
+  ] as const;
   readonly filterSparklines = computed(() => {
     const map = new Map<string, string>();
     for (const card of this.filters().cards) {
@@ -116,6 +150,24 @@ export class MarketAnalysisPage {
       }
     }
     return map;
+  });
+  readonly runRangeLabel = computed(() => {
+    const page = this.runsPage();
+    if (!page.items.length) {
+      return 'Aucun run';
+    }
+
+    const start = page.page * page.size + 1;
+    const end = start + page.items.length - 1;
+    return `${start}-${end} / ${page.totalElements}`;
+  });
+  readonly canGoToPreviousRunsPage = computed(() => this.runsPage().page > 0);
+  readonly canGoToNextRunsPage = computed(() => {
+    const page = this.runsPage();
+    if (!page.totalPages) {
+      return false;
+    }
+    return page.page + 1 < page.totalPages;
   });
 
   readonly monthChartConfig = computed<ChartConfiguration<'bar'>>(() => {
@@ -233,7 +285,30 @@ export class MarketAnalysisPage {
       }
     });
 
+    this.refreshData();
+  }
+
+  refreshData(): void {
     this.loadAnalysis();
+    this.loadRunsPage(0);
+  }
+
+  refreshRuns(): void {
+    this.loadRunsPage(0);
+  }
+
+  loadPreviousRunsPage(): void {
+    if (!this.canGoToPreviousRunsPage()) {
+      return;
+    }
+    this.loadRunsPage(this.runsPage().page - 1);
+  }
+
+  loadNextRunsPage(): void {
+    if (!this.canGoToNextRunsPage()) {
+      return;
+    }
+    this.loadRunsPage(this.runsPage().page + 1);
   }
 
   loadAnalysis(): void {
@@ -250,6 +325,7 @@ export class MarketAnalysisPage {
     const parsedMulti = timeframesCsv ?? '15m,1h,4h';
     const startIso = computeStartDate(range ?? 0, parsedTimeframe);
 
+    this.loadError.set(null);
     this.loading.set(true);
 
     forkJoin({
@@ -302,15 +378,8 @@ export class MarketAnalysisPage {
               result.liquidity.isMock
           });
 
-          this.filters.set({
-            cards: combinedFilters,
-            isMock:
-              result.multi.isMock ||
-              result.benford.isMock ||
-              result.liquidity.isMock
-          });
-
           this.loading.set(false);
+          this.lastRefreshAt.set(new Date());
 
           if (result.candles.isMock) {
             this.notifyMock('Bougies (candles)');
@@ -328,8 +397,48 @@ export class MarketAnalysisPage {
         error: error => {
           console.error('Market analysis loading failed', error);
           this.loading.set(false);
+          this.loadError.set('Donnees indisponibles temporairement. Reessayez.');
           this.snackBar.open('Analyse indisponible pour le moment. Mocks chargés.', 'Fermer', {
             duration: 4000
+          });
+        }
+      });
+  }
+
+  loadRunsPage(pageIndex: number): void {
+    const { symbol, timeframe, runSpecType, runStatus, runsPageSize } = this.analysisForm.getRawValue();
+
+    this.runsLoading.set(true);
+    this.runsError.set(null);
+
+    this.marketAnalysisRunsService
+      .getRuns({
+        specType: isRunSpecType(runSpecType) ? runSpecType : '',
+        status: runStatus ?? '',
+        symbol: symbol ?? '',
+        timeframe: timeframe ?? '',
+        page: Math.max(0, pageIndex),
+        size: runsPageSize ?? 10,
+        sort: 'created_at,desc'
+      })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: page => {
+          this.runsPage.set(page);
+          this.runsUpdatedAt.set(new Date());
+          this.runsLoading.set(false);
+        },
+        error: error => {
+          console.error('Market analysis runs loading failed', error);
+          this.runsLoading.set(false);
+          this.runsError.set('Impossible de charger le catalogue des runs.');
+          this.runsPage.set({
+            items: [],
+            page: Math.max(0, pageIndex),
+            size: runsPageSize ?? 10,
+            totalElements: 0,
+            totalPages: 0,
+            sort: 'created_at,desc'
           });
         }
       });
@@ -339,15 +448,88 @@ export class MarketAnalysisPage {
     return card.id;
   }
 
+  trackRun(_index: number, run: MarketAnalysisRunItem): string {
+    return run.runId;
+  }
+
   trackStat(_index: number, row: StatsSummaryRow): string {
     return `${row.event}-${row.target}`;
   }
 
+  runStatusClass(status: string): string {
+    const normalized = status.trim().toLowerCase();
+    if (normalized === 'succeeded') {
+      return 'run-state-success';
+    }
+    if (normalized === 'failed' || normalized === 'canceled') {
+      return 'run-state-error';
+    }
+    if (normalized === 'running' || normalized === 'queued') {
+      return 'run-state-active';
+    }
+    return 'run-state-neutral';
+  }
+
+  formatRunSpecType(specType: string): string {
+    return specType === 'market_stats' ? 'Market stats' : specType === 'seasonality' ? 'Seasonality' : specType;
+  }
+
+
+  sectionStateClass(state: DataSectionState): string {
+    switch (state) {
+      case 'ready':
+        return 'state-ready';
+      case 'empty':
+        return 'state-empty';
+      case 'fallback':
+        return 'state-fallback';
+      default:
+        return 'state-error';
+    }
+  }
+
+  sectionStateLabel(state: DataSectionState): string {
+    switch (state) {
+      case 'ready':
+        return 'Ready';
+      case 'empty':
+        return 'Empty';
+      case 'fallback':
+        return 'Mock fallback';
+      default:
+        return 'Error';
+    }
+  }
+
+  private seasonalityPointsCount(): number {
+    const profile = this.seasonality();
+    if (!profile) {
+      return 0;
+    }
+    return profile.byMonth.length + profile.byDow.length + profile.byHour.length;
+  }
+
+  private resolveState(itemCount: number, isMock: boolean): DataSectionState {
+    if (this.loadError()) {
+      return 'error';
+    }
+    if (isMock) {
+      return 'fallback';
+    }
+    if (itemCount === 0) {
+      return 'empty';
+    }
+    return 'ready';
+  }
   private notifyMock(section: string): void {
     this.snackBar.open(`${section} alimenté avec les données mock.`, 'OK', {
       duration: 2500
     });
   }
+}
+
+function isRunSpecType(value: string | null): value is 'market_stats' | 'seasonality' {
+  return value === 'market_stats' || value === 'seasonality';
 }
 
 function heatmapColor(value: number): string {
@@ -406,3 +588,4 @@ function timeframeToMs(timeframe: string): number | undefined {
       return undefined;
   }
 }
+

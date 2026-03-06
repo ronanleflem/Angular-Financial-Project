@@ -66,3 +66,44 @@ export interface ApiResult<T> {
   data: T;
   isMock: boolean;
 }
+
+export type MarketAnalysisSpecType = 'market_stats' | 'seasonality';
+
+export interface MarketAnalysisRunItem {
+  runId: string;
+  requestId: string;
+  specType: MarketAnalysisSpecType;
+  status: string;
+  createdAt: string | null;
+  startedAt: string | null;
+  finishedAt: string | null;
+  updatedAt: string | null;
+  errorMessage: string | null;
+  attempts: number;
+  maxAttempts: number;
+  cancelRequested: boolean;
+  persistenceEnabled: boolean;
+  specId: string | null;
+  datasetId: string | null;
+}
+
+export interface MarketAnalysisRunsPage {
+  items: MarketAnalysisRunItem[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  sort: string | null;
+}
+
+export interface MarketAnalysisRunsQuery {
+  specType?: MarketAnalysisSpecType | '';
+  status?: string;
+  symbol?: string;
+  timeframe?: string;
+  from?: string;
+  to?: string;
+  page?: number;
+  size?: number;
+  sort?: string;
+}

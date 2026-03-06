@@ -1,7 +1,13 @@
 <section class="market-analysis">
   <header class="market-analysis__header">
+    <div class="header-copy">
+      <h1>Market Analysis</h1>
+      <p>
+        Page de consultation uniquement. Le lancement de runs reste sur <code>/strategy-launcher</code>.
+      </p>
+    </div>
 
-    <form [formGroup]="analysisForm" class="analysis-form" (ngSubmit)="loadAnalysis()">
+    <form [formGroup]="analysisForm" class="analysis-form" (ngSubmit)="refreshData()">
       <mat-form-field appearance="outline">
         <mat-label>Symbole</mat-label>
         <mat-select formControlName="symbol">
@@ -36,13 +42,122 @@
         <input matInput type="number" formControlName="range" />
       </mat-form-field>
 
+      <mat-form-field appearance="outline">
+        <mat-label>Type de run</mat-label>
+        <mat-select formControlName="runSpecType">
+          <mat-option value="market_stats">Market stats</mat-option>
+          <mat-option value="seasonality">Seasonality</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Statut run</mat-label>
+        <mat-select formControlName="runStatus">
+          <mat-option value="">Tous</mat-option>
+          <mat-option value="QUEUED">Queued</mat-option>
+          <mat-option value="RUNNING">Running</mat-option>
+          <mat-option value="SUCCEEDED">Succeeded</mat-option>
+          <mat-option value="FAILED">Failed</mat-option>
+          <mat-option value="CANCELED">Canceled</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Taille page runs</mat-label>
+        <input matInput type="number" formControlName="runsPageSize" />
+      </mat-form-field>
+
       <button mat-flat-button color="primary" type="submit" [disabled]="loading()">
-        <mat-icon>auto_graph</mat-icon>
-        Analyser
+        <mat-icon>sync</mat-icon>
+        Rafraichir
       </button>
     </form>
+    <div class="refresh-meta">
+      <span>Derniere mise a jour: {{ (lastRefreshAt() ? (lastRefreshAt() | date:'short') : 'jamais') }}</span>
+      <span class="error" *ngIf="loadError()">{{ loadError() }}</span>
+    </div>
+    <div class="backend-grid">
+      <div class="backend-card" *ngFor="let badge of backendBadges">
+        <div class="backend-title">{{ badge.label }}</div>
+        <div class="backend-meta">
+          <span class="backend-source">{{ badge.source }}</span>
+          <span
+            class="backend-state"
+            [ngClass]="sectionStateClass(sectionStates()[badge.id])"
+          >
+            {{ sectionStateLabel(sectionStates()[badge.id]) }}
+          </span>
+        </div>
+      </div>
+    </div>
     <mat-progress-bar *ngIf="loading()" mode="indeterminate"></mat-progress-bar>
   </header>
+
+  <mat-card class="content-card runs-card">
+    <div class="tab-header">
+      <h3>Catalogue des runs</h3>
+      <button mat-stroked-button type="button" (click)="refreshRuns()" [disabled]="runsLoading()">
+        Actualiser les runs
+      </button>
+    </div>
+
+    <div class="runs-meta">
+      <span>Derniere synchro runs: {{ (runsUpdatedAt() ? (runsUpdatedAt() | date:'short') : 'jamais') }}</span>
+      <span>{{ runRangeLabel() }}</span>
+    </div>
+
+    <p class="runs-error" *ngIf="runsError()">{{ runsError() }}</p>
+    <mat-progress-bar *ngIf="runsLoading()" mode="indeterminate"></mat-progress-bar>
+
+    <div class="stats-table-wrapper" *ngIf="runsPage().items.length; else runsEmpty">
+      <table class="stats-table">
+        <thead>
+          <tr>
+            <th>Run ID</th>
+            <th>Type</th>
+            <th>Statut</th>
+            <th>Spec / Dataset</th>
+            <th>Cree le</th>
+            <th>Persist</th>
+            <th>Attempts</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let run of runsPage().items; trackBy: trackRun">
+            <td>
+              <div class="run-id">{{ run.runId }}</div>
+              <div class="run-request">{{ run.requestId }}</div>
+            </td>
+            <td>{{ formatRunSpecType(run.specType) }}</td>
+            <td>
+              <span class="run-state" [ngClass]="runStatusClass(run.status)">{{ run.status }}</span>
+            </td>
+            <td>
+              <div>{{ run.specId ?? '-' }}</div>
+              <div class="run-request">{{ run.datasetId ?? '-' }}</div>
+            </td>
+            <td>{{ (run.createdAt ? (run.createdAt | date:'short') : '-') }}</td>
+            <td>{{ run.persistenceEnabled ? 'Oui' : 'Non' }}</td>
+            <td>{{ run.attempts }}/{{ run.maxAttempts }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <ng-template #runsEmpty>
+      <p class="empty-state">Aucun run disponible pour les filtres selectionnes.</p>
+    </ng-template>
+
+    <div class="runs-pagination">
+      <button mat-stroked-button type="button" (click)="loadPreviousRunsPage()" [disabled]="!canGoToPreviousRunsPage() || runsLoading()">
+        Page precedente
+      </button>
+      <span>Page {{ runsPage().page + 1 }} / {{ runsPage().totalPages || 1 }}</span>
+      <button mat-stroked-button type="button" (click)="loadNextRunsPage()" [disabled]="!canGoToNextRunsPage() || runsLoading()">
+        Page suivante
+      </button>
+    </div>
+  </mat-card>
 
   <section class="kpis" *ngIf="kpis() as summary">
     <mat-card class="kpi-card" *ngFor="let item of [
@@ -69,41 +184,46 @@
           <h3>Saisonnalité mensuelle & hebdomadaire</h3>
           <mat-chip *ngIf="seasonalityMock()" class="mock-chip" appearance="outlined">mock</mat-chip>
         </div>
-        <div class="seasonality-charts">
-          @let monthConfig = monthChartConfig();
-          @let dowConfig = dowChartConfig();
-          <div class="chart">
-            <canvas
-              baseChart
-              [data]="monthConfig.data"
-              [options]="monthConfig.options"
-              [type]="monthConfig.type"
-            ></canvas>
+        <ng-container *ngIf="sectionStates().seasonality !== 'empty'; else seasonalityEmpty">
+          <div class="seasonality-charts">
+            @let monthConfig = monthChartConfig();
+            @let dowConfig = dowChartConfig();
+            <div class="chart">
+              <canvas
+                baseChart
+                [data]="monthConfig.data"
+                [options]="monthConfig.options"
+                [type]="monthConfig.type"
+              ></canvas>
+            </div>
+            <div class="chart">
+              <canvas
+                baseChart
+                [data]="dowConfig.data"
+                [options]="dowConfig.options"
+                [type]="dowConfig.type"
+              ></canvas>
+            </div>
           </div>
-          <div class="chart">
-            <canvas
-              baseChart
-              [data]="dowConfig.data"
-              [options]="dowConfig.options"
-              [type]="dowConfig.type"
-            ></canvas>
+          <mat-divider></mat-divider>
+          <div class="heatmap-container">
+            <div class="tab-header">
+              <h3>Heatmap horaire</h3>
+            </div>
+            @let heatmapConfig = heatmapChartConfig();
+            <div class="heatmap-chart">
+              <canvas
+                baseChart
+                [data]="heatmapConfig.data"
+                [options]="heatmapConfig.options"
+                [type]="heatmapConfig.type"
+              ></canvas>
+            </div>
           </div>
-        </div>
-        <mat-divider></mat-divider>
-        <div class="heatmap-container">
-          <div class="tab-header">
-            <h3>Heatmap horaire</h3>
-          </div>
-          @let heatmapConfig = heatmapChartConfig();
-          <div class="heatmap-chart">
-            <canvas
-              baseChart
-              [data]="heatmapConfig.data"
-              [options]="heatmapConfig.options"
-              [type]="heatmapConfig.type"
-            ></canvas>
-          </div>
-        </div>
+        </ng-container>
+        <ng-template #seasonalityEmpty>
+          <p class="empty-state">Aucun profil seasonality disponible pour cette selection.</p>
+        </ng-template>
       </mat-tab>
       <mat-tab label="Patterns & Probabilités">
         <div class="tab-header">
