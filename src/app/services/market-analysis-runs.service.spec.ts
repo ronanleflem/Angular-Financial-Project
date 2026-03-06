@@ -258,4 +258,49 @@ describe('MarketAnalysisRunsService', () => {
       }
     });
   });
+
+  it('propagates runs catalog errors without swallowing them', () => {
+    let receivedError: unknown;
+
+    service.getRuns({ specType: 'market_stats' }).subscribe({
+      error: error => {
+        receivedError = error;
+      }
+    });
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/api/market-analysis/runs?spec_type=market_stats`);
+    req.flush({ errors: [{ field: 'symbol', message: 'required' }] }, { status: 422, statusText: 'Unprocessable Entity' });
+
+    expect((receivedError as { status?: number } | undefined)?.status).toBe(422);
+  });
+
+  it('propagates run detail 404 errors', () => {
+    let receivedError: unknown;
+
+    service.getRunDetail('missing-run').subscribe({
+      error: error => {
+        receivedError = error;
+      }
+    });
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/api/market-analysis/runs/missing-run`);
+    req.flush({}, { status: 404, statusText: 'Not Found' });
+
+    expect((receivedError as { status?: number } | undefined)?.status).toBe(404);
+  });
+
+  it('propagates run result 409 errors', () => {
+    let receivedError: unknown;
+
+    service.getRunResult('run-pending').subscribe({
+      error: error => {
+        receivedError = error;
+      }
+    });
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/api/market-analysis/runs/run-pending/result`);
+    req.flush({}, { status: 409, statusText: 'Conflict' });
+
+    expect((receivedError as { status?: number } | undefined)?.status).toBe(409);
+  });
 });

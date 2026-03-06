@@ -389,4 +389,68 @@ describe('MarketAnalysisPage', () => {
 
     expect(component.selectedRunError()).toBe('Run introuvable.');
   });
+
+  it('maps 5xx runs errors to a service unavailable message', () => {
+    stubDefaultResponses();
+    marketAnalysisRunsSpy.getRuns.and.returnValue(throwError(() => ({ status: 503 })));
+
+    createComponent();
+
+    expect(component.runsError()).toBe('Service indisponible temporairement. Reessayez.');
+    expect(component.runsPage().items).toEqual([]);
+  });
+
+  it('maps status 0 runs errors to a service unavailable message', () => {
+    stubDefaultResponses();
+    marketAnalysisRunsSpy.getRuns.and.returnValue(throwError(() => ({ status: 0 })));
+
+    createComponent();
+
+    expect(component.runsError()).toBe('Service indisponible temporairement. Reessayez.');
+  });
+
+  it('keeps the runs catalog in empty state when the backend returns no items', () => {
+    stubDefaultResponses();
+    marketAnalysisRunsSpy.getRuns.and.returnValue(
+      of({
+        items: [],
+        page: 0,
+        size: 10,
+        totalElements: 0,
+        totalPages: 0,
+        sort: 'created_at,desc'
+      })
+    );
+
+    createComponent();
+
+    expect(component.runsPage().items).toEqual([]);
+    expect(component.runRangeLabel()).toBe('Aucun run');
+    expect(component.selectedRunId()).toBeNull();
+  });
+
+  it('marks sections as empty when analysis datasets are valid but empty', () => {
+    marketStatsSpy.getCandles.and.returnValue(of(buildApiResult([])));
+    marketStatsSpy.getSeasonality.and.returnValue(of(buildApiResult({ byMonth: [], byDow: [], byHour: [] })));
+    marketStatsSpy.getStatsSummary.and.returnValue(of(buildApiResult([])));
+    marketStatsSpy.computeKpisFromCandles.and.returnValue({
+      atrPercent: 0,
+      averageRange: 0,
+      skewness: 0,
+      kurtosis: 0,
+      maxDrawdown: 0
+    });
+    marketAnalysisRunsSpy.getRuns.and.returnValue(of(mockRunsPage));
+    marketAnalysisRunsSpy.getRunDetail.and.returnValue(of(mockRunDetail));
+    marketAnalysisRunsSpy.getRunResult.and.returnValue(of(mockRunResult));
+    filtersSpy.getMultiTFStats.and.returnValue(of(buildApiResult([])));
+    filtersSpy.getBenford.and.returnValue(of(buildApiResult(createCard('benford'))));
+    filtersSpy.getGenericFilter.and.returnValue(of(buildApiResult([])));
+
+    createComponent();
+
+    expect(component.sectionStateLabel(component.sectionStates().candles)).toBe('Empty');
+    expect(component.sectionStateLabel(component.sectionStates().seasonality)).toBe('Empty');
+    expect(component.sectionStateLabel(component.sectionStates().stats)).toBe('Empty');
+  });
 });
