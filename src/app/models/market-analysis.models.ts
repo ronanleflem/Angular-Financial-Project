@@ -161,3 +161,9 @@ export interface MarketAnalysisRunResult {
   meta: MarketAnalysisRunResultMeta;
   data: MarketAnalysisRunResultData;
 }
+
+export interface MarketAnalysisResultMetaCard {
+  label: string;
+  value: string;
+  note?: string;
+}

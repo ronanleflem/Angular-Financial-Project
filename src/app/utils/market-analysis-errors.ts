@@ -13,6 +13,13 @@ export interface MarketAnalysisUiError {
   details: BackendValidationError[];
 }
 
+export interface MarketAnalysisResultContractStateInput {
+  source: string | null | undefined;
+  hasStructuredRows: boolean;
+  hasRawResult: boolean;
+  hasMeta: boolean;
+}
+
 export function mapMarketAnalysisHttpError(error: unknown, context: 'runs' | 'run-detail' | 'run-result'): MarketAnalysisUiError {
   const status = Number((error as { status?: number } | null)?.status ?? 0);
   const details = parseBackendValidationErrors(error);
@@ -54,6 +61,41 @@ export function mapMarketAnalysisHttpError(error: unknown, context: 'runs' | 'ru
     message: 'Erreur inattendue lors du chargement.',
     details: []
   };
+}
+
+export function formatMarketAnalysisResultSource(source: string | null | undefined): string {
+  if (source === 'persisted_tables') {
+    return 'Source: persisted_tables';
+  }
+  if (source === 'result_json') {
+    return 'Source: result_json';
+  }
+  if (!String(source ?? '').trim()) {
+    return 'Source: inconnue';
+  }
+  return `Source: ${String(source).trim()}`;
+}
+
+export function describeMarketAnalysisResultContractState(
+  input: MarketAnalysisResultContractStateInput
+): string | null {
+  if (input.hasStructuredRows && !input.hasMeta) {
+    return 'Resultat tabulaire disponible. Certaines metadonnees ne sont pas fournies pour ce type de run.';
+  }
+
+  if (input.source === 'result_json' && input.hasRawResult && !input.hasStructuredRows) {
+    return 'Resultat disponible uniquement via result_json. Les metadonnees structurees peuvent etre partielles.';
+  }
+
+  if (!input.hasStructuredRows && input.hasMeta) {
+    return 'Resultat present avec metadonnees partielles. Les tableaux detailles ne sont pas disponibles pour cette source.';
+  }
+
+  if (!input.hasStructuredRows && !input.hasRawResult && !input.hasMeta) {
+    return 'Resultat present mais sans contenu exploitable pour ce run.';
+  }
+
+  return null;
 }
 
 function buildValidationMessage(details: BackendValidationError[], context: 'runs' | 'run-detail' | 'run-result'): string {

@@ -219,15 +219,17 @@
   <mat-card class="content-card" *ngIf="selectedRunResult() as runResult">
     <div class="tab-header">
       <h3>Resultat run</h3>
-      <span class="backend-state state-ready">{{ runResult.source }}</span>
+      <span class="backend-state state-ready">{{ selectedRunResultSourceLabel() }}</span>
     </div>
 
-    <div class="backend-grid">
-      <div class="backend-card"><strong>Spec ID</strong><div>{{ runResult.meta.specId ?? '-' }}</div></div>
-      <div class="backend-card"><strong>Dataset ID</strong><div>{{ runResult.meta.datasetId ?? '-' }}</div></div>
-      <div class="backend-card"><strong>Window</strong><div>{{ runResult.meta.window ?? '-' }}</div></div>
-      <div class="backend-card"><strong>Range</strong><div>{{ runResult.meta.start ?? '-' }} -> {{ runResult.meta.end ?? '-' }}</div></div>
+    <div class="backend-grid" *ngIf="selectedRunResultMetaCards().length">
+      <div class="backend-card" *ngFor="let card of selectedRunResultMetaCards()">
+        <strong>{{ card.label }}</strong>
+        <div>{{ card.value }}</div>
+        <div class="run-request" *ngIf="card.note">{{ card.note }}</div>
+      </div>
     </div>
+    <p class="empty-state" *ngIf="selectedRunResultMetaNote()">{{ selectedRunResultMetaNote() }}</p>
 
     <div class="result-section" *ngIf="runResult.data.marketStatsRows.length">
       <h4>Market stats rows</h4>
@@ -283,6 +285,10 @@
           <span>{{ entry.value }}</span>
         </div>
       </div>
+    </div>
+
+    <div class="result-section" *ngIf="!selectedRunHasStructuredRows() && !selectedRawResultEntries().length && !selectedRunResultMetaNote()">
+      <p class="empty-state">Aucun tableau resultat disponible pour ce run.</p>
     </div>
   </mat-card>
 

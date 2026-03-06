@@ -436,6 +436,83 @@ describe('MarketAnalysisPage', () => {
     expect(root.textContent).toContain('best_month');
   });
 
+  it('should qualify partial metadata instead of rendering a mostly empty result meta grid', () => {
+    stubDefaultResponses();
+    marketAnalysisRunsSpy.getRunResult.and.returnValue(
+      of({
+        ...mockRunResult,
+        source: 'persisted_tables',
+        meta: {
+          specId: null,
+          datasetId: null,
+          outDir: null,
+          window: null,
+          start: null,
+          end: null,
+          status: 'SUCCEEDED'
+        },
+        data: {
+          marketStatsRows: [{ event: 'breakout', n: 10 }],
+          seasonalityProfiles: [],
+          seasonalityRunSummary: null,
+          rawResultJson: null
+        }
+      })
+    );
+
+    createComponent();
+
+    expect(component.selectedRunResultSourceLabel()).toBe('Source: persisted_tables');
+    expect(component.selectedRunResultMetaCards()).toEqual([
+      { label: 'Source', value: 'persisted_tables' },
+      { label: 'Window', value: 'Non disponible', note: 'non disponible pour ce type de run' }
+    ]);
+    expect(component.selectedRunResultMetaNote()).toBe(
+      'Resultat tabulaire disponible. Certaines metadonnees ne sont pas fournies pour ce type de run.'
+    );
+
+    const root = fixture.nativeElement as HTMLElement;
+    expect(root.textContent).toContain('non disponible pour ce type de run');
+    expect(root.textContent).toContain('Resultat tabulaire disponible');
+  });
+
+  it('should explain result_json-only runs when no structured rows are available', () => {
+    stubDefaultResponses();
+    marketAnalysisRunsSpy.getRunResult.and.returnValue(
+      of({
+        ...mockRunResult,
+        source: 'result_json',
+        meta: {
+          specId: null,
+          datasetId: null,
+          outDir: null,
+          window: null,
+          start: null,
+          end: null,
+          status: 'SUCCEEDED'
+        },
+        data: {
+          marketStatsRows: [],
+          seasonalityProfiles: [],
+          seasonalityRunSummary: null,
+          rawResultJson: { payload: { rows: 0 } }
+        }
+      })
+    );
+
+    createComponent();
+
+    expect(component.selectedRunResultSourceLabel()).toBe('Source: result_json');
+    expect(component.selectedRunResultMetaNote()).toBe(
+      'Resultat disponible uniquement via result_json. Les metadonnees structurees peuvent etre partielles.'
+    );
+
+    const root = fixture.nativeElement as HTMLElement;
+    expect(root.textContent).toContain('Source: result_json');
+    expect(root.textContent).toContain('Resultat disponible uniquement via result_json');
+    expect(root.textContent).toContain('Raw result JSON');
+  });
+
   it('should render enriched market_stats rows with prioritized columns and formatted values', () => {
     stubDefaultResponses();
     marketAnalysisRunsSpy.getRunResult.and.returnValue(

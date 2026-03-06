@@ -45,6 +45,7 @@ import {
   MarketAnalysisRowRecord,
   MarketAnalysisRunDetail,
   MarketAnalysisRunItem,
+  MarketAnalysisResultMetaCard,
   MarketAnalysisRunResult,
   MarketAnalysisRunsPage,
   MarketAnalysisSpecType,
@@ -55,7 +56,11 @@ import {
 import { FiltersService } from '../../services/filters.service';
 import { MarketAnalysisRunsService } from '../../services/market-analysis-runs.service';
 import { MarketStatsService } from '../../services/market-stats.service';
-import { mapMarketAnalysisHttpError } from '../../utils/market-analysis-errors';
+import {
+  describeMarketAnalysisResultContractState,
+  formatMarketAnalysisResultSource,
+  mapMarketAnalysisHttpError
+} from '../../utils/market-analysis-errors';
 
 Chart.register(CategoryScale, LinearScale, BarController, BarElement, Tooltip, Legend, PointElement, ScatterController);
 
@@ -226,6 +231,65 @@ export class MarketAnalysisPage {
     toKeyValueEntries(this.selectedRunResult()?.data.seasonalityRunSummary ?? null)
   );
   readonly selectedRawResultEntries = computed(() => toKeyValueEntries(this.selectedRunResult()?.data.rawResultJson ?? null));
+  readonly selectedRunResultSourceLabel = computed(() =>
+    formatMarketAnalysisResultSource(this.selectedRunResult()?.source)
+  );
+  readonly selectedRunHasStructuredRows = computed(() =>
+    this.selectedRunPatternsRows().length > 0 || this.selectedRunSeasonalityRows().length > 0
+  );
+  readonly selectedRunHasResultMeta = computed(() => {
+    const meta = this.selectedRunResult()?.meta;
+    if (!meta) {
+      return false;
+    }
+    return Boolean(
+      String(meta.specId ?? '').trim() ||
+      String(meta.datasetId ?? '').trim() ||
+      String(meta.window ?? '').trim() ||
+      String(meta.start ?? '').trim() ||
+      String(meta.end ?? '').trim()
+    );
+  });
+  readonly selectedRunResultMetaCards = computed<MarketAnalysisResultMetaCard[]>(() => {
+    const result = this.selectedRunResult();
+    if (!result) {
+      return [];
+    }
+
+    const cards: MarketAnalysisResultMetaCard[] = [
+      { label: 'Source', value: String(result.source ?? 'inconnue') }
+    ];
+    const specId = String(result.meta.specId ?? '').trim();
+    const datasetId = String(result.meta.datasetId ?? '').trim();
+    const window = String(result.meta.window ?? '').trim();
+    const start = String(result.meta.start ?? '').trim();
+    const end = String(result.meta.end ?? '').trim();
+
+    if (specId) {
+      cards.push({ label: 'Spec ID', value: specId });
+    }
+    if (datasetId) {
+      cards.push({ label: 'Dataset ID', value: datasetId });
+    }
+    if (window) {
+      cards.push({ label: 'Window', value: window });
+    } else if (result.specType === 'market_stats') {
+      cards.push({ label: 'Window', value: 'Non disponible', note: 'non disponible pour ce type de run' });
+    }
+    if (start || end) {
+      cards.push({ label: 'Range', value: `${start || '?'} -> ${end || '?'}` });
+    }
+
+    return cards;
+  });
+  readonly selectedRunResultMetaNote = computed(() =>
+    describeMarketAnalysisResultContractState({
+      source: this.selectedRunResult()?.source,
+      hasStructuredRows: this.selectedRunHasStructuredRows(),
+      hasRawResult: this.selectedRawResultEntries().length > 0,
+      hasMeta: this.selectedRunHasResultMeta()
+    })
+  );
   readonly filtersPanelTitle = computed(() =>
     this.selectedRunResult() ? 'Filtres hors run selectionne' : 'Filtres actifs'
   );
