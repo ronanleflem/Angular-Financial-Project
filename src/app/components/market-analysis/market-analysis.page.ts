@@ -1,77 +1,33 @@
 import { CommonModule } from '@angular/common';
-import {
-  ChangeDetectionStrategy,
-  Component,
-  DestroyRef,
-  computed,
-  effect,
-  inject,
-  signal
-} from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
-import { MatChipsModule } from '@angular/material/chips';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTabsModule } from '@angular/material/tabs';
-import {
-  BarController,
-  BarElement,
-  CategoryScale,
-  Chart,
-  ChartConfiguration,
-  Legend,
-  LinearScale,
-  PointElement,
-  ScatterController,
-  Tooltip
-} from 'chart.js';
-import { NgChartsModule } from 'ng2-charts';
 import { catchError, forkJoin, of, throwError } from 'rxjs';
 
 import {
-  Candle,
-  FilterCard,
-  FilterSeriesPoint,
-  HeatmapCell,
-  KpiSummary,
   MarketAnalysisRowRecord,
+  MarketAnalysisResultMetaCard,
   MarketAnalysisRunDetail,
   MarketAnalysisRunItem,
-  MarketAnalysisResultMetaCard,
   MarketAnalysisRunResult,
   MarketAnalysisRunsPage,
-  MarketAnalysisSpecType,
   MarketAnalysisSeasonalityRunSummary,
-  SeasonalityProfile,
-  StatsSummaryRow
+  MarketAnalysisSpecType
 } from '../../models/market-analysis.models';
-import { FiltersService } from '../../services/filters.service';
 import { MarketAnalysisRunsService } from '../../services/market-analysis-runs.service';
-import { MarketStatsService } from '../../services/market-stats.service';
 import {
   describeMarketAnalysisResultContractState,
   formatMarketAnalysisResultSource,
   mapMarketAnalysisHttpError
 } from '../../utils/market-analysis-errors';
-
-Chart.register(CategoryScale, LinearScale, BarController, BarElement, Tooltip, Legend, PointElement, ScatterController);
-
-type HeatmapPoint = { x: number; y: number; value: number };
-
-type FilterAggregate = {
-  cards: FilterCard[];
-  isMock: boolean;
-};
-
-type DataSectionState = 'ready' | 'empty' | 'error';
 
 const PREFERRED_MARKET_STATS_COLUMNS = [
   'event',
@@ -125,6 +81,17 @@ const PREFERRED_SEASONALITY_COLUMNS = [
   'metrics'
 ] as const;
 
+type KeyValueEntry = {
+  key: string;
+  value: string;
+};
+
+type SeasonalityMetricGroup = {
+  id: 'p' | 'ret' | 'amp' | 'other';
+  label: 'P' | 'Ret' | 'Amp' | 'Other';
+  entries: KeyValueEntry[];
+};
+
 @Component({
   selector: 'app-market-analysis-page',
   standalone: true,
@@ -137,31 +104,19 @@ const PREFERRED_SEASONALITY_COLUMNS = [
     MatSelectModule,
     MatFormFieldModule,
     MatInputModule,
-    MatIconModule,
-    MatChipsModule,
-    MatSnackBarModule,
     MatProgressBarModule,
-    MatDividerModule,
-    NgChartsModule
+    MatDividerModule
   ],
   templateUrl: './market-analysis.page.html',
   styleUrls: ['./market-analysis.page.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class MarketAnalysisPage {
-  private readonly marketStatsService = inject(MarketStatsService);
   private readonly marketAnalysisRunsService = inject(MarketAnalysisRunsService);
-  private readonly filtersService = inject(FiltersService);
-  private readonly snackBar = inject(MatSnackBar);
   private readonly fb = inject(FormBuilder);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly analysisForm = this.fb.group({
-    symbol: ['EURUSD', [Validators.required]],
-    venue: ['FX'],
-    timeframe: ['1h', [Validators.required]],
-    range: [400, [Validators.min(50), Validators.max(1000)]],
-    timeframesCsv: ['15m,1h,4h'],
     runSpecType: ['market_stats'],
     runSymbol: [''],
     runTimeframe: [''],
@@ -169,9 +124,6 @@ export class MarketAnalysisPage {
     runsPageSize: [10, [Validators.min(5), Validators.max(100)]]
   });
 
-  readonly loading = signal(false);
-  readonly loadError = signal<string | null>(null);
-  readonly lastRefreshAt = signal<Date | null>(null);
   readonly runsLoading = signal(false);
   readonly runsError = signal<string | null>(null);
   readonly runsPage = signal<MarketAnalysisRunsPage>({
@@ -194,42 +146,8 @@ export class MarketAnalysisPage {
   );
   readonly selectedRunHasMarketStatsView = computed(() => this.selectedRunSpecType() === 'market_stats');
   readonly selectedRunHasSeasonalityView = computed(() => this.selectedRunSpecType() === 'seasonality');
-  readonly selectedRunDrivenKpisVisible = computed(() => !this.selectedRunResult());
   readonly selectedRunPatternsRows = computed(() => this.selectedRunResult()?.data.marketStatsRows ?? []);
   readonly selectedRunSeasonalityRows = computed(() => this.selectedRunResult()?.data.seasonalityProfiles ?? []);
-
-  readonly candles = signal<Candle[]>([]);
-  readonly candlesMock = signal(false);
-
-  readonly kpis = signal<KpiSummary | null>(null);
-  readonly seasonality = signal<SeasonalityProfile | null>(null);
-  readonly seasonalityMock = signal(false);
-
-  readonly statsSummary = signal<StatsSummaryRow[]>([]);
-  readonly statsMock = signal(false);
-
-  readonly filters = signal<FilterAggregate>({ cards: [], isMock: false });
-  readonly sectionStates = computed(() => ({
-    candles: this.resolveState(this.candles().length, this.candlesMock()),
-    seasonality: this.resolveState(this.seasonalityPointsCount(), this.seasonalityMock()),
-    stats: this.resolveState(this.statsSummary().length, this.statsMock()),
-    filters: this.resolveState(this.filters().cards.length, this.filters().isMock)
-  }));
-  readonly backendBadges = [
-    { id: 'candles', label: 'Candles', source: 'SPRING' },
-    { id: 'seasonality', label: 'Seasonality', source: 'PYTHON' },
-    { id: 'stats', label: 'Stats summary', source: 'PYTHON' },
-    { id: 'filters', label: 'Filters', source: 'SPRING' }
-  ] as const;
-  readonly filterSparklines = computed(() => {
-    const map = new Map<string, string>();
-    for (const card of this.filters().cards) {
-      if (card.series?.length) {
-        map.set(card.id, buildSparklinePath(card.series));
-      }
-    }
-    return map;
-  });
   readonly runRangeLabel = computed(() => {
     const page = this.runsPage();
     if (!page.items.length) {
@@ -256,9 +174,7 @@ export class MarketAnalysisPage {
     toKeyValueEntries(this.selectedRunResult()?.data.seasonalityRunSummary ?? null)
   );
   readonly selectedRawResultEntries = computed(() => toKeyValueEntries(this.selectedRunResult()?.data.rawResultJson ?? null));
-  readonly selectedRunResultSourceLabel = computed(() =>
-    formatMarketAnalysisResultSource(this.selectedRunResult()?.source)
-  );
+  readonly selectedRunResultSourceLabel = computed(() => formatMarketAnalysisResultSource(this.selectedRunResult()?.source));
   readonly selectedRunActiveTabIndex = computed(() => {
     if (this.selectedRunHasSeasonalityView()) {
       return 0;
@@ -324,130 +240,8 @@ export class MarketAnalysisPage {
       hasMeta: this.selectedRunHasResultMeta()
     })
   );
-  readonly filtersPanelTitle = computed(() =>
-    this.selectedRunResult() ? 'Filtres hors run selectionne' : 'Filtres actifs'
-  );
-
-  readonly monthChartConfig = computed<ChartConfiguration<'bar'>>(() => {
-    const profile = this.seasonality();
-    return {
-      type: 'bar',
-      data: {
-        labels: profile?.byMonth.map(bar => bar.label) ?? [],
-        datasets: [
-          {
-            label: 'Performance (%)',
-            data: profile?.byMonth.map(bar => bar.value) ?? [],
-            backgroundColor: '#6366f1'
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false } }
-      }
-    } satisfies ChartConfiguration<'bar'>;
-  });
-
-  readonly dowChartConfig = computed<ChartConfiguration<'bar'>>(() => {
-    const profile = this.seasonality();
-    return {
-      type: 'bar',
-      data: {
-        labels: profile?.byDow.map(bar => bar.label) ?? [],
-        datasets: [
-          {
-            label: 'Performance (%)',
-            data: profile?.byDow.map(bar => bar.value) ?? [],
-            backgroundColor: '#22d3ee'
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false } }
-      }
-    } satisfies ChartConfiguration<'bar'>;
-  });
-
-  readonly heatmapChartConfig = computed<ChartConfiguration<'scatter', HeatmapPoint[], number>>(() => {
-    const profile = this.seasonality();
-    const dataPoints: HeatmapPoint[] = profile?.byHour.map((cell: HeatmapCell) => ({
-      x: cell.hour,
-      y: cell.dow,
-      value: cell.value
-    })) ?? [];
-
-    const dowLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-
-    return {
-      type: 'scatter',
-      data: {
-        datasets: [
-          {
-            label: 'Hourly Heatmap',
-            data: dataPoints,
-            pointRadius: 18,
-            pointHoverRadius: 18,
-            pointBackgroundColor: ctx => {
-              const raw = ctx.raw as HeatmapPoint | undefined;
-              return heatmapColor(raw?.value ?? 0);
-            },
-            pointStyle: 'rectRounded',
-            borderWidth: 0
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: {
-              label(context) {
-                const raw = context.raw as HeatmapPoint;
-                return `D${raw.y + 1} H${raw.x}: ${raw.value.toFixed(0)}%`;
-              }
-            }
-          }
-        },
-        scales: {
-          x: {
-            beginAtZero: true,
-            suggestedMin: -0.5,
-            suggestedMax: 23.5,
-            ticks: {
-              callback: value => `${value}h`
-            }
-          },
-          y: {
-            beginAtZero: true,
-            suggestedMin: -0.5,
-            suggestedMax: 6.5,
-            ticks: {
-              callback: value => dowLabels[Number(value)] ?? ''
-            }
-          }
-        }
-      }
-    } satisfies ChartConfiguration<'scatter', HeatmapPoint[], number>;
-  });
 
   constructor() {
-    effect(() => {
-      if (!this.loading()) {
-        this.kpis.set(this.marketStatsService.computeKpisFromCandles(this.candles()));
-      }
-    });
-
-    this.refreshData();
-  }
-
-  refreshData(): void {
-    this.loadAnalysis();
     this.loadRunsPage(0);
   }
 
@@ -513,87 +307,6 @@ export class MarketAnalysisPage {
     this.loadRunsPage(this.runsPage().page + 1);
   }
 
-  loadAnalysis(): void {
-    if (this.analysisForm.invalid) {
-      this.snackBar.open('Veuillez renseigner un symbole et un timeframe valides.', 'Fermer', {
-        duration: 3000
-      });
-      return;
-    }
-
-    const { symbol, timeframe, timeframesCsv, range } = this.analysisForm.getRawValue();
-    const parsedSymbol = symbol ?? 'EURUSD';
-    const parsedTimeframe = timeframe ?? '1h';
-    const parsedMulti = timeframesCsv ?? '15m,1h,4h';
-    const startIso = computeStartDate(range ?? 0, parsedTimeframe);
-
-    this.loadError.set(null);
-    this.loading.set(true);
-
-    forkJoin({
-      candles: this.marketStatsService.getCandles(parsedSymbol, parsedTimeframe, startIso),
-      seasonality: this.marketStatsService.getSeasonality(parsedSymbol, parsedTimeframe),
-      stats: this.marketStatsService.getStatsSummary({ symbol: parsedSymbol, timeframe: parsedTimeframe }),
-      multi: this.filtersService.getMultiTFStats(parsedSymbol, parsedMulti),
-      benford: this.filtersService.getBenford(parsedSymbol, parsedTimeframe),
-      liquidity: this.filtersService.getGenericFilter<FilterCard[]>(
-        'liquidity',
-        { symbol: parsedSymbol, timeframe: parsedTimeframe }
-      )
-    })
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: result => {
-          this.candles.set(result.candles.data);
-          this.candlesMock.set(result.candles.isMock);
-          this.seasonality.set(result.seasonality.data);
-          this.seasonalityMock.set(result.seasonality.isMock);
-          this.statsSummary.set(result.stats.data);
-          this.statsMock.set(result.stats.isMock);
-
-          const multiCards = Array.isArray(result.multi.data)
-            ? result.multi.data
-            : result.multi.data
-              ? [result.multi.data as FilterCard]
-              : [];
-
-          const liquidityCards = Array.isArray(result.liquidity.data)
-            ? result.liquidity.data
-            : result.liquidity.data
-              ? [result.liquidity.data as unknown as FilterCard]
-              : [];
-
-          const combinedFilters = [
-            result.benford.data,
-            ...multiCards,
-            ...liquidityCards
-          ].filter(
-            (card): card is FilterCard =>
-              !!card && typeof card.id === 'string' && card.id.length > 0
-          );
-
-          this.filters.set({
-            cards: combinedFilters,
-            isMock:
-              result.multi.isMock ||
-              result.benford.isMock ||
-              result.liquidity.isMock
-          });
-
-          this.loading.set(false);
-          this.lastRefreshAt.set(new Date());
-        },
-        error: error => {
-          console.error('Market analysis loading failed', error);
-          this.loading.set(false);
-          this.loadError.set('Donnees indisponibles temporairement. Reessayez.');
-          this.snackBar.open('Analyse indisponible pour le moment.', 'Fermer', {
-            duration: 4000
-          });
-        }
-      });
-  }
-
   loadRunsPage(pageIndex: number): void {
     const { runSymbol, runTimeframe, runSpecType, runStatus, runsPageSize } = this.analysisForm.getRawValue();
 
@@ -644,16 +357,8 @@ export class MarketAnalysisPage {
       });
   }
 
-  trackFilter(_index: number, card: FilterCard): string {
-    return card.id;
-  }
-
   trackRun(_index: number, run: MarketAnalysisRunItem): string {
     return run.runId;
-  }
-
-  trackStat(_index: number, row: StatsSummaryRow): string {
-    return `${row.event}-${row.target}`;
   }
 
   runStatusClass(status: string): string {
@@ -690,20 +395,8 @@ export class MarketAnalysisPage {
     return key === 'metrics' && isRecordValue(row[key]);
   }
 
-  getSeasonalityMetricsSummary(row: MarketAnalysisRowRecord, key: string): string {
-    return summarizeSeasonalityMetrics(row[key]);
-  }
-
-  getSeasonalityMetricsEntries(row: MarketAnalysisRowRecord, key: string): KeyValueEntry[] {
-    return toSeasonalityKeyValueEntries(asRecordValue(row[key]));
-  }
-
   getSeasonalityMetricGroups(row: MarketAnalysisRowRecord, key: string): SeasonalityMetricGroup[] {
-    return groupSeasonalityMetrics(this.getSeasonalityMetricsEntries(row, key));
-  }
-
-  seasonalityMetricGroupClass(group: SeasonalityMetricGroup): string {
-    return `seasonality-metrics-group--${group.id}`;
+    return groupSeasonalityMetrics(toSeasonalityKeyValueEntries(asRecordValue(row[key])));
   }
 
   seasonalityMetricGroupStyle(group: SeasonalityMetricGroup): string {
@@ -758,68 +451,11 @@ export class MarketAnalysisPage {
   trackEntry(_index: number, entry: KeyValueEntry): string {
     return entry.key;
   }
-
-
-  sectionStateClass(state: DataSectionState): string {
-    switch (state) {
-      case 'ready':
-        return 'state-ready';
-      case 'empty':
-        return 'state-empty';
-      default:
-        return 'state-error';
-    }
-  }
-
-  sectionStateLabel(state: DataSectionState): string {
-    switch (state) {
-      case 'ready':
-        return 'Ready';
-      case 'empty':
-        return 'Empty';
-      default:
-        return 'Error';
-    }
-  }
-
-  private seasonalityPointsCount(): number {
-    const profile = this.seasonality();
-    if (!profile) {
-      return 0;
-    }
-    return profile.byMonth.length + profile.byDow.length + profile.byHour.length;
-  }
-
-  private resolveState(itemCount: number, isMock: boolean): DataSectionState {
-    if (this.loadError()) {
-      return 'error';
-    }
-    if (itemCount === 0) {
-      return 'empty';
-    }
-    return 'ready';
-  }
-  private notifyMock(section: string): void {
-    this.snackBar.open(`${section} alimenté avec les données mock.`, 'OK', {
-      duration: 2500
-    });
-  }
 }
 
 function isRunSpecType(value: string | null): value is 'market_stats' | 'seasonality' {
   return value === 'market_stats' || value === 'seasonality';
 }
-
-type KeyValueEntry = {
-  key: string;
-  value: string;
-};
-
-type SeasonalityMetricGroup = {
-  id: 'p' | 'ret' | 'amp' | 'other';
-  label: 'P' | 'Ret' | 'Amp' | 'Other';
-  entries: KeyValueEntry[];
-};
 
 function toKeyValueEntries(payload: Record<string, unknown> | MarketAnalysisSeasonalityRunSummary | null | undefined): KeyValueEntry[] {
   if (!payload) {
@@ -884,9 +520,7 @@ function orderMarketStatsColumns(rows: MarketAnalysisRowRecord[]): string[] {
   }
   const preferred = new Set<string>(PREFERRED_MARKET_STATS_COLUMNS);
   const ordered = PREFERRED_MARKET_STATS_COLUMNS.filter(key => keys.includes(key));
-  const remaining = keys
-    .filter(key => !preferred.has(key))
-    .sort((left, right) => left.localeCompare(right));
+  const remaining = keys.filter(key => !preferred.has(key)).sort((left, right) => left.localeCompare(right));
   return [...ordered, ...remaining];
 }
 
@@ -897,9 +531,7 @@ function orderSeasonalityColumns(rows: MarketAnalysisRowRecord[]): string[] {
   }
   const preferred = new Set<string>(PREFERRED_SEASONALITY_COLUMNS);
   const ordered = PREFERRED_SEASONALITY_COLUMNS.filter(key => keys.includes(key));
-  const remaining = keys
-    .filter(key => !preferred.has(key))
-    .sort((left, right) => left.localeCompare(right));
+  const remaining = keys.filter(key => !preferred.has(key)).sort((left, right) => left.localeCompare(right));
   return [...ordered, ...remaining];
 }
 
@@ -1007,64 +639,3 @@ function formatDateTimeDisplayValue(value: string): string {
   const hasTime = /[tT ]\d{2}:\d{2}/.test(value);
   return hasTime ? `${year}-${month}-${day} ${hours}:${minutes} UTC` : `${year}-${month}-${day}`;
 }
-
-function heatmapColor(value: number): string {
-  const min = 0;
-  const max = 100;
-  const ratio = Math.max(0, Math.min(1, (value - min) / (max - min)));
-  const hue = (1 - ratio) * 220;
-  return `hsl(${hue}, 85%, 55%)`;
-}
-
-function buildSparklinePath(series: FilterSeriesPoint[]): string {
-  if (!series.length) {
-    return '';
-  }
-
-  const values = series.map(point => point.v);
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const range = max - min || 1;
-  const lastIndex = series.length - 1 || 1;
-
-  return series
-    .map((point, index) => {
-      const x = (index / lastIndex) * 100;
-      const y = 100 - ((point.v - min) / range) * 100;
-      const command = index === 0 ? 'M' : 'L';
-      return `${command}${x.toFixed(2)},${y.toFixed(2)}`;
-    })
-    .join(' ');
-}
-
-function computeStartDate(range: number, timeframe: string): string | undefined {
-  if (!range || range <= 0) {
-    return undefined;
-  }
-  const interval = timeframeToMs(timeframe);
-  if (!interval) {
-    return undefined;
-  }
-
-  const start = new Date(Date.now() - range * interval);
-  return start.toISOString();
-}
-
-function timeframeToMs(timeframe: string): number | undefined {
-  switch (timeframe) {
-    case '15m':
-      return 15 * 60 * 1000;
-    case '1h':
-      return 60 * 60 * 1000;
-    case '4h':
-      return 4 * 60 * 60 * 1000;
-    case '1d':
-      return 24 * 60 * 60 * 1000;
-    default:
-      return undefined;
-  }
-}
-
-
-
-

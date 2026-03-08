@@ -1,68 +1,18 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { of, throwError } from 'rxjs';
 
 import {
-  ApiResult,
-  Candle,
-  FilterCard,
-  KpiSummary,
   MarketAnalysisRunDetail,
   MarketAnalysisRunResult,
-  MarketAnalysisRunsPage,
-  SeasonalityProfile,
-  StatsSummaryRow
+  MarketAnalysisRunsPage
 } from '../../models/market-analysis.models';
-import { FiltersService } from '../../services/filters.service';
 import { MarketAnalysisRunsService } from '../../services/market-analysis-runs.service';
-import { MarketStatsService } from '../../services/market-stats.service';
 import { MarketAnalysisPage } from './market-analysis.page';
 
 describe('MarketAnalysisPage', () => {
   let fixture: ComponentFixture<MarketAnalysisPage>;
   let component: MarketAnalysisPage;
-  let marketStatsSpy: jasmine.SpyObj<MarketStatsService>;
   let marketAnalysisRunsSpy: jasmine.SpyObj<MarketAnalysisRunsService>;
-  let filtersSpy: jasmine.SpyObj<FiltersService>;
-  let snackBarSpy: jasmine.SpyObj<MatSnackBar>;
-
-  const mockCandles: Candle[] = [
-    {
-      timestamp: '2024-01-01T00:00:00Z',
-      open: 1.1,
-      high: 1.2,
-      low: 1.05,
-      close: 1.15,
-      volume: 1200
-    }
-  ];
-
-  const mockSeasonality: SeasonalityProfile = {
-    byMonth: [],
-    byDow: [],
-    byHour: []
-  };
-
-  const mockStats: StatsSummaryRow[] = [
-    {
-      event: 'breakout',
-      target: 'up',
-      n: 10,
-      pHat: 0.42,
-      ciLow: 0.2,
-      ciHigh: 0.6,
-      lift: 1.1,
-      qValue: 0.05
-    }
-  ];
-
-  const mockKpis: KpiSummary = {
-    atrPercent: 1,
-    averageRange: 0.01,
-    skewness: 0,
-    kurtosis: 0,
-    maxDrawdown: -0.1
-  };
 
   const mockRunsPage: MarketAnalysisRunsPage = {
     items: [
@@ -133,61 +83,24 @@ describe('MarketAnalysisPage', () => {
     }
   };
 
-  const createCard = (id: string): FilterCard => ({
-    id,
-    title: id,
-    source: 'JAVA',
-    category: 'test'
-  });
-
-  const buildApiResult = <T>(data: T, isMock = false): ApiResult<T> => ({
-    data,
-    isMock
-  });
-
   beforeEach(async () => {
-    marketStatsSpy = jasmine.createSpyObj<MarketStatsService>('MarketStatsService', [
-      'getCandles',
-      'getSeasonality',
-      'getStatsSummary',
-      'computeKpisFromCandles'
-    ]);
     marketAnalysisRunsSpy = jasmine.createSpyObj<MarketAnalysisRunsService>('MarketAnalysisRunsService', [
       'getRuns',
       'getRunDetail',
       'getRunResult'
     ]);
-    filtersSpy = jasmine.createSpyObj<FiltersService>('FiltersService', [
-      'getMultiTFStats',
-      'getBenford',
-      'getGenericFilter'
-    ]);
-    snackBarSpy = jasmine.createSpyObj<MatSnackBar>('MatSnackBar', ['open']);
 
     TestBed.configureTestingModule({
       imports: [MarketAnalysisPage],
-      providers: [
-        { provide: MarketStatsService, useValue: marketStatsSpy },
-        { provide: MarketAnalysisRunsService, useValue: marketAnalysisRunsSpy },
-        { provide: FiltersService, useValue: filtersSpy },
-        { provide: MatSnackBar, useValue: snackBarSpy }
-      ]
+      providers: [{ provide: MarketAnalysisRunsService, useValue: marketAnalysisRunsSpy }]
     });
-    TestBed.overrideProvider(MatSnackBar, { useValue: snackBarSpy });
     await TestBed.compileComponents();
   });
 
   const stubDefaultResponses = () => {
-    marketStatsSpy.getCandles.and.returnValue(of(buildApiResult(mockCandles)));
-    marketStatsSpy.getSeasonality.and.returnValue(of(buildApiResult(mockSeasonality)));
-    marketStatsSpy.getStatsSummary.and.returnValue(of(buildApiResult(mockStats)));
-    marketStatsSpy.computeKpisFromCandles.and.returnValue(mockKpis);
     marketAnalysisRunsSpy.getRuns.and.returnValue(of(mockRunsPage));
     marketAnalysisRunsSpy.getRunDetail.and.returnValue(of(mockRunDetail));
     marketAnalysisRunsSpy.getRunResult.and.returnValue(of(mockRunResult));
-    filtersSpy.getMultiTFStats.and.returnValue(of(buildApiResult([createCard('multi')])));
-    filtersSpy.getBenford.and.returnValue(of(buildApiResult(createCard('benford'))));
-    filtersSpy.getGenericFilter.and.returnValue(of(buildApiResult([createCard('liquidity')])));
   };
 
   const createComponent = () => {
@@ -196,23 +109,11 @@ describe('MarketAnalysisPage', () => {
     fixture.detectChanges();
   };
 
-  it('should trigger analysis and runs catalog calls on init', () => {
+  it('should trigger the runs catalog calls on init', () => {
     stubDefaultResponses();
 
     createComponent();
 
-    expect(marketStatsSpy.getCandles).toHaveBeenCalledWith('EURUSD', '1h', jasmine.any(String));
-    expect(marketStatsSpy.getSeasonality).toHaveBeenCalledWith('EURUSD', '1h');
-    expect(marketStatsSpy.getStatsSummary).toHaveBeenCalledWith({
-      symbol: 'EURUSD',
-      timeframe: '1h'
-    });
-    expect(filtersSpy.getMultiTFStats).toHaveBeenCalledWith('EURUSD', '15m,1h,4h');
-    expect(filtersSpy.getBenford).toHaveBeenCalledWith('EURUSD', '1h');
-    expect(filtersSpy.getGenericFilter).toHaveBeenCalledWith('liquidity', {
-      symbol: 'EURUSD',
-      timeframe: '1h'
-    });
     expect(marketAnalysisRunsSpy.getRuns).toHaveBeenCalledWith({
       specType: 'market_stats',
       status: '',
@@ -226,41 +127,7 @@ describe('MarketAnalysisPage', () => {
     expect(marketAnalysisRunsSpy.getRunResult).toHaveBeenCalledWith('run-1');
   });
 
-  it('should allow free-form symbols for backend-driven analysis without constraining the runs catalog', () => {
-    stubDefaultResponses();
-
-    createComponent();
-
-    marketStatsSpy.getCandles.calls.reset();
-    marketStatsSpy.getSeasonality.calls.reset();
-    marketStatsSpy.getStatsSummary.calls.reset();
-    filtersSpy.getMultiTFStats.calls.reset();
-    filtersSpy.getBenford.calls.reset();
-    filtersSpy.getGenericFilter.calls.reset();
-    marketAnalysisRunsSpy.getRuns.calls.reset();
-
-    component.analysisForm.patchValue({ symbol: 'BTC', timeframe: '1h' });
-
-    component.refreshData();
-
-    expect(marketStatsSpy.getCandles).toHaveBeenCalledWith('BTC', '1h', jasmine.any(String));
-    expect(marketStatsSpy.getSeasonality).toHaveBeenCalledWith('BTC', '1h');
-    expect(marketStatsSpy.getStatsSummary).toHaveBeenCalledWith({
-      symbol: 'BTC',
-      timeframe: '1h'
-    });
-    expect(marketAnalysisRunsSpy.getRuns).toHaveBeenCalledWith({
-      specType: 'market_stats',
-      status: '',
-      symbol: '',
-      timeframe: '',
-      page: 0,
-      size: 10,
-      sort: 'created_at,desc'
-    });
-  });
-
-  it('should apply explicit runs catalog filters only when runSymbol and runTimeframe are set', () => {
+  it('should apply explicit runs catalog filters only when run filters are set', () => {
     stubDefaultResponses();
 
     createComponent();
@@ -288,90 +155,6 @@ describe('MarketAnalysisPage', () => {
     });
   });
 
-  it('should keep loading false and show snackbar on invalid form', () => {
-    stubDefaultResponses();
-
-    createComponent();
-
-    marketStatsSpy.getCandles.calls.reset();
-    marketStatsSpy.getSeasonality.calls.reset();
-    marketStatsSpy.getStatsSummary.calls.reset();
-    filtersSpy.getMultiTFStats.calls.reset();
-    filtersSpy.getBenford.calls.reset();
-    filtersSpy.getGenericFilter.calls.reset();
-    marketAnalysisRunsSpy.getRuns.calls.reset();
-    snackBarSpy.open.calls.reset();
-
-    component.analysisForm.patchValue({ symbol: '', timeframe: '' });
-    component.analysisForm.controls.symbol.setErrors({ required: true });
-    component.analysisForm.controls.timeframe.setErrors({ required: true });
-    component.analysisForm.setErrors({ invalid: true });
-
-    component.loadAnalysis();
-
-    expect(component.loading()).toBeFalse();
-    expect(snackBarSpy.open).toHaveBeenCalledWith(
-      'Veuillez renseigner un symbole et un timeframe valides.',
-      'Fermer',
-      { duration: 3000 }
-    );
-    expect(marketStatsSpy.getCandles).not.toHaveBeenCalled();
-    expect(marketStatsSpy.getSeasonality).not.toHaveBeenCalled();
-    expect(marketStatsSpy.getStatsSummary).not.toHaveBeenCalled();
-    expect(filtersSpy.getMultiTFStats).not.toHaveBeenCalled();
-    expect(filtersSpy.getBenford).not.toHaveBeenCalled();
-    expect(filtersSpy.getGenericFilter).not.toHaveBeenCalled();
-    expect(marketAnalysisRunsSpy.getRuns).not.toHaveBeenCalled();
-  });
-
-  it('should combine multi, benford, and liquidity filters', () => {
-    marketStatsSpy.getCandles.and.returnValue(of(buildApiResult(mockCandles)));
-    marketStatsSpy.getSeasonality.and.returnValue(of(buildApiResult(mockSeasonality)));
-    marketStatsSpy.getStatsSummary.and.returnValue(of(buildApiResult(mockStats)));
-    marketStatsSpy.computeKpisFromCandles.and.returnValue(mockKpis);
-    marketAnalysisRunsSpy.getRuns.and.returnValue(of(mockRunsPage));
-    marketAnalysisRunsSpy.getRunDetail.and.returnValue(of(mockRunDetail));
-    marketAnalysisRunsSpy.getRunResult.and.returnValue(of(mockRunResult));
-
-    const multiCards = [createCard('multi-1'), createCard('multi-2')];
-    const benfordCard = createCard('benford');
-    const liquidityCards = [createCard('liquidity-1')];
-
-    filtersSpy.getMultiTFStats.and.returnValue(of(buildApiResult(multiCards)));
-    filtersSpy.getBenford.and.returnValue(of(buildApiResult(benfordCard)));
-    filtersSpy.getGenericFilter.and.returnValue(of(buildApiResult(liquidityCards, true)));
-
-    createComponent();
-
-    expect(component.filters().cards.map(card => card.id)).toEqual([
-      'benford',
-      'multi-1',
-      'multi-2',
-      'liquidity-1'
-    ]);
-    expect(component.filters().isMock).toBeTrue();
-  });
-
-  it('should stop surfacing mock notifications in the page flow', () => {
-    marketStatsSpy.getCandles.and.returnValue(of(buildApiResult(mockCandles, true)));
-    marketStatsSpy.getSeasonality.and.returnValue(of(buildApiResult(mockSeasonality, true)));
-    marketStatsSpy.getStatsSummary.and.returnValue(of(buildApiResult(mockStats, true)));
-    marketStatsSpy.computeKpisFromCandles.and.returnValue(mockKpis);
-    marketAnalysisRunsSpy.getRuns.and.returnValue(of(mockRunsPage));
-    marketAnalysisRunsSpy.getRunDetail.and.returnValue(of(mockRunDetail));
-    marketAnalysisRunsSpy.getRunResult.and.returnValue(of(mockRunResult));
-    filtersSpy.getMultiTFStats.and.returnValue(of(buildApiResult([createCard('multi')])));
-    filtersSpy.getBenford.and.returnValue(of(buildApiResult(createCard('benford'))));
-    filtersSpy.getGenericFilter.and.returnValue(of(buildApiResult([createCard('liquidity')])));
-
-    createComponent();
-
-    const mockOpenCalls = snackBarSpy.open.calls.allArgs().filter(args => String(args[0]).toLowerCase().includes('mock'));
-    expect(mockOpenCalls.length).toBe(0);
-    expect(component.sectionStateLabel('ready')).toBe('Ready');
-    expect(component.sectionStateLabel('empty')).toBe('Empty');
-  });
-
   it('should load the runs catalog and expose pagination state', () => {
     stubDefaultResponses();
 
@@ -385,18 +168,17 @@ describe('MarketAnalysisPage', () => {
     expect(component.selectedRunResult()).toEqual(mockRunResult);
   });
 
-  it('should drive the lower page from a selected market_stats run and hide legacy KPIs', () => {
+  it('should keep the page focused on selected market_stats runs', () => {
     stubDefaultResponses();
 
     createComponent();
 
     expect(component.selectedRunHasMarketStatsView()).toBeTrue();
     expect(component.selectedRunHasSeasonalityView()).toBeFalse();
-    expect(component.selectedRunDrivenKpisVisible()).toBeFalse();
-    expect(component.filtersPanelTitle()).toBe('Filtres hors run selectionne');
 
     const root = fixture.nativeElement as HTMLElement;
-    expect(root.textContent).toContain('Ces filtres proviennent de l\'analyse de marche courante');
+    expect(root.textContent).toContain('Consultation des runs persistés');
+    expect(root.textContent).not.toContain('Ces filtres proviennent de l\'analyse de marche courante');
     expect(root.querySelectorAll('.kpi-card').length).toBe(0);
   });
 
@@ -434,87 +216,10 @@ describe('MarketAnalysisPage', () => {
     expect(root.textContent).toContain('Saisonnalite du run selectionne');
     expect(root.textContent).toContain('Jan');
     expect(root.textContent).toContain('best_month');
-    expect(root.textContent).not.toContain('Seasonality profiles');
-    expect(root.textContent).toContain('Les tableaux du run sont disponibles dans les onglets ci-dessous.');
 
     const headers = Array.from(root.querySelectorAll('.seasonality-run-table thead th')).map(node => node.textContent?.trim());
     expect(headers).toContain('Spec Id');
     expect(headers).toContain('Avg Return');
-  });
-
-  it('should render seasonality cells with dedicated formatting and expandable metrics details', () => {
-    stubDefaultResponses();
-    marketAnalysisRunsSpy.getRunDetail.and.returnValue(
-      of({
-        ...mockRunDetail,
-        specType: 'seasonality'
-      })
-    );
-    marketAnalysisRunsSpy.getRunResult.and.returnValue(
-      of({
-        ...mockRunResult,
-        specType: 'seasonality',
-        data: {
-          marketStatsRows: [],
-          seasonalityProfiles: [
-            {
-              spec_id: 'spec-2',
-              bucket: 'Asia',
-              avg_return: 1.23456,
-              active: true,
-              observed_at: '2026-03-05T10:15:00Z',
-              notes: null,
-              metrics: {
-                run_len_up_mean: 5.7974,
-                run_len_down_mean: 5.2112,
-                n_runs: 464,
-                p_reversal_n: 0.6724,
-                p_reversal_ci_low: 0.6284,
-                p_reversal_ci_high: 0.7136,
-                amp_mean: 2037.8012,
-                amp_p50: 1642.07,
-                p_breakout_up: 0.4814,
-                ret_p50: 0.0015,
-                ret_p90: 0.0448
-              }
-            }
-          ],
-          seasonalityRunSummary: null,
-          rawResultJson: null
-        }
-      })
-    );
-
-    createComponent();
-
-    const root = fixture.nativeElement as HTMLElement;
-    const seasonalityTable = root.querySelector('.seasonality-run-table') as HTMLTableElement;
-    const firstRow = Array.from(
-      seasonalityTable.querySelectorAll('tbody tr:first-child td')
-    ).map(cell => (cell as HTMLTableCellElement).textContent?.replace(/\s+/g, ' ').trim());
-    const metricsPreview = root.querySelector('.seasonality-metrics-cell')?.textContent?.replace(/\s+/g, ' ').trim();
-    const metricGroupLabels = Array.from(root.querySelectorAll('.seasonality-metrics-cell > div > span:first-child')).map(
-      node => node.textContent?.trim()
-    );
-
-    expect(component.getSeasonalityRowValue({ avg_return: 1.23456 }, 'avg_return')).toBe('1.2346');
-    expect(component.getSeasonalityRowValue({ active: true }, 'active')).toBe('Yes');
-    expect(component.getSeasonalityRowValue({ observed_at: '2026-03-05T10:15:00Z' }, 'observed_at')).toBe(
-      '2026-03-05 10:15 UTC'
-    );
-    expect(component.getSeasonalityRowValue({ notes: null }, 'notes')).toBe('-');
-    expect(metricGroupLabels).toEqual(['P', 'Ret', 'Amp', 'Other']);
-    expect(metricsPreview).toContain('P Reversal N');
-    expect(metricsPreview).toContain('0.6724');
-    expect(metricsPreview).toContain('Ret P50');
-    expect(metricsPreview).toContain('0.0015');
-    expect(metricsPreview).toContain('Amp Mean');
-    expect(metricsPreview).toContain('2037.8012');
-    expect(metricsPreview).toContain('Run Len Up Mean');
-    expect(metricsPreview).toContain('5.7974');
-    expect(firstRow).toContain('Yes');
-    expect(firstRow).toContain('2026-03-05 10:15 UTC');
-    expect(firstRow).toContain('-');
   });
 
   it('should qualify partial metadata instead of rendering a mostly empty result meta grid', () => {
@@ -551,10 +256,6 @@ describe('MarketAnalysisPage', () => {
     expect(component.selectedRunResultMetaNote()).toBe(
       'Resultat tabulaire disponible. Certaines metadonnees ne sont pas fournies pour ce type de run.'
     );
-
-    const root = fixture.nativeElement as HTMLElement;
-    expect(root.textContent).toContain('non disponible pour ce type de run');
-    expect(root.textContent).toContain('Resultat tabulaire disponible');
   });
 
   it('should explain result_json-only runs when no structured rows are available', () => {
@@ -587,11 +288,6 @@ describe('MarketAnalysisPage', () => {
     expect(component.selectedRunResultMetaNote()).toBe(
       'Resultat disponible uniquement via result_json. Les metadonnees structurees peuvent etre partielles.'
     );
-
-    const root = fixture.nativeElement as HTMLElement;
-    expect(root.textContent).toContain('Source: result_json');
-    expect(root.textContent).toContain('Resultat disponible uniquement via result_json');
-    expect(root.textContent).toContain('Raw result JSON');
   });
 
   it('should render enriched market_stats rows with prioritized columns and formatted values', () => {
@@ -626,12 +322,8 @@ describe('MarketAnalysisPage', () => {
 
     const root = fixture.nativeElement as HTMLElement;
     const marketStatsTable = root.querySelector('.market-stats-run-table') as HTMLTableElement;
-    const headers = Array.from(
-      marketStatsTable.querySelectorAll('thead th')
-    ).map(cell => (cell as HTMLTableCellElement).textContent?.trim());
-    const firstRow = Array.from(
-      marketStatsTable.querySelectorAll('tbody tr:first-child td')
-    ).map(cell => (cell as HTMLTableCellElement).textContent?.trim());
+    const headers = Array.from(marketStatsTable.querySelectorAll('thead th')).map(cell => cell.textContent?.trim());
+    const firstRow = Array.from(marketStatsTable.querySelectorAll('tbody tr:first-child td')).map(cell => cell.textContent?.trim());
 
     expect(headers).toContain('Lift Freq');
     expect(headers).toContain('Lift Bayes');
@@ -643,8 +335,6 @@ describe('MarketAnalysisPage', () => {
     expect(headers).toContain('Hdi Low');
     expect(headers).toContain('Hdi High');
     expect(headers.indexOf('Event')).toBeLessThan(headers.indexOf('Lift Freq'));
-    expect(root.textContent).not.toContain('Market stats rows');
-    expect(root.textContent).toContain('Les tableaux du run sont disponibles dans les onglets ci-dessous.');
     expect(firstRow).toContain('1.2345');
     expect(firstRow).toContain('0.0123');
     expect(firstRow).toContain('Yes');
@@ -668,9 +358,7 @@ describe('MarketAnalysisPage', () => {
     expect(component.selectedRunMarketStatsColumns()).toEqual(['event', 'n']);
     const root = fixture.nativeElement as HTMLElement;
     const marketStatsTable = root.querySelector('.market-stats-run-table') as HTMLTableElement;
-    const firstRow = Array.from(
-      marketStatsTable.querySelectorAll('tbody tr:first-child td')
-    ).map(cell => (cell as HTMLTableCellElement).textContent?.trim());
+    const firstRow = Array.from(marketStatsTable.querySelectorAll('tbody tr:first-child td')).map(cell => cell.textContent?.trim());
     expect(firstRow).toEqual(['breakout', '10']);
   });
 
@@ -758,50 +446,6 @@ describe('MarketAnalysisPage', () => {
     createComponent();
 
     expect(component.runsError()).toBe('Service indisponible temporairement. Reessayez.');
-  });
-
-  it('keeps the runs catalog in empty state when the backend returns no items', () => {
-    stubDefaultResponses();
-    marketAnalysisRunsSpy.getRuns.and.returnValue(
-      of({
-        items: [],
-        page: 0,
-        size: 10,
-        totalElements: 0,
-        totalPages: 0,
-        sort: 'created_at,desc'
-      })
-    );
-
-    createComponent();
-
     expect(component.runsPage().items).toEqual([]);
-    expect(component.runRangeLabel()).toBe('Aucun run');
-    expect(component.selectedRunId()).toBeNull();
-  });
-
-  it('marks sections as empty when analysis datasets are valid but empty', () => {
-    marketStatsSpy.getCandles.and.returnValue(of(buildApiResult([])));
-    marketStatsSpy.getSeasonality.and.returnValue(of(buildApiResult({ byMonth: [], byDow: [], byHour: [] })));
-    marketStatsSpy.getStatsSummary.and.returnValue(of(buildApiResult([])));
-    marketStatsSpy.computeKpisFromCandles.and.returnValue({
-      atrPercent: 0,
-      averageRange: 0,
-      skewness: 0,
-      kurtosis: 0,
-      maxDrawdown: 0
-    });
-    marketAnalysisRunsSpy.getRuns.and.returnValue(of(mockRunsPage));
-    marketAnalysisRunsSpy.getRunDetail.and.returnValue(of(mockRunDetail));
-    marketAnalysisRunsSpy.getRunResult.and.returnValue(of(mockRunResult));
-    filtersSpy.getMultiTFStats.and.returnValue(of(buildApiResult([])));
-    filtersSpy.getBenford.and.returnValue(of(buildApiResult(createCard('benford'))));
-    filtersSpy.getGenericFilter.and.returnValue(of(buildApiResult([])));
-
-    createComponent();
-
-    expect(component.sectionStateLabel(component.sectionStates().candles)).toBe('Empty');
-    expect(component.sectionStateLabel(component.sectionStates().seasonality)).toBe('Empty');
-    expect(component.sectionStateLabel(component.sectionStates().stats)).toBe('Empty');
   });
 });

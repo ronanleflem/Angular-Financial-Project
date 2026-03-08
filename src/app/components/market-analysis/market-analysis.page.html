@@ -3,37 +3,11 @@
     <div class="header-copy">
       <h1>Market Analysis</h1>
       <p>
-        Page de consultation uniquement. Le lancement de runs reste sur <code>/strategy-launcher</code>.
+        Consultation des runs persistés. Le lancement reste sur <code>/strategy-launcher</code>.
       </p>
     </div>
 
-    <form [formGroup]="analysisForm" class="analysis-form" (ngSubmit)="refreshData()">
-      <mat-form-field appearance="outline">
-        <mat-label>Symbole</mat-label>
-        <input matInput formControlName="symbol" placeholder="Ex: BTC, ETH, BTCUSD, EURUSD" />
-        <mat-hint>Champ libre pour supporter les symboles remontes par les runs backend.</mat-hint>
-      </mat-form-field>
-
-      <mat-form-field appearance="outline">
-        <mat-label>Timeframe</mat-label>
-        <mat-select formControlName="timeframe">
-          <mat-option value="15m">15m</mat-option>
-          <mat-option value="1h">1h</mat-option>
-          <mat-option value="4h">4h</mat-option>
-          <mat-option value="1d">1D</mat-option>
-        </mat-select>
-      </mat-form-field>
-
-      <mat-form-field appearance="outline">
-        <mat-label>Timeframes comparaison</mat-label>
-        <input matInput formControlName="timeframesCsv" placeholder="15m,1h,4h" />
-      </mat-form-field>
-
-      <mat-form-field appearance="outline">
-        <mat-label>Nombre de bougies</mat-label>
-        <input matInput type="number" formControlName="range" />
-      </mat-form-field>
-
+    <form [formGroup]="analysisForm" class="analysis-form" (ngSubmit)="refreshRuns()">
       <mat-form-field appearance="outline">
         <mat-label>Type de run</mat-label>
         <mat-select formControlName="runSpecType">
@@ -69,30 +43,14 @@
         <input matInput type="number" formControlName="runsPageSize" />
       </mat-form-field>
 
-      <button mat-flat-button color="primary" type="submit" [disabled]="loading()">
-        <mat-icon>sync</mat-icon>
-        Rafraichir
+      <button mat-flat-button color="primary" type="submit" [disabled]="runsLoading()">
+        Actualiser les runs
       </button>
     </form>
-    <div class="refresh-meta">
-      <span>Derniere mise a jour: {{ (lastRefreshAt() ? (lastRefreshAt() | date:'short') : 'jamais') }}</span>
-      <span class="error" *ngIf="loadError()">{{ loadError() }}</span>
+    <div class="runs-meta">
+      <span>Derniere synchro runs: {{ (runsUpdatedAt() ? (runsUpdatedAt() | date:'short') : 'jamais') }}</span>
+      <span>{{ runRangeLabel() }}</span>
     </div>
-    <div class="backend-grid">
-      <div class="backend-card" *ngFor="let badge of backendBadges">
-        <div class="backend-title">{{ badge.label }}</div>
-        <div class="backend-meta">
-          <span class="backend-source">{{ badge.source }}</span>
-          <span
-            class="backend-state"
-            [ngClass]="sectionStateClass(sectionStates()[badge.id])"
-          >
-            {{ sectionStateLabel(sectionStates()[badge.id]) }}
-          </span>
-        </div>
-      </div>
-    </div>
-    <mat-progress-bar *ngIf="loading()" mode="indeterminate"></mat-progress-bar>
   </header>
 
   <mat-card class="content-card runs-card">
@@ -250,23 +208,6 @@
     </div>
   </mat-card>
 
-  <section class="kpis" *ngIf="selectedRunDrivenKpisVisible() && kpis() as summary">
-    <mat-card class="kpi-card" *ngFor="let item of [
-      { label: 'ATR %', value: summary.atrPercent, suffix: '%' },
-      { label: 'Range moyen', value: summary.averageRange },
-      { label: 'Skewness', value: summary.skewness },
-      { label: 'Kurtosis', value: summary.kurtosis },
-      { label: 'Max DD', value: summary.maxDrawdown, suffix: '%' }
-    ]">
-      <mat-card-header>
-        <mat-card-title>{{ item.label }}</mat-card-title>
-      </mat-card-header>
-      <mat-card-content>
-        <span class="kpi-value">{{ item.value | number:'1.0-2' }}{{ item.suffix ?? '' }}</span>
-      </mat-card-content>
-    </mat-card>
-  </section>
-
   <mat-card class="content-card">
     <mat-tab-group [selectedIndex]="selectedRunActiveTabIndex()">
       <mat-tab label="Saisonnalite (run)" [disabled]="!selectedRunHasSeasonalityView()">
@@ -353,53 +294,5 @@
         </ng-template>
       </mat-tab>
     </mat-tab-group>
-  </mat-card>
-
-  <mat-card class="content-card">
-    <div class="tab-header">
-      <h3>{{ filtersPanelTitle() }}</h3>
-    </div>
-    <p class="empty-state" *ngIf="selectedRunResult()">
-      Ces filtres proviennent de l'analyse de marche courante et non du resultat canonique du run selectionne.
-    </p>
-    <div class="filters-grid" *ngIf="filters().cards.length; else filtersEmpty">
-      <mat-card class="filter-card" *ngFor="let card of filters().cards; trackBy: trackFilter">
-        <mat-card-header>
-          <mat-card-title>{{ card.title }}</mat-card-title>
-          <mat-chip class="source-chip" [ngClass]="card.source.toLowerCase()">
-            {{ card.source === 'JAVA' ? 'JAVA' : 'PY' }}
-          </mat-chip>
-        </mat-card-header>
-        <mat-card-content>
-          <p class="filter-category">{{ card.category }}</p>
-          <p class="filter-description" *ngIf="card.description">{{ card.description }}</p>
-          <div class="filter-metrics">
-            <div class="metric" *ngIf="card.score as score">
-              <span>Score</span>
-              <mat-progress-bar mode="determinate" [value]="score * 100"></mat-progress-bar>
-              <strong>{{ score | number:'1.2-2' }}</strong>
-            </div>
-            <div class="metric" *ngIf="card.ratio as ratio">
-              <span>Ratio</span>
-              <mat-progress-bar mode="determinate" [value]="ratio * 100"></mat-progress-bar>
-              <strong>{{ ratio | percent:'1.0-1' }}</strong>
-            </div>
-            <div class="metric" *ngFor="let metric of card.metrics | keyvalue">
-              <span>{{ metric.key }}</span>
-              <strong>{{ metric.value }}</strong>
-            </div>
-          </div>
-          <div class="sparkline" *ngIf="card.series?.length">
-            @let path = filterSparklines().get(card.id);
-            <svg viewBox="0 0 100 100" preserveAspectRatio="none">
-              <path [attr.d]="path" />
-            </svg>
-          </div>
-        </mat-card-content>
-      </mat-card>
-    </div>
-    <ng-template #filtersEmpty>
-      <p class="empty-state">Aucun filtre disponible.</p>
-    </ng-template>
   </mat-card>
 </section>
