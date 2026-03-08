@@ -231,50 +231,8 @@
     </div>
     <p class="empty-state" *ngIf="selectedRunResultMetaNote()">{{ selectedRunResultMetaNote() }}</p>
 
-    <div class="result-section" *ngIf="runResult.data.marketStatsRows.length">
-      <h4>Market stats rows</h4>
-      <div class="stats-table-wrapper">
-        <table class="stats-table">
-          <thead>
-            <tr>
-              <th *ngFor="let column of selectedRunMarketStatsColumns()">{{ marketStatsColumnLabel(column) }}</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let row of runResult.data.marketStatsRows">
-              <td *ngFor="let column of selectedRunMarketStatsColumns()">{{ getMarketStatsRowValue(row, column) }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <div class="result-section" *ngIf="runResult.data.seasonalityProfiles.length">
-      <h4>Seasonality profiles</h4>
-      <div class="stats-table-wrapper">
-        <table class="stats-table">
-          <thead>
-            <tr>
-              <th *ngFor="let column of selectedRunSeasonalityColumns()">{{ column }}</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let row of runResult.data.seasonalityProfiles">
-              <td *ngFor="let column of selectedRunSeasonalityColumns()">{{ getRowValue(row, column) }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <div class="result-section" *ngIf="selectedSeasonalitySummaryEntries().length">
-      <h4>Seasonality run summary</h4>
-      <div class="detail-pairs">
-        <div *ngFor="let entry of selectedSeasonalitySummaryEntries(); trackBy: trackEntry">
-          <strong>{{ entry.key }}</strong>
-          <span>{{ entry.value }}</span>
-        </div>
-      </div>
+    <div class="result-section" *ngIf="selectedRunHasStructuredRows()">
+      <p class="empty-state">Les tableaux du run sont disponibles dans les onglets ci-dessous.</p>
     </div>
 
     <div class="result-section" *ngIf="selectedRawResultEntries().length">
@@ -310,22 +268,44 @@
   </section>
 
   <mat-card class="content-card">
-    <mat-tab-group>
+    <mat-tab-group [selectedIndex]="selectedRunActiveTabIndex()">
       <mat-tab label="Saisonnalite (run)" [disabled]="!selectedRunHasSeasonalityView()">
         <div class="tab-header">
           <h3>Saisonnalite du run selectionne</h3>
         </div>
         <ng-container *ngIf="selectedRunHasSeasonalityView(); else seasonalityRunUnavailable">
           <div class="stats-table-wrapper" *ngIf="selectedRunSeasonalityRows().length; else seasonalityEmpty">
-            <table class="stats-table">
+            <table class="stats-table seasonality-run-table">
               <thead>
                 <tr>
-                  <th *ngFor="let column of selectedRunSeasonalityColumns()">{{ column }}</th>
+                  <th *ngFor="let column of selectedRunSeasonalityColumns()">{{ seasonalityColumnLabel(column) }}</th>
                 </tr>
               </thead>
               <tbody>
                 <tr *ngFor="let row of selectedRunSeasonalityRows()">
-                  <td *ngFor="let column of selectedRunSeasonalityColumns()">{{ getRowValue(row, column) }}</td>
+                  <td *ngFor="let column of selectedRunSeasonalityColumns()">
+                    <ng-container *ngIf="isSeasonalityMetricsValue(row, column); else selectedSeasonalityPlainValue">
+                      <div
+                        class="seasonality-metrics-cell"
+                        style="display:grid;grid-template-columns:repeat(4,minmax(140px,1fr));gap:0.75rem;min-width:640px;"
+                      >
+                        <div
+                          *ngFor="let group of getSeasonalityMetricGroups(row, column)"
+                          [style]="seasonalityMetricGroupStyle(group) + 'display:flex;flex-direction:column;gap:0.45rem;padding:0.65rem 0.7rem;border:1px solid rgba(148,163,184,0.22);border-radius:10px;'"
+                        >
+                          <span style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.05em;color:#64748b;font-weight:700;">
+                            {{ group.label }}
+                          </span>
+                          <div class="metric seasonality-metrics-preview" *ngFor="let entry of group.entries; trackBy: trackEntry">
+                            <span>{{ seasonalityMetricLabel(entry.key) }}</span>
+                            <strong>{{ entry.value }}</strong>
+                          </div>
+                          <span *ngIf="!group.entries.length" style="font-size:0.78rem;color:#94a3b8;">-</span>
+                        </div>
+                      </div>
+                    </ng-container>
+                    <ng-template #selectedSeasonalityPlainValue>{{ getSeasonalityRowValue(row, column) }}</ng-template>
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -351,7 +331,7 @@
         </div>
         <ng-container *ngIf="selectedRunHasMarketStatsView(); else patternsRunUnavailable">
           <div class="stats-table-wrapper" *ngIf="selectedRunPatternsRows().length; else statsEmpty">
-            <table class="stats-table">
+            <table class="stats-table market-stats-run-table">
               <thead>
                 <tr>
                   <th *ngFor="let column of selectedRunMarketStatsColumns()">{{ marketStatsColumnLabel(column) }}</th>

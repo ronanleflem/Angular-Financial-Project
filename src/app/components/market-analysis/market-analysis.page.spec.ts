@@ -415,8 +415,8 @@ describe('MarketAnalysisPage', () => {
         data: {
           marketStatsRows: [],
           seasonalityProfiles: [
-            { bucket: 'Jan', avg_return: 1.5 },
-            { bucket: 'Feb', avg_return: -0.5 }
+            { z_score: 1.2, avg_return: 1.5, bucket: 'Jan', spec_id: 'spec-1' },
+            { z_score: -0.4, avg_return: -0.5, bucket: 'Feb', spec_id: 'spec-1' }
           ],
           seasonalityRunSummary: { best_month: 'Jan', observations: 24 },
           rawResultJson: null
@@ -428,12 +428,93 @@ describe('MarketAnalysisPage', () => {
 
     expect(component.selectedRunHasSeasonalityView()).toBeTrue();
     expect(component.selectedRunHasMarketStatsView()).toBeFalse();
-    expect(component.selectedRunSeasonalityColumns()).toEqual(['bucket', 'avg_return']);
+    expect(component.selectedRunSeasonalityColumns()).toEqual(['spec_id', 'bucket', 'avg_return', 'z_score']);
 
     const root = fixture.nativeElement as HTMLElement;
     expect(root.textContent).toContain('Saisonnalite du run selectionne');
     expect(root.textContent).toContain('Jan');
     expect(root.textContent).toContain('best_month');
+    expect(root.textContent).not.toContain('Seasonality profiles');
+    expect(root.textContent).toContain('Les tableaux du run sont disponibles dans les onglets ci-dessous.');
+
+    const headers = Array.from(root.querySelectorAll('.seasonality-run-table thead th')).map(node => node.textContent?.trim());
+    expect(headers).toContain('Spec Id');
+    expect(headers).toContain('Avg Return');
+  });
+
+  it('should render seasonality cells with dedicated formatting and expandable metrics details', () => {
+    stubDefaultResponses();
+    marketAnalysisRunsSpy.getRunDetail.and.returnValue(
+      of({
+        ...mockRunDetail,
+        specType: 'seasonality'
+      })
+    );
+    marketAnalysisRunsSpy.getRunResult.and.returnValue(
+      of({
+        ...mockRunResult,
+        specType: 'seasonality',
+        data: {
+          marketStatsRows: [],
+          seasonalityProfiles: [
+            {
+              spec_id: 'spec-2',
+              bucket: 'Asia',
+              avg_return: 1.23456,
+              active: true,
+              observed_at: '2026-03-05T10:15:00Z',
+              notes: null,
+              metrics: {
+                run_len_up_mean: 5.7974,
+                run_len_down_mean: 5.2112,
+                n_runs: 464,
+                p_reversal_n: 0.6724,
+                p_reversal_ci_low: 0.6284,
+                p_reversal_ci_high: 0.7136,
+                amp_mean: 2037.8012,
+                amp_p50: 1642.07,
+                p_breakout_up: 0.4814,
+                ret_p50: 0.0015,
+                ret_p90: 0.0448
+              }
+            }
+          ],
+          seasonalityRunSummary: null,
+          rawResultJson: null
+        }
+      })
+    );
+
+    createComponent();
+
+    const root = fixture.nativeElement as HTMLElement;
+    const seasonalityTable = root.querySelector('.seasonality-run-table') as HTMLTableElement;
+    const firstRow = Array.from(
+      seasonalityTable.querySelectorAll('tbody tr:first-child td')
+    ).map(cell => (cell as HTMLTableCellElement).textContent?.replace(/\s+/g, ' ').trim());
+    const metricsPreview = root.querySelector('.seasonality-metrics-cell')?.textContent?.replace(/\s+/g, ' ').trim();
+    const metricGroupLabels = Array.from(root.querySelectorAll('.seasonality-metrics-cell > div > span:first-child')).map(
+      node => node.textContent?.trim()
+    );
+
+    expect(component.getSeasonalityRowValue({ avg_return: 1.23456 }, 'avg_return')).toBe('1.2346');
+    expect(component.getSeasonalityRowValue({ active: true }, 'active')).toBe('Yes');
+    expect(component.getSeasonalityRowValue({ observed_at: '2026-03-05T10:15:00Z' }, 'observed_at')).toBe(
+      '2026-03-05 10:15 UTC'
+    );
+    expect(component.getSeasonalityRowValue({ notes: null }, 'notes')).toBe('-');
+    expect(metricGroupLabels).toEqual(['P', 'Ret', 'Amp', 'Other']);
+    expect(metricsPreview).toContain('P Reversal N');
+    expect(metricsPreview).toContain('0.6724');
+    expect(metricsPreview).toContain('Ret P50');
+    expect(metricsPreview).toContain('0.0015');
+    expect(metricsPreview).toContain('Amp Mean');
+    expect(metricsPreview).toContain('2037.8012');
+    expect(metricsPreview).toContain('Run Len Up Mean');
+    expect(metricsPreview).toContain('5.7974');
+    expect(firstRow).toContain('Yes');
+    expect(firstRow).toContain('2026-03-05 10:15 UTC');
+    expect(firstRow).toContain('-');
   });
 
   it('should qualify partial metadata instead of rendering a mostly empty result meta grid', () => {
@@ -544,7 +625,7 @@ describe('MarketAnalysisPage', () => {
     createComponent();
 
     const root = fixture.nativeElement as HTMLElement;
-    const marketStatsTable = root.querySelector('.result-section .stats-table') as HTMLTableElement;
+    const marketStatsTable = root.querySelector('.market-stats-run-table') as HTMLTableElement;
     const headers = Array.from(
       marketStatsTable.querySelectorAll('thead th')
     ).map(cell => (cell as HTMLTableCellElement).textContent?.trim());
@@ -562,6 +643,8 @@ describe('MarketAnalysisPage', () => {
     expect(headers).toContain('Hdi Low');
     expect(headers).toContain('Hdi High');
     expect(headers.indexOf('Event')).toBeLessThan(headers.indexOf('Lift Freq'));
+    expect(root.textContent).not.toContain('Market stats rows');
+    expect(root.textContent).toContain('Les tableaux du run sont disponibles dans les onglets ci-dessous.');
     expect(firstRow).toContain('1.2345');
     expect(firstRow).toContain('0.0123');
     expect(firstRow).toContain('Yes');
@@ -584,7 +667,7 @@ describe('MarketAnalysisPage', () => {
 
     expect(component.selectedRunMarketStatsColumns()).toEqual(['event', 'n']);
     const root = fixture.nativeElement as HTMLElement;
-    const marketStatsTable = root.querySelector('.result-section .stats-table') as HTMLTableElement;
+    const marketStatsTable = root.querySelector('.market-stats-run-table') as HTMLTableElement;
     const firstRow = Array.from(
       marketStatsTable.querySelectorAll('tbody tr:first-child td')
     ).map(cell => (cell as HTMLTableCellElement).textContent?.trim());

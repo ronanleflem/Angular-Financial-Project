@@ -100,6 +100,31 @@ const PREFERRED_MARKET_STATS_COLUMNS = [
   'insufficient'
 ] as const;
 
+const PREFERRED_SEASONALITY_COLUMNS = [
+  'spec_id',
+  'profile',
+  'bucket',
+  'label',
+  'period',
+  'session',
+  'month',
+  'day_of_week',
+  'hour',
+  'n',
+  'count',
+  'observations',
+  'avg_return',
+  'mean',
+  'median',
+  'hit_rate',
+  'win_rate',
+  'p_value',
+  'q_value',
+  'score',
+  'lift',
+  'metrics'
+] as const;
+
 @Component({
   selector: 'app-market-analysis-page',
   standalone: true,
@@ -226,7 +251,7 @@ export class MarketAnalysisPage {
   readonly selectedRunMetaEntries = computed(() => toKeyValueEntries(this.selectedRunDetail()?.payloadJson));
   readonly selectedRunProgressEntries = computed(() => toKeyValueEntries(this.selectedRunDetail()?.progressJson));
   readonly selectedRunMarketStatsColumns = computed(() => orderMarketStatsColumns(this.selectedRunPatternsRows()));
-  readonly selectedRunSeasonalityColumns = computed(() => collectRowKeys(this.selectedRunSeasonalityRows()));
+  readonly selectedRunSeasonalityColumns = computed(() => orderSeasonalityColumns(this.selectedRunSeasonalityRows()));
   readonly selectedSeasonalitySummaryEntries = computed(() =>
     toKeyValueEntries(this.selectedRunResult()?.data.seasonalityRunSummary ?? null)
   );
@@ -234,6 +259,15 @@ export class MarketAnalysisPage {
   readonly selectedRunResultSourceLabel = computed(() =>
     formatMarketAnalysisResultSource(this.selectedRunResult()?.source)
   );
+  readonly selectedRunActiveTabIndex = computed(() => {
+    if (this.selectedRunHasSeasonalityView()) {
+      return 0;
+    }
+    if (this.selectedRunHasMarketStatsView()) {
+      return 1;
+    }
+    return 0;
+  });
   readonly selectedRunHasStructuredRows = computed(() =>
     this.selectedRunPatternsRows().length > 0 || this.selectedRunSeasonalityRows().length > 0
   );
@@ -648,6 +682,43 @@ export class MarketAnalysisPage {
     return formatDisplayValue(row[key]);
   }
 
+  getSeasonalityRowValue(row: MarketAnalysisRowRecord, key: string): string {
+    return formatSeasonalityDisplayValue(row[key], key);
+  }
+
+  isSeasonalityMetricsValue(row: MarketAnalysisRowRecord, key: string): boolean {
+    return key === 'metrics' && isRecordValue(row[key]);
+  }
+
+  getSeasonalityMetricsSummary(row: MarketAnalysisRowRecord, key: string): string {
+    return summarizeSeasonalityMetrics(row[key]);
+  }
+
+  getSeasonalityMetricsEntries(row: MarketAnalysisRowRecord, key: string): KeyValueEntry[] {
+    return toSeasonalityKeyValueEntries(asRecordValue(row[key]));
+  }
+
+  getSeasonalityMetricGroups(row: MarketAnalysisRowRecord, key: string): SeasonalityMetricGroup[] {
+    return groupSeasonalityMetrics(this.getSeasonalityMetricsEntries(row, key));
+  }
+
+  seasonalityMetricGroupClass(group: SeasonalityMetricGroup): string {
+    return `seasonality-metrics-group--${group.id}`;
+  }
+
+  seasonalityMetricGroupStyle(group: SeasonalityMetricGroup): string {
+    switch (group.id) {
+      case 'p':
+        return 'background:#eff6ff;';
+      case 'ret':
+        return 'background:#f0fdf4;';
+      case 'amp':
+        return 'background:#fff7ed;';
+      default:
+        return 'background:#f8fafc;';
+    }
+  }
+
   marketStatsColumnLabel(column: string): string {
     switch (column) {
       case 'p_hat':
@@ -659,6 +730,25 @@ export class MarketAnalysisPage {
       default:
         return humanizeColumnName(column);
     }
+  }
+
+  seasonalityColumnLabel(column: string): string {
+    switch (column) {
+      case 'spec_id':
+        return 'Spec Id';
+      case 'avg_return':
+        return 'Avg Return';
+      case 'p_value':
+        return 'p_value';
+      case 'q_value':
+        return 'q_value';
+      default:
+        return humanizeColumnName(column);
+    }
+  }
+
+  seasonalityMetricLabel(key: string): string {
+    return humanizeColumnName(key);
   }
 
   getMarketStatsRowValue(row: MarketAnalysisRowRecord, key: string): string {
@@ -725,6 +815,12 @@ type KeyValueEntry = {
   value: string;
 };
 
+type SeasonalityMetricGroup = {
+  id: 'p' | 'ret' | 'amp' | 'other';
+  label: 'P' | 'Ret' | 'Amp' | 'Other';
+  entries: KeyValueEntry[];
+};
+
 function toKeyValueEntries(payload: Record<string, unknown> | MarketAnalysisSeasonalityRunSummary | null | undefined): KeyValueEntry[] {
   if (!payload) {
     return [];
@@ -734,6 +830,41 @@ function toKeyValueEntries(payload: Record<string, unknown> | MarketAnalysisSeas
     key,
     value: formatDisplayValue(value)
   }));
+}
+
+function toSeasonalityKeyValueEntries(payload: Record<string, unknown> | null | undefined): KeyValueEntry[] {
+  if (!payload) {
+    return [];
+  }
+
+  return Object.entries(payload).map(([key, value]) => ({
+    key,
+    value: formatSeasonalityDisplayValue(value, key)
+  }));
+}
+
+function groupSeasonalityMetrics(entries: KeyValueEntry[]): SeasonalityMetricGroup[] {
+  const groups: SeasonalityMetricGroup[] = [
+    { id: 'p', label: 'P', entries: [] },
+    { id: 'ret', label: 'Ret', entries: [] },
+    { id: 'amp', label: 'Amp', entries: [] },
+    { id: 'other', label: 'Other', entries: [] }
+  ];
+
+  for (const entry of entries) {
+    const label = humanizeColumnName(entry.key).toLowerCase();
+    if (label.startsWith('p ')) {
+      groups[0].entries.push(entry);
+    } else if (label.startsWith('ret ')) {
+      groups[1].entries.push(entry);
+    } else if (label.startsWith('amp ')) {
+      groups[2].entries.push(entry);
+    } else {
+      groups[3].entries.push(entry);
+    }
+  }
+
+  return groups;
 }
 
 function collectRowKeys(rows: MarketAnalysisRowRecord[]): string[] {
@@ -759,6 +890,19 @@ function orderMarketStatsColumns(rows: MarketAnalysisRowRecord[]): string[] {
   return [...ordered, ...remaining];
 }
 
+function orderSeasonalityColumns(rows: MarketAnalysisRowRecord[]): string[] {
+  const keys = collectRowKeys(rows);
+  if (keys.length === 0) {
+    return [];
+  }
+  const preferred = new Set<string>(PREFERRED_SEASONALITY_COLUMNS);
+  const ordered = PREFERRED_SEASONALITY_COLUMNS.filter(key => keys.includes(key));
+  const remaining = keys
+    .filter(key => !preferred.has(key))
+    .sort((left, right) => left.localeCompare(right));
+  return [...ordered, ...remaining];
+}
+
 function formatDisplayValue(value: unknown): string {
   if (value === null || value === undefined) {
     return '-';
@@ -770,6 +914,28 @@ function formatDisplayValue(value: unknown): string {
     return String(value);
   }
   return JSON.stringify(value);
+}
+
+function formatSeasonalityDisplayValue(value: unknown, key: string): string {
+  if (key === 'metrics' && isRecordValue(value)) {
+    return summarizeSeasonalityMetrics(value);
+  }
+  if (value === null || value === undefined) {
+    return '-';
+  }
+  if (typeof value === 'boolean') {
+    return value ? 'Yes' : 'No';
+  }
+  if (typeof value === 'number') {
+    if (Number.isInteger(value)) {
+      return String(value);
+    }
+    return value.toFixed(4).replace(/\.?0+$/, '');
+  }
+  if (typeof value === 'string') {
+    return isDateLikeKey(key) && isIsoDateString(value) ? formatDateTimeDisplayValue(value) : value;
+  }
+  return formatDisplayValue(value);
 }
 
 function formatMarketStatsDisplayValue(value: unknown, key: string): string {
@@ -791,12 +957,55 @@ function formatMarketStatsDisplayValue(value: unknown, key: string): string {
   return formatDisplayValue(value);
 }
 
+function summarizeSeasonalityMetrics(value: unknown): string {
+  const record = asRecordValue(value);
+  if (!record) {
+    return formatSeasonalityDisplayValue(value, 'metrics');
+  }
+  const entries = Object.entries(record);
+  if (entries.length === 0) {
+    return '-';
+  }
+  return entries
+    .slice(0, 3)
+    .map(([key, entryValue]) => `${humanizeColumnName(key)}: ${formatSeasonalityDisplayValue(entryValue, key)}`)
+    .join(' | ');
+}
+
 function humanizeColumnName(value: string): string {
   return value
     .split('_')
     .filter(Boolean)
     .map(chunk => chunk.charAt(0).toUpperCase() + chunk.slice(1))
     .join(' ');
+}
+
+function asRecordValue(value: unknown): Record<string, unknown> | null {
+  return isRecordValue(value) ? value : null;
+}
+
+function isRecordValue(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isDateLikeKey(key: string): boolean {
+  const normalized = key.toLowerCase();
+  return normalized.includes('date') || normalized.endsWith('_at') || normalized === 'start' || normalized === 'end';
+}
+
+function isIsoDateString(value: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}(?:[tT ][\d:.+-zZ]*)?$/.test(value) && !Number.isNaN(Date.parse(value));
+}
+
+function formatDateTimeDisplayValue(value: string): string {
+  const date = new Date(value);
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  const hours = String(date.getUTCHours()).padStart(2, '0');
+  const minutes = String(date.getUTCMinutes()).padStart(2, '0');
+  const hasTime = /[tT ]\d{2}:\d{2}/.test(value);
+  return hasTime ? `${year}-${month}-${day} ${hours}:${minutes} UTC` : `${year}-${month}-${day}`;
 }
 
 function heatmapColor(value: number): string {
